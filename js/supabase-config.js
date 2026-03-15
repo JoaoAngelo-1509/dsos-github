@@ -3,7 +3,7 @@
 // Copie este arquivo para supabase-config.local.js e preencha com suas chaves.
 // supabase-config.local.js está no .gitignore.
 
-const PROJECT_URL = 'SUA_SUPABASE_URL_AQUI';
+const PROJECT_URL = 'teste';
 const ANON_KEY    = 'SUA_ANON_KEY_AQUI';
 
 export const H = {
