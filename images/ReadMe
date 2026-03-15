@@ -1,16 +1,13 @@
-Esta pasta é reservada para as imagens do projeto DSos.
+Esta pasta existe para orientar sobre as imagens necessárias para rodar o projeto DSos.
 Arquivos necessários
-Após clonar o repositório, adicione os seguintes arquivos na raiz do projeto (não dentro desta pasta):
-ArquivoOnde colocarDescriçãoBG.jpegraiz do projetoImagem de fundo da interfaceLogo.pngraiz do projetoLogo do Centro Paula Souza
-
+Após clonar o repositório, adicione os seguintes arquivos na raiz do projeto, ou seja, na mesma pasta onde ficam as pastas html, css e js.
+Os dois arquivos são BG.jpeg, que é a imagem de fundo da interface, e Logo.png, que é o logo do Centro Paula Souza.
 Esses arquivos não estão no repositório pois são ativos visuais proprietários do Centro Paula Souza.
-
 Estrutura esperada após configurar
 dsos/
-├── BG.jpeg        ✅ aqui
-├── Logo.png       ✅ aqui
+├── BG.jpeg
+├── Logo.png
 ├── images/
-│   └── README.md
 ├── html/
 ├── css/
 └── js/
