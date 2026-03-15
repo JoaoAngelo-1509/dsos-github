@@ -4,7 +4,8 @@ js/supabase-config.test.js
 .env
 .env.local
 *.env
-
+BG.jpeg
+Logo.png
 # OS
 .DS_Store
 Thumbs.db
