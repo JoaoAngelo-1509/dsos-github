@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+  <!-- DSos v1.1.0 — login.html -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
+  <title>DSos — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/login.css" />
+</head>
+<body>
+
+<div class="bg"></div>
+
+<button class="btn-tema" id="btn-tema" onclick="toggleTema()" title="Alternar modo claro/escuro">
+  <svg id="ico-tema" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<div class="card">
+  <p class="boas-vindas">Bem-vindo ao DSos — Sistema de HelpDesk Escolar. Faça login com as credenciais do seu PC.</p>
+
+  <div class="field">
+    <input id="nome" type="text" placeholder="Seu nome..." autocomplete="off" spellcheck="false" />
+  </div>
+
+  <div class="divisor"><span>credenciais do PC</span></div>
+
+  <div class="field">
+    <input id="usuario" type="text" placeholder="Usuário do PC..." autocomplete="off" spellcheck="false" />
+  </div>
+
+  <div class="field" style="position:relative;">
+    <input id="senha" type="password" placeholder="Senha..." autocomplete="off" style="padding-right: 46px;" />
+    <button type="button" onclick="toggleSenha()" id="btn-olho"
+      style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--text-muted);">
+      <svg id="icone-olho" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="erro" id="erro">Usuário ou senha incorretos.</div>
+
+  <button class="btn-entrar" id="btn" onclick="entrar()">
+    <span>Entrar</span>
+  </button>
+
+  <img class="logo" src="../Logo.png" alt="Centro Paula Souza" />
+
+  <a class="ajuda" href="#" onclick="ajuda(event)">ajuda sobre login</a>
+</div>
+
+<script type="module" src="../js/auth.js"></script>
+</body>
+</html>

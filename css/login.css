@@ -1,0 +1,135 @@
+/* DSos v1.1.0 — login.css */
+/* ── login.css — Estilos exclusivos da página de login ── */
+
+:root {
+  --red:        #c0171a;
+  --red-dark:   #7a0b0d;
+  --red-deep:   #3d0405;
+  --gray-card:  #e4e4e4;
+  --gray-input: #d5d5d5;
+  --gray-border:#aaaaaa;
+  --text:       #2a2a2a;
+  --text-muted: #888;
+  --body-bg:    #f0f0f0;
+}
+[data-theme="dark"] {
+  --gray-card:  #1e1a1a;
+  --gray-input: #2a2424;
+  --gray-border:#4a3a3a;
+  --text:       #e8e0e0;
+  --text-muted: #9a8888;
+  --body-bg:    #120a0a;
+}
+
+body {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  overflow-y: auto;
+  background: var(--body-bg);
+  transition: background .3s;
+  padding: 20px 0;
+}
+
+/* toggle de tema */
+.btn-tema {
+  position: fixed; top: 14px; right: 16px; z-index: 20;
+  background: var(--gray-card); border: 1.5px solid var(--gray-border);
+  border-radius: 50%; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-muted);
+  transition: all .2s; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.btn-tema:hover { border-color: var(--red); color: var(--red); }
+
+/* card */
+.card {
+  position: relative; z-index: 10;
+  background: var(--gray-card); border: 2px solid var(--gray-border);
+  border-radius: 6px; width: min(420px, 90vw);
+  padding: 48px 44px 36px;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+  animation: cardIn .55s cubic-bezier(.22,1,.36,1) both;
+  transition: background .3s, border-color .3s;
+}
+
+.boas-vindas {
+  width: 100%; font-size: .72rem; font-weight: 300;
+  color: var(--text-muted); text-align: center; line-height: 1.5; margin-bottom: 4px;
+}
+
+.divisor {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin: 2px 0;
+}
+.divisor::before, .divisor::after {
+  content: ''; flex: 1; height: 1px; background: var(--gray-border); opacity: .5;
+}
+.divisor span {
+  font-size: .68rem; font-weight: 300; color: var(--text-muted);
+  white-space: nowrap; letter-spacing: .03em;
+}
+
+.field { width: 100%; display: flex; flex-direction: column; gap: 0; }
+.field input {
+  width: 100%; padding: 16px 18px;
+  background: var(--gray-input); border: 1.5px solid var(--gray-border);
+  border-radius: 4px; font-family: inherit; font-size: .95rem; color: var(--text);
+  outline: none; transition: border-color .2s, box-shadow .2s, background .3s, color .3s;
+}
+.field input::placeholder { color: var(--text-muted); }
+.field input:focus {
+  border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,23,26,.15);
+}
+
+/* botão entrar */
+.btn-entrar {
+  width: 200px; padding: 14px;
+  background: var(--red); color: #fff; border: none; border-radius: 4px;
+  font-family: inherit; font-size: 1rem; font-weight: 600; letter-spacing: .04em;
+  cursor: pointer; transition: background .2s, transform .1s, box-shadow .2s;
+  position: relative; overflow: hidden;
+}
+.btn-entrar:hover { background: #910305; box-shadow: 0 4px 18px rgba(192,23,26,.4); }
+.btn-entrar:active { transform: scale(.97); }
+.btn-entrar::after {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(255,255,255,.15); opacity: 0; transition: opacity .3s;
+}
+.btn-entrar:active::after { opacity: 1; }
+.btn-entrar.loading { pointer-events: none; opacity: .75; }
+.btn-entrar.loading span { visibility: hidden; }
+.btn-entrar.loading::before {
+  content: ''; position: absolute; inset: 0; margin: auto;
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+
+.logo { margin-top: 4px; width: 130px; opacity: .9; }
+
+.ajuda { font-size: .78rem; color: var(--text-muted); text-decoration: none; transition: color .2s; }
+.ajuda:hover { color: var(--red); }
+
+.erro {
+  width: 100%; background: #fde8e8; border: 1px solid #f5b4b4;
+  border-radius: 4px; padding: 10px 14px; font-size: .83rem; color: #9b1c1c;
+  display: none; animation: fadeIn .25s ease;
+}
+[data-theme="dark"] .erro {
+  background: rgba(192,23,26,.15); border-color: rgba(192,23,26,.35); color: #ff8888;
+}
+.erro.visivel { display: block; }
+
+/* responsividade */
+@media (max-width: 480px) {
+  .card { padding: 32px 22px 28px; gap: 16px; border-radius: 4px; width: 96vw; }
+  .btn-entrar { width: 100%; }
+  .boas-vindas { font-size: .68rem; }
+  .field input { padding: 14px 14px; font-size: .9rem; }
+  .logo { width: 110px; }
+  .btn-tema { top: 8px; right: 10px; width: 32px; height: 32px; }
+}
+@media (max-width: 360px) {
+  .card { padding: 24px 16px 22px; }
+  .field input { font-size: .85rem; padding: 12px 12px; }
+}

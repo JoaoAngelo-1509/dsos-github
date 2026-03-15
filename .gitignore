@@ -1,0 +1,15 @@
+# Credenciais — NUNCA commitar
+js/supabase-config.local.js
+js/supabase-config.test.local.js
+.env
+.env.local
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

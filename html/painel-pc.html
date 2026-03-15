@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+  <!-- DSos v1.1.0 — painel-pc.html -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DSos — Painel do Usuário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/painel-pc.css" />
+</head>
+<body>
+<div class="bg"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <img class="topbar-logo" src="../Logo.png" alt="CPS" />
+  <div class="topbar-sep"></div>
+  <div>
+    <span class="topbar-title">DSos</span>
+    <span class="topbar-sub">— HelpDesk Escolar <span style="color:#0f0;font-size:.75rem;font-weight:700">v1.1</span></span>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-info">
+      <span>Lab: <strong id="info-lab">—</strong></span>
+      <span>Lado: <strong id="info-lado">—</strong></span>
+    </div>
+    <div class="topbar-user">
+      <div class="online-dot"></div>
+      <span id="info-nome">—</span>
+      <span class="pc-tag" id="badge-pc">—</span>
+    </div>
+    <button class="btn-tema" id="btn-tema" onclick="toggleTema()" title="Alternar modo claro/escuro">
+      <svg id="ico-tema" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <button class="btn-sair" onclick="sair()">Sair</button>
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+  <div class="panel">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-abrir" onclick="trocarAba('abrir')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Abrir Chamado
+      </button>
+      <button class="tab" id="tab-chamados" onclick="trocarAba('chamados')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Meus Chamados
+        <span class="tab-badge zero" id="tab-badge">0</span>
+      </button>
+    </div>
+
+    <!-- VIEW: ABRIR CHAMADO -->
+    <div class="view active" id="view-abrir">
+
+      <!-- Banner de aviso de status do PC -->
+      <div class="pc-status-banner" id="pc-status-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+        <span id="pc-status-msg"></span>
+      </div>
+
+      <!-- Toggle Rápido / Detalhado -->
+      <div class="modo-toggle">
+        <button class="modo-btn active" id="modo-rapido-btn" onclick="trocarModo('rapido')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Chamado Rápido
+        </button>
+        <button class="modo-btn" id="modo-detalhado-btn" onclick="trocarModo('detalhado')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Chamado Detalhado
+        </button>
+      </div>
+
+      <!-- MODO RÁPIDO -->
+      <div id="modo-rapido" class="rapido-wrap">
+        <div class="rapido-inner">
+          <div class="rapido-title" id="rapido-title-txt">Selecione o tipo de problema e envie com um clique. O T.I. será notificado imediatamente.</div>
+
+          <!-- Campo de tag do PC — visível apenas para professor -->
+          <div class="prof-pc-field" id="prof-pc-field-rapido">
+            <div class="prof-pc-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Tag do PC com problema
+            </div>
+            <input class="prof-pc-input" id="prof-pc-tag-rapido" type="text"
+              placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
+              oninput="this.value=this.value.toUpperCase()" />
+          </div>
+
+          <div class="rapido-tipos">
+            <div class="rapido-opt" data-v="hardware" onclick="pickRapido(this)">
+              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+              <div class="rapido-opt-nome">Hardware</div>
+              <div class="rapido-opt-desc">Placa, memória, HD, fonte…</div>
+            </div>
+            <div class="rapido-opt" data-v="software" onclick="pickRapido(this)">
+              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+              <div class="rapido-opt-nome">Software</div>
+              <div class="rapido-opt-desc">Sistema, programas, travamento…</div>
+            </div>
+            <div class="rapido-opt" data-v="periferico" onclick="pickRapido(this)">
+              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 2v8"/></svg></div>
+              <div class="rapido-opt-nome">Periférico</div>
+              <div class="rapido-opt-desc">Mouse, teclado, monitor…</div>
+            </div>
+            <div class="rapido-opt" data-v="rede" onclick="pickRapido(this)">
+              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
+              <div class="rapido-opt-nome">Rede</div>
+              <div class="rapido-opt-desc">Sem internet ou rede local…</div>
+            </div>
+          </div>
+          <button class="btn-rapido-send" id="btn-rapido-send" onclick="enviarRapido()" disabled>
+            <span style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Chamar T.I. agora</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MODO DETALHADO (formulário original) -->
+      <div id="modo-detalhado" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+        <div class="form-wrap">
+        <div class="form-inner">
+
+          <!-- TIPO -->
+          <div class="field">
+            <div class="field-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              Tipo de problema
+            </div>
+            <div class="sel-wrap" id="sel-wrap">
+              <div class="sel-trigger" id="sel-trigger" onclick="toggleSel()" tabindex="0">
+                <svg id="ico-hw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+                <svg id="ico-sw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <svg id="ico-pe" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+                <svg id="ico-re" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>
+                <svg id="ico-ou" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+                <span class="sel-placeholder">Selecione o tipo de problema...</span>
+                <span class="sel-val" id="sel-val"></span>
+              </div>
+              <svg class="sel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="sel-drop">
+                <div class="sel-opt" data-v="hardware" data-i="hw" onclick="pickTipo(this)">
+                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg></div>
+                  <div class="sel-opt-info"><div class="sel-opt-name">Hardware</div><div class="sel-opt-desc">Placa-mãe, memória, HD, fonte…</div></div>
+                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                </div>
+                <div class="sel-opt" data-v="software" data-i="sw" onclick="pickTipo(this)">
+                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+                  <div class="sel-opt-info"><div class="sel-opt-name">Software</div><div class="sel-opt-desc">Sistema, programas, travamentos…</div></div>
+                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                </div>
+                <div class="sel-opt" data-v="periferico" data-i="pe" onclick="pickTipo(this)">
+                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg></div>
+                  <div class="sel-opt-info"><div class="sel-opt-name">Periférico</div><div class="sel-opt-desc">Mouse, teclado, monitor…</div></div>
+                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                </div>
+                <div class="sel-opt" data-v="rede" data-i="re" onclick="pickTipo(this)">
+                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
+                  <div class="sel-opt-info"><div class="sel-opt-name">Rede</div><div class="sel-opt-desc">Sem internet, sem rede local…</div></div>
+                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                </div>
+                <div class="sel-opt" data-v="outro" data-i="ou" onclick="pickTipo(this)">
+                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg></div>
+                  <div class="sel-opt-info"><div class="sel-opt-name">Outro</div><div class="sel-opt-desc">Qualquer outro tipo de problema</div></div>
+                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DESCRIÇÃO -->
+          <div class="field">
+            <div class="field-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Descrição do problema
+            </div>
+            <textarea class="desc-area" id="descricao" maxlength="500"
+              placeholder="Descreva o problema: o que aconteceu, quando começou, o que você tentou…"
+              oninput="document.getElementById('dc').textContent=this.value.length"></textarea>
+            <div class="desc-count"><span id="dc">0</span>/500</div>
+          </div>
+
+          <div class="divisor"><span>opcional</span></div>
+
+          <!-- EMERGÊNCIA -->
+          <div class="emerg" id="emerg">
+            <button class="emerg-btn" type="button" onclick="toggleEmerg()">
+              <div class="emerg-bolt">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+              </div>
+              <div class="emerg-text">
+                <span class="emerg-title">Chamado de Emergência</span>
+                <span class="emerg-hint">Estou abrindo por outro PC que não acessa o sistema</span>
+              </div>
+              <span class="emerg-pill" id="epill">ATIVAR</span>
+            </button>
+            <div class="emerg-body">
+              <div class="emerg-body-label">Tag do PC com problema</div>
+              <input class="emerg-input" id="emerg-pc" type="text"
+                placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
+                oninput="this.value=this.value.toUpperCase()" />
+              <div class="emerg-warn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9b1c1c" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="#9b1c1c"/>
+                </svg>
+                Requer professor ou responsável presente como testemunha. O PC de origem ficará registrado.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RODAPÉ -->
+      <div class="form-footer">
+        <div class="foot-meta">
+          <img class="foot-logo" src="../Logo.png" alt="CPS" />
+          <div class="foot-sep"></div>
+          <div class="foot-info">
+            Lab <strong id="footer-lab">—</strong><br/>
+            Lado <strong id="footer-lado">—</strong>
+          </div>
+        </div>
+        <button class="btn-submit" id="btn-submit" onclick="abrirChamado()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          <span class="btn-txt">Abrir Chamado</span>
+        </button>
+      </div>
+      </div><!-- /modo-detalhado -->
+    </div>
+
+    <!-- VIEW: MEUS CHAMADOS -->
+    <div class="view" id="view-chamados">
+      <div class="chamados-searchbar">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="chamados-search" placeholder="Buscar chamado..." autocomplete="off" oninput="buscaChamados(this.value)" />
+      </div>
+      <div class="ticket-list" id="ticket-list">
+        <div class="loading-row"><div class="spin"></div> carregando...</div>
+      </div>
+      <div class="list-footer">
+        <div class="leg"><div class="leg-bar" style="background:var(--red)"></div>Aberto</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--yellow)"></div>Em andamento</div>
+        <div class="leg"><div class="leg-bar" style="background:var(--green-dark)"></div>Resolvido</div>
+        <div class="leg"><div class="leg-bar" style="background:#555"></div>Encerrado</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- OVERLAY SUCESSO -->
+<div class="overlay" id="overlay">
+  <div class="suc-card">
+    <div class="suc-top">
+      <div class="suc-circle">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="suc-title">Chamado aberto!</div>
+      <div class="suc-sub">O T.I foi notificado e irá atender em breve. Aguarde no local.</div>
+    </div>
+    <div class="suc-body">
+      <div class="suc-id" id="suc-id">#—</div>
+      <button class="btn-novo-suc" onclick="resetForm()">Abrir novo chamado</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CHAT -->
+<div class="modal-bg" id="modal-chat">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-htitle" id="m-title">—</div>
+        <div class="modal-hmeta">
+          <span id="m-meta-hora">—</span>
+          <span id="m-meta-lab">—</span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="fecharChat()">✕</button>
+    </div>
+    <div class="modal-status-row">
+      <span class="modal-status-label">Status:</span>
+      <span class="status-pill" id="m-status-pill">—</span>
+    </div>
+    <div class="modal-desc">
+      <div class="modal-desc-label">Descrição do problema</div>
+      <div class="modal-desc-text" id="m-desc">—</div>
+    </div>
+    <div class="resolucao-block" id="m-resolucao">
+      <div class="resolucao-label"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Resolução do T.I.</div>
+      <div class="resolucao-text" id="m-res-tipo">—</div>
+      <div class="resolucao-sub" id="m-res-item"></div>
+    </div>
+    <div class="chat-bar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o T.I.</div>
+    <div class="chat-msgs" id="chat-msgs"></div>
+    <div class="img-preview-row" id="img-preview-row">
+      <img class="img-preview-thumb" id="img-preview-thumb" src="" alt="preview" />
+      <span class="img-preview-nome" id="img-preview-nome"></span>
+      <button class="img-preview-remove" onclick="removerImgPendente()" title="Remover imagem">✕</button>
+    </div>
+    <div class="chat-input-row">
+      <input type="file" id="file-input-chat" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="selecionarImagem(event)" />
+      <button class="btn-img-attach" id="btn-img-attach" title="Enviar print/imagem" onclick="document.getElementById('file-input-chat').click()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </button>
+      <input class="chat-input" id="chat-input" placeholder="Escreva sua mensagem..." maxlength="500" oninput="atualizarContadorChat(this,'chat-char-count')" onkeydown="enviarMsg(event)" />
+      <button class="btn-send" id="btn-send" onclick="enviarMsg({key:'Enter'})">Enviar</button>
+    </div>
+    <div style="text-align:right;font-size:.58rem;color:var(--text-muted);padding:2px 17px 6px;"><span id="chat-char-count">0</span>/500</div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="fecharLightbox()">
+  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="imagem ampliada" onclick="event.stopPropagation()" />
+</div>
+
+
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script type="module" src="../js/painel-pc.js"></script>
+</body>
+</html>

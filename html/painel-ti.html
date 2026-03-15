@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+  <!-- DSos v1.1.0 — painel-ti.html -->
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>DSos — Painel T.I.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/painel-ti.css" />
+</head>
+<body>
+<div class="bg"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <img class="topbar-logo" src="../Logo.png" alt="CPS"/>
+  <div class="topbar-sep"></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:#22c55e;font-size:.72rem;font-weight:700">v1.1</span></span></div>
+  <div class="topbar-right">
+    <div class="topbar-info">
+      <span id="info-data">—</span>
+      <span>Turno: <strong id="info-turno">—</strong></span>
+    </div>
+    <div class="topbar-user"><div class="online-dot"></div><span id="nome-ti">T.I.</span></div>
+    <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
+      <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <button class="btn-icon" onclick="sair()" title="Sair">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- CENTER -->
+<div class="center">
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-icon red"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg></div>
+      <div class="kpi-info"><div class="kpi-n red" id="kpi-pendentes">—</div><div class="kpi-l">Pendentes</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+      <div class="kpi-info"><div class="kpi-n green" id="kpi-resolvidos">—</div><div class="kpi-l">Resolvidos hoje</div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon yellow"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div class="kpi-info"><div class="kpi-n yellow" id="kpi-hoje">—</div><div class="kpi-l">Abertos hoje</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs-container">
+      <button class="tab-nav-btn tab-nav-left" id="tab-nav-left" onclick="scrollTabs('left')" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="tabs" id="tabs-scroll">
+        <button class="tab active" id="tab-abertos" onclick="mudarAba('abertos')">Não Respondidos <span class="tab-badge" id="badge-unresp">0</span></button>
+        <button class="tab" id="tab-respondidos" onclick="mudarAba('respondidos')">Já Respondidos <span class="tab-badge" id="badge-resp">0</span></button>
+        <button class="tab" id="tab-descarte" onclick="mudarAba('descarte')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Fila de Descarte <span class="tab-badge" id="badge-descarte">0</span></button>
+        <button class="tab" id="tab-pcs" onclick="mudarAba('pcs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Computadores <span class="tab-badge" id="badge-pcs">0</span></button>
+        <button class="tab" id="tab-ti"  onclick="mudarAba('ti')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Equipe T.I. <span class="tab-badge" id="badge-ti">0</span></button>
+        <button class="tab" id="tab-professores" onclick="mudarAba('professores')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg> Professores <span class="tab-badge" id="badge-prof">0</span></button>
+      </div>
+      <button class="tab-nav-btn tab-nav-right" id="tab-nav-right" onclick="scrollTabs('right')" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <!-- ABA: NÃO RESPONDIDOS -->
+    <div class="tab-panel active" id="panel-abertos">
+      <div class="tbl-head" style="grid-template-columns:32px 1fr 90px 50px 82px">
+        <span></span><span>PC / Tipo</span><span>Laboratório</span><span>Hora</span><span style="text-align:right">Status</span>
+      </div>
+      <div class="ticket-list" id="unresp-list"><div class="loading-spinner"><div class="spin"></div> carregando...</div></div>
+      <div class="action-bar">
+        <div class="action-hint">Clique para selecionar · clique duplo para detalhes</div>
+        <button class="act-btn act-progresso" id="btn-progresso" onclick="setStatus('em_andamento')" disabled>EM ANDAMENTO</button>
+        <button class="act-btn act-resolvido"  id="btn-resolvido"  onclick="abrirResolucao()"         disabled>RESOLVIDO</button>
+        <button class="act-btn act-descartado" id="btn-descartado" onclick="setStatus('descartado')"   disabled>DESCARTADO</button>
+        <button class="act-btn act-falso"      id="btn-falso"      onclick="setStatus('falso_alarme')" disabled>Falso Alarme</button>
+      </div>
+    </div>
+
+    <!-- ABA: JÁ RESPONDIDOS -->
+    <div class="tab-panel" id="panel-respondidos">
+      <div class="resp-filters">
+        <button class="rf-btn active" onclick="filtrar('all',this)"><span class="rf-dot" style="background:var(--muted)"></span>Todos</button>
+        <button class="rf-btn" onclick="filtrar('em_andamento',this)"><span class="rf-dot" style="background:var(--yellow)"></span>Em andamento</button>
+        <button class="rf-btn" onclick="filtrar('resolvido',this)"><span class="rf-dot" style="background:var(--green)"></span>Resolvido</button>
+        <button class="rf-btn" onclick="filtrar('descartado',this)"><span class="rf-dot" style="background:var(--muted)"></span>Descartado</button>
+        <button class="rf-btn" onclick="filtrar('falso_alarme',this)"><span class="rf-dot" style="background:var(--red)"></span>Falso Alarme</button>
+      </div>
+      <div class="tbl-head" style="grid-template-columns:32px 1fr 68px 72px auto auto">
+        <span></span><span>PC / Tipo · Técnico</span><span>Data</span><span>Status</span><span></span><span></span>
+      </div>
+      <div class="ticket-list" id="resp-list">
+        <div class="empty" id="resp-empty">
+          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+          <p>Nenhum chamado respondido ainda</p>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--sp-and-bg);border:1px solid var(--sp-and-b)"></div>Em andamento</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--sp-res-bg);border:1px solid var(--sp-res-b)"></div>Resolvido</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--sp-falso-bg);border:1px solid var(--sp-falso-b)"></div>Falso alarme</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--sp-desc-bg);border:1px solid var(--sp-desc-b)"></div>Descartado</div>
+        <button class="btn-limpar" onclick="limparRespondidos()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Limpar lista
+        </button>
+      </div>
+    </div>
+
+    <!-- ABA: FILA DE DESCARTE -->
+    <div class="tab-panel" id="panel-descarte">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="descarte-search" placeholder="Buscar por PC ou item…" oninput="buscarDescarte(this.value)" autocomplete="off" />
+      </div>
+      <div class="tbl-head" style="grid-template-columns:28px 1fr 72px auto 70px">
+        <span></span><span>PC / Item identificado</span><span>Data</span><span>Status PC</span><span style="text-align:right">Ação</span>
+      </div>
+      <div class="ticket-list" id="desc-list">
+        <div class="empty" id="desc-empty">
+          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></div>
+          <p>Nenhum item aguardando descarte</p>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="leg"><div class="leg-sq" style="background:var(--rr-orange-bg);border:1px solid var(--rr-orange-b)"></div>Aguardando descarte físico</div>
+        <div class="leg"><div class="leg-sq" style="background:var(--rr-black-bg);border:1px solid var(--rr-black-b)"></div>Descarte concluído</div>
+      </div>
+    </div>
+
+    <!-- ABA: COMPUTADORES -->
+    <div class="tab-panel" id="panel-pcs">
+      <div class="pc-filters">
+        <input class="pc-search" id="pc-search" placeholder="Buscar por tag ou laboratório…" oninput="filtrarPCs()" />
+        <button class="pf-btn active" id="pf-todos"      onclick="setPcFiltro('todos',this)">Todos</button>
+        <button class="pf-btn"        id="pf-ativo"      onclick="setPcFiltro('ativo',this)">Ativos</button>
+        <button class="pf-btn"        id="pf-manutencao" onclick="setPcFiltro('em_manutencao',this)">Manutenção</button>
+        <button class="pf-btn"        id="pf-descartado" onclick="setPcFiltro('descartado',this)">Descartados</button>
+        <button class="btn-add-pc"    onclick="abrirModalPC(null)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo PC
+        </button>
+      </div>
+      <div class="pc-grid" id="pc-grid">
+        <div class="loading-spinner" style="grid-column:1/-1"><div class="spin"></div> carregando…</div>
+      </div>
+      <div class="pc-footer">
+        <span id="pc-count">—</span> computadores cadastrados
+      </div>
+    </div>
+
+    <!-- ABA: EQUIPE T.I. -->
+    <div class="tab-panel" id="panel-ti">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="ti-search" placeholder="Buscar técnico por nome ou login…" oninput="buscarTIs(this.value)" autocomplete="off" />
+      </div>
+      <div class="ti-user-list" id="ti-user-list">
+        <div class="loading-spinner"><div class="spin"></div> carregando…</div>
+      </div>
+      <div class="ti-user-footer">
+        <span class="ti-user-count"><span id="ti-count">—</span> usuário(s) cadastrado(s)</span>
+        <button class="btn-add-ti" onclick="abrirModalTI(null)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Usuário
+        </button>
+      </div>
+    </div>
+
+    <!-- ABA: PROFESSORES -->
+    <div class="tab-panel" id="panel-professores">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="prof-search" placeholder="Buscar professor por nome ou disciplina…" oninput="buscarProfs(this.value)" autocomplete="off" />
+      </div>
+      <div class="ti-user-list" id="prof-user-list">
+        <div class="loading-spinner"><div class="spin"></div> carregando…</div>
+      </div>
+      <div class="ti-user-footer">
+        <span class="ti-user-count"><span id="prof-count">—</span> professor(es) cadastrado(s)</span>
+        <button class="btn-add-ti" onclick="abrirModalProf(null)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Professor
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /center -->
+
+<!-- EASTER EGG 🥚 — clique 5x no "DSos" -->
+<div class="egg-bg" id="egg-bg" onclick="fecharEgg()">
+  <div class="egg-card">
+    <img class="egg-img" id="egg-img" src="" alt="easter egg" onerror="this.src='https://placehold.co/320x400/1a1a1a/c0171a?text=📸+Foto+aqui'" />
+    <div class="egg-nome" id="egg-nome">👀 Quem será?</div>
+    <div class="egg-frase" id="egg-frase">"Não foi eu que deletei o banco."</div>
+  </div>
+  <div class="egg-close-hint">clique em qualquer lugar para fechar</div>
+</div>
+<div class="modal-pc-bg" id="modal-pc">
+  <div class="modal-pc">
+    <div class="modal-pc-head">
+      <span class="modal-pc-title" id="mpc-title">Cadastrar Computador</span>
+      <button class="modal-close" onclick="fecharModalPC()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-pc-body">
+      <div class="mpc-field">
+        <div class="mpc-label">Tag do PC (identificador único)</div>
+        <input class="mpc-input" id="mpc-tag" placeholder="Ex: LAB1-A01" autocomplete="off" oninput="this.value=this.value.toUpperCase()" />
+      </div>
+      <div class="mpc-row">
+        <div class="mpc-field">
+          <div class="mpc-label">Laboratório</div>
+          <input class="mpc-input" id="mpc-lab" placeholder="Ex: Laboratório 1" autocomplete="off" />
+        </div>
+        <div class="mpc-field">
+          <div class="mpc-label">Lado</div>
+          <select class="mpc-sel" id="mpc-lado">
+            <option value="A">Lado A</option>
+            <option value="B">Lado B</option>
+          </select>
+        </div>
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label" id="mpc-senha-label">Senha de acesso</div>
+        <div style="position:relative">
+          <input class="mpc-input" id="mpc-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
+          <button type="button" onclick="toggleSenhaMPC()" id="btn-olho-mpc"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
+            <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="mpc-hint" id="mpc-senha-hint">Deixe em branco para não alterar a senha atual.</div>
+      </div>
+      <div class="mpc-field" id="mpc-status-field" style="display:none">
+        <div class="mpc-label">Status do PC</div>
+        <select class="mpc-sel" id="mpc-status">
+          <option value="ativo">Ativo</option>
+          <option value="em_manutencao">Em manutenção</option>
+          <option value="descartado">Descartado</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-pc-footer">
+      <button class="btn-mpc-cancel" onclick="fecharModalPC()">Cancelar</button>
+      <button class="btn-mpc-save" onclick="salvarPC()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MODAL — CADASTRO / EDIÇÃO DE USUÁRIO T.I.
+══════════════════════════════════ -->
+<div class="modal-pc-bg" id="modal-ti-user">
+  <div class="modal-pc">
+    <div class="modal-pc-head">
+      <span class="modal-pc-title" id="mti-title">Cadastrar Usuário T.I.</span>
+      <button class="modal-close" onclick="fecharModalTI()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-pc-body">
+      <div class="mpc-field">
+        <div class="mpc-label">Nome completo</div>
+        <input class="mpc-input" id="mti-nome" placeholder="Ex: João da Silva" autocomplete="off" />
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label">Login de acesso</div>
+        <input class="mpc-input" id="mti-login" placeholder="Ex: joao.silva" autocomplete="off" />
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label">Senha</div>
+        <div style="position:relative">
+          <input class="mpc-input" id="mti-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
+          <button type="button" onclick="toggleSenhaTI()" id="btn-olho-ti"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
+            <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="mpc-hint" id="mti-senha-hint" style="display:none">Deixe em branco para não alterar a senha atual.</div>
+      </div>
+    </div>
+    <div class="modal-pc-footer">
+      <button class="btn-mpc-cancel" onclick="fecharModalTI()">Cancelar</button>
+      <button class="btn-mpc-save"   onclick="salvarTI()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MODAL — CADASTRO / EDIÇÃO DE PROFESSOR
+══════════════════════════════════ -->
+<div class="modal-pc-bg" id="modal-professor">
+  <div class="modal-pc">
+    <div class="modal-pc-head">
+      <span class="modal-pc-title" id="mprof-title">Cadastrar Professor</span>
+      <button class="modal-close" onclick="fecharModalProf()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-pc-body">
+      <div class="mpc-field">
+        <div class="mpc-label">Nome completo</div>
+        <input class="mpc-input" id="mprof-nome" placeholder="Ex: Maria Souza" autocomplete="off" />
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label">Login de acesso</div>
+        <input class="mpc-input" id="mprof-login" placeholder="Ex: maria.souza" autocomplete="off" />
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label">Disciplina (opcional)</div>
+        <input class="mpc-input" id="mprof-disciplina" placeholder="Ex: Matemática" autocomplete="off" />
+      </div>
+      <div class="mpc-field">
+        <div class="mpc-label">Senha</div>
+        <div style="position:relative">
+          <input class="mpc-input" id="mprof-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
+          <button type="button" onclick="toggleSenhaProf()" id="btn-olho-prof"
+            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
+            <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="mpc-hint" id="mprof-senha-hint" style="display:none">Deixe em branco para não alterar a senha atual.</div>
+      </div>
+    </div>
+    <div class="modal-pc-footer">
+      <button class="btn-mpc-cancel" onclick="fecharModalProf()">Cancelar</button>
+      <button class="btn-mpc-save"   onclick="salvarProf()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-head-info">
+        <div class="modal-htitle" id="m-title">—</div>
+        <div class="modal-hmeta">
+          <span id="m-time"></span><span id="m-turno">—</span>
+          <span id="m-origem-label">—</span><span id="m-solicitante"></span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="fecharModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-scroll">
+      <div class="modal-grid">
+        <div class="mfield"><span class="mfield-label">PC com problema</span><span class="mfield-value" id="m-pc">—</span></div>
+        <div class="mfield"><span class="mfield-label">Laboratório / Lado</span><span class="mfield-value" id="m-lab">—</span></div>
+        <div class="mfield"><span class="mfield-label">Tipo</span><span class="mfield-value" id="m-tipo">—</span></div>
+        <div class="mfield">
+          <span class="mfield-label">Prioridade</span>
+          <select class="msel" id="m-prio" onchange="salvarPrioridade()">
+            <option value="alto">Alta</option><option value="medio">Média</option><option value="baixo">Baixa</option>
+          </select>
+        </div>
+        <div class="mfield full" id="m-tecnico-wrap" style="display:none">
+          <span class="mfield-label">Técnico responsável</span>
+          <div><span class="tecnico-badge" id="m-tecnico"></span></div>
+        </div>
+        <div class="mfield full"><span class="mfield-label">Descrição do problema</span><div class="mdesc" id="m-desc">—</div></div>
+        <div class="mfield full" id="m-res-wrap" style="display:none">
+          <span class="mfield-label">Descrição da resolução</span>
+          <div class="res-desc-view" id="m-res-desc">—</div>
+        </div>
+      </div>
+      <div class="resolve-bar" id="resolve-bar">
+        <div class="resolve-row">
+          <span class="rlabel">Resolução:</span>
+          <select class="msel" id="res-tipo" onchange="toggleItemDesc()">
+            <option value="">— escolha —</option>
+            <option value="consertado">Consertado</option>
+            <option value="descarte">Descarte</option>
+            <option value="aguardando_peca">Aguardando peça</option>
+          </select>
+          <input class="item-input" id="item-desc" placeholder="Item descartado (ex: HD 500GB Samsung)"/>
+          <button class="btn-confirm" onclick="confirmarResolucao()">Confirmar</button>
+        </div>
+        <textarea class="res-desc-area" id="res-desc" placeholder="Descreva o que foi feito… (opcional)"></textarea>
+      </div>
+
+      <!-- ── SEÇÃO DE CHAT ── -->
+      <div class="chat-section" id="chat-section">
+        <div class="chat-section-bar">
+          <span style="display:flex;align-items:center;gap:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o PC</span>
+          <span id="chat-status-label" style="color:var(--muted)"></span>
+        </div>
+        <div class="chat-msgs-ti" id="chat-msgs-ti">
+          <div class="chat-empty-ti">Carregando mensagens…</div>
+        </div>
+        <div class="img-preview-ti" id="img-preview-ti">
+          <img class="img-prev-thumb" id="img-prev-thumb" src="" alt="" />
+          <span class="img-prev-nome" id="img-prev-nome"></span>
+          <button class="img-prev-rm" onclick="removerImgTi()" title="Remover">✕</button>
+        </div>
+        <div class="chat-input-row-ti">
+          <input type="file" id="file-input-ti" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="selecionarImagemTi(event)" />
+          <button class="btn-img-ti" title="Enviar print/imagem" onclick="document.getElementById('file-input-ti').click()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <input class="chat-input-ti" id="chat-input-ti" placeholder="Mensagem para o PC…" maxlength="500" oninput="atualizarContadorChatTI(this)" onkeydown="enviarMsgTi(event)" />
+          <button class="btn-send-ti" id="btn-send-ti" onclick="enviarMsgTi({key:'Enter'})">Enviar</button>
+        </div>
+        <div style="text-align:right;font-size:.54rem;color:var(--muted2);padding:2px 16px 4px;flex-shrink:0"><span id="ti-chat-char">0</span>/500</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="fecharLightbox()">
+  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="imagem ampliada" onclick="event.stopPropagation()" />
+</div>
+
+<!-- ══════════════════════════════════
+     MODAL — REGISTRAR DESCARTE FÍSICO
+     Abre ao clicar "Feito" na fila
+══════════════════════════════════ -->
+<div class="modal-desc-bg" id="modal-descarte">
+  <div class="modal-desc">
+
+    <div class="modal-desc-head">
+      <div class="modal-desc-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </div>
+      <div style="flex:1">
+        <div class="modal-desc-title">Registrar Descarte Físico</div>
+        <div class="modal-desc-subtitle">Confirme como o equipamento foi ou será descartado para rastreabilidade PNRS</div>
+      </div>
+      <button class="modal-close" onclick="fecharModalDescarte()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-desc-body">
+
+      <!-- Coluna esquerda: formulário -->
+      <div class="desc-form-col">
+        <div class="desc-field">
+          <div class="desc-field-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            O que foi descartado?
+          </div>
+          <input class="desc-input" id="desc-oque" type="text" placeholder="Ex: HD 500GB Samsung, Teclado USB, Monitor 19&quot;…" />
+        </div>
+
+        <div class="desc-field">
+          <div class="desc-field-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg>
+            Por que foi descartado?
+          </div>
+          <!-- Pré-preenchido com a descrição do problema — somente leitura -->
+          <input class="desc-input" id="desc-porque" type="text" readonly placeholder="(motivo do chamado)" />
+        </div>
+
+        <div class="desc-field">
+          <div class="desc-field-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Descreva como e qual meio de descarte
+          </div>
+          <textarea class="desc-textarea" id="desc-como" placeholder="Ex: Entregue à empresa ABREE para reciclagem em 11/03/2026. Responsável: Prof. Carlos."></textarea>
+        </div>
+      </div>
+
+      <!-- Coluna direita: empresas e nota PNRS -->
+      <div class="desc-info-col">
+        <div class="desc-info-title">Empresas de Descarte Adequado</div>
+        <div class="empresa-list">
+          <a class="empresa-item" href="https://www.abree.org.br" target="_blank">
+            <div class="empresa-dot"></div>
+            <div style="flex:1">
+              <div class="empresa-nome">ABREE</div>
+              <div class="empresa-tipo">Logística reversa de eletrônicos</div>
+            </div>
+            <span class="empresa-link">↗</span>
+          </a>
+          <a class="empresa-item" href="https://www.descartecerto.com.br" target="_blank">
+            <div class="empresa-dot"></div>
+            <div style="flex:1">
+              <div class="empresa-nome">Descarte Certo</div>
+              <div class="empresa-tipo">Pontos de coleta de e-waste</div>
+            </div>
+            <span class="empresa-link">↗</span>
+          </a>
+          <a class="empresa-item" href="https://www.reciclaeletro.com.br" target="_blank">
+            <div class="empresa-dot"></div>
+            <div style="flex:1">
+              <div class="empresa-nome">Recicla Eletro</div>
+              <div class="empresa-tipo">Reciclagem de informática certificada</div>
+            </div>
+            <span class="empresa-link">↗</span>
+          </a>
+        </div>
+
+        <div class="pnrs-note">
+          <div class="pnrs-note-ico">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="pnrs-note-text">
+            O descarte adequado de e-waste é exigido pela <strong>Lei 12.305/2010 — PNRS</strong>. Este registro garante rastreabilidade completa do equipamento descartado.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-desc-footer">
+      <button class="btn-desc-cancel" onclick="fecharModalDescarte()">Cancelar</button>
+      <button class="btn-desc-guia" onclick="abrirGuia()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Guia de Descarte
+      </button>
+      <button class="btn-desc-enviar" onclick="confirmarDescarteFisico()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Confirmar Descarte
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="notif" id="notif"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script type="module" src="../js/painel-ti.js"></script>
+</body>
+</html>
