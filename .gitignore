@@ -1,6 +1,6 @@
 # Credenciais — NUNCA commitar
-js/supabase-config.local.js
-js/supabase-config.test.local.js
+js/supabase-config.js
+js/supabase-config.test.js
 .env
 .env.local
 *.env
