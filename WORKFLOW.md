@@ -54,10 +54,5 @@ dsos/
 
 ## Credenciais do banco de TESTE
 
-| Tipo | Login | Senha |
-|---|---|---|
-| TI | `ti` | `<TI_SENHA>` |
-| TI | `veronez.<TI_SENHA>233` | `<TI_SENHA>` |
-| PC | `L1A-01` | `<PC_SENHA>` |
-| PC | `L1B-01` | `<PC_SENHA>` |
-| Professor | `prof.teste` | `<PROF_SENHA>` |
+As credenciais de acesso ficam apenas com o administrador do sistema.
+Não versione senhas ou logins em nenhum arquivo do repositório.
