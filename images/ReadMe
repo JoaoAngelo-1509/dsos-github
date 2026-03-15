@@ -1,1 +1,17 @@
-Estas são as imagens que devem estar sempre na pasta raiz do projeto
+Esta pasta é reservada para as imagens do projeto DSos.
+Arquivos necessários
+Após clonar o repositório, adicione os seguintes arquivos na raiz do projeto (não dentro desta pasta):
+ArquivoOnde colocarDescriçãoBG.jpegraiz do projetoImagem de fundo da interfaceLogo.pngraiz do projetoLogo do Centro Paula Souza
+
+Esses arquivos não estão no repositório pois são ativos visuais proprietários do Centro Paula Souza.
+
+Estrutura esperada após configurar
+dsos/
+├── BG.jpeg        ✅ aqui
+├── Logo.png       ✅ aqui
+├── images/
+│   └── README.md
+├── html/
+├── css/
+└── js/
+Sem esses arquivos o sistema funciona normalmente, porém sem o fundo visual e sem o logo na tela de login e nos painéis.
