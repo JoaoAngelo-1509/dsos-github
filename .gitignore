@@ -6,6 +6,7 @@ js/supabase-config.test.js
 *.env
 BG.jpeg
 Logo.png
+
 # OS
 .DS_Store
 Thumbs.db
