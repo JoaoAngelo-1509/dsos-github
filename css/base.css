@@ -30,7 +30,7 @@ body { font-family: 'Sora', sans-serif; }
 .bg {
   position: fixed;
   inset: 0;
-  background: url('../BG.jpeg') center center / cover no-repeat;
+  background: url('../images/BG.jpeg') center center / cover no-repeat;
   z-index: 0;
 }
 
