@@ -14,13 +14,11 @@
 │   ├── painel-pc.css       ← Estilos do painel do usuário
 │   └── painel-ti.css       ← Estilos do painel T.I.
 ├── js/
-│   ├── supabase-config.js  ← Configuração centralizada do Supabase
-│   ├── ui.js               ← Utilitários compartilhados (tema, toast, escapeHtml, etc.)
-│   ├── auth.js             ← Lógica de login
-│   ├── painel-pc.js        ← Lógica do painel do usuário
-│   └── painel-ti.js        ← Lógica do painel T.I.
-├── BG.jpeg                 ← Imagem de fundo
-└── Logo.png                ← Logo CPS
+   ├── supabase-config.js  ← Configuração centralizada do Supabase
+   ├── ui.js               ← Utilitários compartilhados (tema, toast, escapeHtml, etc.)
+   ├── auth.js             ← Lógica de login
+   ├── painel-pc.js        ← Lógica do painel do usuário
+   └── painel-ti.js        ← Lógica do painel T.I.
 ```
 
 ## Bugs Corrigidos
@@ -41,4 +39,4 @@
 Sirva os arquivos via servidor HTTP local (ex: Live Server no VSCode). 
 Abra `html/login.html` no navegador.
 
-Os arquivos `BG.jpeg` e `Logo.png` devem estar na raiz do projeto.
+Os arquivos `BG.jpeg` e `Logo.png` devem estar na pasta image (deve ser criada) do projeto.
