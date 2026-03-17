@@ -51,21 +51,51 @@
   </div>
 
   <div class="card">
-    <div class="tabs-container">
-      <button class="tab-nav-btn tab-nav-left" id="tab-nav-left" onclick="scrollTabs('left')" style="display:none">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    <!-- NÍVEL 1: Pills Chamados / Gestão -->
+    <div class="grupo-nav">
+      <button class="grupo-pill active" id="grupo-chamados" onclick="mudarGrupo('chamados')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chamados
+        <span class="grupo-badge" id="grupo-badge-chamados">0</span>
       </button>
+      <button class="grupo-pill" id="grupo-gestao" onclick="mudarGrupo('gestao')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Gestão
+      </button>
+    </div>
+
+    <!-- NÍVEL 2: Abas do grupo Chamados -->
+    <div class="tabs-container" id="tabs-chamados">
       <div class="tabs" id="tabs-scroll">
         <button class="tab active" id="tab-abertos" onclick="mudarAba('abertos')">Não Respondidos <span class="tab-badge" id="badge-unresp">0</span></button>
         <button class="tab" id="tab-respondidos" onclick="mudarAba('respondidos')">Já Respondidos <span class="tab-badge" id="badge-resp">0</span></button>
-        <button class="tab" id="tab-descarte" onclick="mudarAba('descarte')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg> Fila de Descarte <span class="tab-badge" id="badge-descarte">0</span></button>
-        <button class="tab" id="tab-pcs" onclick="mudarAba('pcs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> Computadores <span class="tab-badge" id="badge-pcs">0</span></button>
-        <button class="tab" id="tab-ti"  onclick="mudarAba('ti')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Equipe T.I. <span class="tab-badge" id="badge-ti">0</span></button>
-        <button class="tab" id="tab-professores" onclick="mudarAba('professores')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg> Professores <span class="tab-badge" id="badge-prof">0</span></button>
+        <button class="tab" id="tab-descarte" onclick="mudarAba('descarte')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+          Fila de Descarte <span class="tab-badge" id="badge-descarte">0</span>
+        </button>
       </div>
-      <button class="tab-nav-btn tab-nav-right" id="tab-nav-right" onclick="scrollTabs('right')" style="display:none">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+    </div>
+
+    <!-- NÍVEL 2: Abas do grupo Gestão (ocultas inicialmente) -->
+    <div class="tabs-container" id="tabs-gestao" style="display:none">
+      <div class="tabs">
+        <button class="tab" id="tab-pcs" onclick="mudarAba('pcs')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Computadores <span class="tab-badge" id="badge-pcs">0</span>
+        </button>
+        <button class="tab" id="tab-ti" onclick="mudarAba('ti')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Equipe T.I. <span class="tab-badge" id="badge-ti">0</span>
+        </button>
+        <button class="tab" id="tab-professores" onclick="mudarAba('professores')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+          Professores <span class="tab-badge" id="badge-prof">0</span>
+        </button>
+        <button class="tab" id="tab-manutencao" onclick="mudarAba('manutencao')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Manutenção
+        </button>
+      </div>
     </div>
 
     <!-- ABA: NÃO RESPONDIDOS -->
@@ -188,6 +218,61 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Professor
         </button>
+      </div>
+    </div>
+
+
+    <!-- ABA: MANUTENÇÃO -->
+    <div class="tab-panel" id="panel-manutencao">
+      <div class="manutencao-wrap">
+
+        <div class="manutencao-section">
+          <div class="manutencao-section-header">
+            <div class="manutencao-section-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </div>
+            <div>
+              <div class="manutencao-section-title">Limpeza do banco de dados</div>
+              <div class="manutencao-section-desc">Remove tickets encerrados, mensagens de chat e imagens do storage no período selecionado. Ação irreversível.</div>
+            </div>
+          </div>
+
+          <div class="manutencao-controls">
+            <div class="mini-modal-label" style="margin-bottom:8px">Limpar chamados encerrados nos últimos</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+              <button class="limpeza-prazo-btn active" data-dias="30">30 dias</button>
+              <button class="limpeza-prazo-btn" data-dias="60">60 dias</button>
+              <button class="limpeza-prazo-btn" data-dias="90">90 dias</button>
+              <button class="limpeza-prazo-btn" data-dias="180">6 meses</button>
+              <button class="limpeza-prazo-btn" data-dias="365">1 ano</button>
+              <button class="limpeza-prazo-btn" data-dias="9999" style="border-color:rgba(192,23,26,.35);color:var(--red)">Todos</button>
+            </div>
+
+            <div id="limpeza-preview" class="limpeza-preview-box" style="margin-bottom:12px">
+              <div class="limpeza-preview-idle">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Clique em "Ver impacto" para analisar</span>
+              </div>
+            </div>
+
+            <div class="limpeza-aviso" style="margin-bottom:14px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+              Esta ação é <strong>irreversível</strong>. Remove tickets encerrados, todas as mensagens de chat e as imagens do storage.
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <button class="btn-mini-confirmar" style="background:var(--input-bg);color:var(--text);border:1px solid var(--glass-b)" onclick="verImpactoLimpeza()" id="btn-ver-impacto">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Ver impacto
+              </button>
+              <button class="btn-mini-confirmar" style="background:var(--red)" onclick="executarLimpeza()" id="btn-executar-limpeza" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Limpar agora
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -438,6 +523,37 @@
      MODAL — REGISTRAR DESCARTE FÍSICO
      Abre ao clicar "Feito" na fila
 ══════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════
+     MINI-MODAL — O que será descartado?
+     Abre ao clicar DESCARTADO na action bar
+════════════════════════════════════════════════ -->
+<div class="mini-modal-bg" id="mini-modal-descarte">
+  <div class="mini-modal">
+    <div class="mini-modal-head">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      <span>Enviar para fila de descarte</span>
+      <span class="mini-modal-pc" id="mini-pc-tag"></span>
+      <button class="modal-close" onclick="fecharMiniModalDescarte()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="mini-modal-body">
+      <label class="mini-modal-label">O que será descartado?</label>
+      <input class="mini-modal-input" id="mini-item-input" type="text"
+        placeholder="Ex: HD 500GB, Mouse USB, Monitor 19&quot;, fonte…"
+        autocomplete="off" maxlength="120" />
+      <p class="mini-modal-hint">Descreva o equipamento ou periférico com problema. Você vai confirmar o meio de descarte depois, na fila.</p>
+    </div>
+    <div class="mini-modal-footer">
+      <button class="btn-mpc-cancel" onclick="fecharMiniModalDescarte()">Cancelar</button>
+      <button class="btn-mini-confirmar" onclick="confirmarEnvioFila()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Enviar para fila
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-desc-bg" id="modal-descarte">
   <div class="modal-desc">
 
@@ -482,6 +598,18 @@
           </div>
           <textarea class="desc-textarea" id="desc-como" placeholder="Ex: Entregue à empresa ABREE para reciclagem em 11/03/2026. Responsável: Prof. Carlos."></textarea>
         </div>
+
+        <!-- Checkbox estilizado: marcar PC como descartado -->
+        <label class="desc-toggle-label" for="desc-pc-completo">
+          <div class="desc-toggle-track">
+            <input type="checkbox" id="desc-pc-completo" class="desc-toggle-input" />
+            <span class="desc-toggle-thumb"></span>
+          </div>
+          <span class="desc-toggle-text">
+            <strong>O PC completo foi descartado</strong>
+            Marque apenas se o computador inteiro foi descartado e não poderá mais ser usado. Periféricos (mouse, teclado, monitor…) não exigem essa marcação.
+          </span>
+        </label>
       </div>
 
       <!-- Coluna direita: empresas e nota PNRS -->
@@ -538,6 +666,8 @@
     </div>
   </div>
 </div>
+
+
 
 
 
