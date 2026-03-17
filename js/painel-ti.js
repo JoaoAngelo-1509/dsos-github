@@ -90,8 +90,8 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         ()=>{ carregarTickets(); carregarKPIs(); })
       .subscribe();
 
-    // KPIs e lista de PCs a cada 60s como fallback
-    setInterval(()=>{ carregarKPIs(); carregarPCs(); }, 60000);
+    // Polling a cada 30s como fallback para quando o realtime cair
+    setInterval(()=>{ carregarTickets(); carregarKPIs(); carregarPCs(); }, 30000);
   });
 
   function calcTurno(d){const h=d.getHours();if(h>=6&&h<12)return'Manhã';if(h>=12&&h<18)return'Tarde';return'Noite'}
@@ -100,11 +100,16 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   async function carregarKPIs(){
     try{
       const hoje=new Date().toISOString().split('T')[0];
-      const r=await fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=status`,{headers:H});
-      const all=await r.json();
-      const pendentes=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento').length;
-      const resolvidosHoje=(Array.isArray(all)?all:[]).filter(t=>t.status==='resolvido'||t.status==='descartado').length;
-      const abertoHoje=Array.isArray(all)?all.length:0;
+      // Busca pendentes direto do banco para não depender do array local
+      const [rHoje, rPend] = await Promise.all([
+        fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=status`,{headers:H}),
+        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&select=id`,{headers:H}),
+      ]);
+      const all  = await rHoje.json();
+      const pend = await rPend.json();
+      const pendentes      = Array.isArray(pend)?pend.length:0;
+      const resolvidosHoje = (Array.isArray(all)?all:[]).filter(t=>t.status==='resolvido'||t.status==='descartado').length;
+      const abertoHoje     = Array.isArray(all)?all.length:0;
       document.getElementById('kpi-pendentes').textContent=pendentes;
       document.getElementById('kpi-resolvidos').textContent=resolvidosHoje;
       document.getElementById('kpi-hoje').textContent=abertoHoje;
@@ -116,7 +121,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     try{
       const [r1,r2,r3]=await Promise.all([
         fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
-        fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&aberto_em=gte.${new Date().toISOString().split('T')[0]}T00:00:00&order=aberto_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+        fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
         fetch(`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       ]);
       tickets     =await r1.json().then(d=>Array.isArray(d)?d:[]);
@@ -124,7 +129,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       respondidos =todos.filter(t=>!ocultados.has(t.id));
       descarteFila=await r3.json().then(d=>Array.isArray(d)?d:[]);
     }catch(e){console.error(e);tickets=[]}
-    renderUnresp();renderResp();renderDescarte();
+    renderUnresp();renderResp();renderDescarte();_atualizarBadgeGrupo();
   }
 
   /* RENDER NÃO RESPONDIDOS */
@@ -194,7 +199,8 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       const pcStatus=t.pc_info?.status_pc||'descartado';
       const item=t.item_descartado||'(item não especificado)';
       const d=t.resolvido_em?new Date(t.resolvido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
-      const feito=pcStatus==='descartado';
+      // Concluído se: PC marcado como descartado OU descarte físico já foi registrado (nota salva)
+      const feito=pcStatus==='descartado'||!!t.descricao_resolucao;
       const descProblema=t.descricao||'';
       const itemEsc=item.replace(/'/g,"\\'").replace(/"/g,'&quot;');
       const descEsc=descProblema.replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -211,7 +217,10 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         <div style="text-align:right">
           ${feito
             ?`<span class="done-label">${SVG.check} Concluído</span>`
-            :`<button class="btn-desc-ok" onclick="abrirModalDescarte(${t.pc_problema},${t.id},'${itemEsc}','${descEsc}',event)">${SVG.trash} Feito</button>`
+            :`<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+               <button class="btn-desc-ok" onclick="abrirModalDescarte(${t.pc_problema},${t.id},'${itemEsc}','${descEsc}',event)">${SVG.trash} Feito</button>
+               <button class="btn-desc-cancel-fila" onclick="cancelarItemDescarte(${t.id},${t.pc_problema},event)">✕ Cancelar</button>
+             </div>`
           }
         </div>`;
       list.appendChild(div);
@@ -219,43 +228,50 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   }
 
   /* ABAS */
-  window.mudarAba=function(aba){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    document.getElementById('tab-'+aba).classList.add('active');
-    document.getElementById('panel-'+aba).classList.add('active');
+  // Memória da última aba visitada em cada grupo
+  const _ultimaAba = { chamados: 'abertos', gestao: 'pcs' };
+  const _grupoDeAba = {
+    abertos:'chamados', respondidos:'chamados', descarte:'chamados',
+    pcs:'gestao', ti:'gestao', professores:'gestao', manutencao:'gestao'
   };
 
-  // ── NAVEGAÇÃO HORIZONTAL DAS TABS ──
-  window.scrollTabs=function(direction){
-    const container=document.getElementById('tabs-scroll');
-    const scrollAmount=200;
-    if(direction==='left'){
-      container.scrollLeft-=scrollAmount;
-    }else{
-      container.scrollLeft+=scrollAmount;
+  window.mudarAba = function(aba) {
+    // Desativar todas as tabs e panels
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    // Ativar tab e panel
+    document.getElementById('tab-' + aba)?.classList.add('active');
+    document.getElementById('panel-' + aba)?.classList.add('active');
+    // Memorizar última aba do grupo
+    const grupo = _grupoDeAba[aba];
+    if (grupo) _ultimaAba[grupo] = aba;
+    // Ações específicas por aba
+    if (aba === 'manutencao') resetAbaManutencao();
+    // Atualizar badge do grupo Chamados
+    _atualizarBadgeGrupo();
+  };
+
+  window.mudarGrupo = function(grupo) {
+    // Atualizar pills de grupo
+    document.querySelectorAll('.grupo-pill').forEach(p => p.classList.remove('active'));
+    document.getElementById('grupo-' + grupo)?.classList.add('active');
+    // Mostrar/ocultar tabs de nível 2
+    document.getElementById('tabs-chamados').style.display = grupo === 'chamados' ? '' : 'none';
+    document.getElementById('tabs-gestao').style.display   = grupo === 'gestao'   ? '' : 'none';
+    // Abrir última aba visitada neste grupo
+    mudarAba(_ultimaAba[grupo]);
+  };
+
+  function _atualizarBadgeGrupo() {
+    const unresp = parseInt(document.getElementById('badge-unresp')?.textContent) || 0;
+    const desc   = parseInt(document.getElementById('badge-descarte')?.textContent) || 0;
+    const total  = unresp + desc;
+    const badge  = document.getElementById('grupo-badge-chamados');
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? '' : 'none';
     }
-    setTimeout(updateTabNavButtons,100);
-  };
-
-  function updateTabNavButtons(){
-    const container=document.getElementById('tabs-scroll');
-    const leftBtn=document.getElementById('tab-nav-left');
-    const rightBtn=document.getElementById('tab-nav-right');
-    if(!container||!leftBtn||!rightBtn)return;
-    
-    const hasOverflow=container.scrollWidth>container.clientWidth;
-    const atStart=container.scrollLeft<=5;
-    const atEnd=container.scrollLeft+container.clientWidth>=container.scrollWidth-5;
-    
-    leftBtn.style.display=(hasOverflow&&!atStart)?'flex':'none';
-    rightBtn.style.display=(hasOverflow&&!atEnd)?'flex':'none';
   }
-
-  // Atualizar botões ao carregar e ao redimensionar
-  window.addEventListener('load',updateTabNavButtons);
-  window.addEventListener('resize',updateTabNavButtons);
-  document.getElementById('tabs-scroll')?.addEventListener('scroll',updateTabNavButtons);
 
   /* SELECIONAR */
   window.selecionarTicket=function(id){
@@ -280,8 +296,9 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       msg = `Colocar o chamado #${t.id} do PC #${pcTag} como EM PROGRESSO?\n` +
             'Isso indica que alguém do T.I. já está atuando nesse chamado.';
     }else if(s==='descartado'){
-      msg = `Marcar o chamado #${t.id} do PC #${pcTag} como DESCARTADO?\n` +
-            'Isso pode enviar o equipamento para a fila de descarte físico.';
+      // Descartado abre mini-modal para capturar o item antes de ir pra fila
+      abrirMiniModalDescarte(t);
+      return;
     }else if(s==='falso_alarme'){
       msg = `Marcar o chamado #${t.id} do PC #${pcTag} como FALSO ALARME?\n` +
             'Use apenas quando o problema não se confirmar em sala.';
@@ -293,12 +310,9 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     }
 
     const body={status:s,tecnico_responsavel:session.id};
-    if(s==='descartado'){body.resolucao='descarte';body.resolvido_em=new Date().toISOString()}
-    else if(s==='falso_alarme'){body.resolvido_em=new Date().toISOString()}
+    if(s==='falso_alarme'){body.resolvido_em=new Date().toISOString()}
     try{
       await fetch(`${SB}/rest/v1/ticket?id=eq.${selectedId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
-      if(s==='descartado'&&t?.pc_problema)
-        await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'descartado'})});
       notif(statusLabel(s)+' — chamado atualizado');
       selectedId=null;
       await Promise.all([carregarTickets(),carregarKPIs()]);
@@ -306,6 +320,62 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   };
 
   window.abrirResolucao=function(){if(!selectedId)return;const t=tickets.find(x=>x.id===selectedId);if(t)abrirModal(t,true)};
+  /* ─── MINI-MODAL: captura item antes de enviar pra fila de descarte ─── */
+  let _descarteTicket = null;
+
+  function abrirMiniModalDescarte(t) {
+    _descarteTicket = t;
+    const el = document.getElementById('mini-modal-descarte');
+    document.getElementById('mini-item-input').value = '';
+    document.getElementById('mini-pc-tag').textContent = t.pc_info?.tag || `#${t.pc_problema}`;
+    el.classList.add('open');
+    setTimeout(() => document.getElementById('mini-item-input').focus(), 80);
+  }
+
+  window.fecharMiniModalDescarte = function() {
+    document.getElementById('mini-modal-descarte').classList.remove('open');
+    _descarteTicket = null;
+  };
+
+  window.confirmarEnvioFila = async function() {
+    const item = document.getElementById('mini-item-input').value.trim();
+    if (!item) { document.getElementById('mini-item-input').focus(); return; }
+    if (!_descarteTicket) return;
+    const t = _descarteTicket;
+    window.fecharMiniModalDescarte();
+
+    try {
+      // Envia pra fila: status=descartado + item_descartado preenchido
+      // PC vai para em_manutencao (aguardando descarte físico)
+      await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({
+          status: 'descartado', resolucao: 'descarte',
+          resolvido_em: new Date().toISOString(),
+          tecnico_responsavel: session.id,
+          item_descartado: item
+        })
+      });
+      await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({ status_pc: 'em_manutencao' })
+      });
+      notif('Enviado para fila de descarte');
+      selectedId = null;
+      await Promise.all([carregarTickets(), carregarKPIs(), carregarPCs()]);
+    } catch(e) { notif('Erro ao enviar para fila.'); }
+  };
+
+  document.getElementById('mini-modal-descarte')
+    ?.addEventListener('click', e => {
+      if (e.target === document.getElementById('mini-modal-descarte'))
+        window.fecharMiniModalDescarte();
+    });
+
+  document.getElementById('mini-item-input')
+    ?.addEventListener('keydown', e => { if (e.key === 'Enter') window.confirmarEnvioFila(); });
+
+
 
   /* MODAL TICKET */
   function abrirModal(t,comResolucao){
@@ -424,6 +494,8 @@ import { SB, H, SB_KEY } from './supabase-config.js';
 
     // Limpa campo livre
     document.getElementById('desc-como').value = '';
+    // Sempre começa desmarcado — só marca se for o PC inteiro
+    document.getElementById('desc-pc-completo').checked = false;
 
     document.getElementById('modal-descarte').classList.add('open');
     setTimeout(()=>document.getElementById('desc-oque').focus(), 120);
@@ -445,8 +517,9 @@ import { SB, H, SB_KEY } from './supabase-config.js';
    * 2. Atualiza status_pc do PC para 'descartado' (hardware fora de uso)
    */
   window.confirmarDescarteFisico=async function(){
-    const oque = document.getElementById('desc-oque').value.trim();
-    const como = document.getElementById('desc-como').value.trim();
+    const oque        = document.getElementById('desc-oque').value.trim();
+    const como        = document.getElementById('desc-como').value.trim();
+    const pcCompleto  = document.getElementById('desc-pc-completo').checked;
 
     if(!oque){
       notif('Informe o que foi descartado.');
@@ -458,10 +531,10 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     if(!pcId){ notif('Erro: PC não identificado.'); return; }
 
     const okConfirm = confirm(
-      `Confirmar registro de DESCARTE FÍSICO para o PC ID ${pcId}?\n` +
+      `Confirmar registro de DESCARTE FÍSICO?\n` +
       `Item: ${oque}\n` +
       (como ? `Meio: ${como}\n` : '') +
-      'Essa ação marca o PC como DESCARTADO no cadastro.'
+      (pcCompleto ? 'O PC será marcado como DESCARTADO no cadastro.' : 'O PC continuará ativo no cadastro.')
     );
     if(!okConfirm)return;
 
@@ -469,6 +542,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       // Monta nota de descarte físico para rastreabilidade
       const linhas = [`[DESCARTE FÍSICO REGISTRADO]`, `Item: ${oque}`];
       if(como) linhas.push(`Meio: ${como}`);
+      if(pcCompleto) linhas.push(`PC marcado como descartado.`);
       linhas.push(`Registrado em: ${new Date().toLocaleString('pt-BR')}`);
       linhas.push(`Técnico: ${session.nome||session.login}`);
       const nota = linhas.join('\n');
@@ -479,15 +553,20 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         body:JSON.stringify({ descricao_resolucao: nota, tecnico_responsavel: session.id })
       });
 
-      // Marca o PC como descartado no cadastro
+      // Se PC completo: marca como descartado
+      // Se apenas periférico: volta o PC para ativo (estava em_manutencao desde a fila)
       await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{
         method:'PATCH', headers:H,
-        body:JSON.stringify({ status_pc: 'descartado' })
+        body:JSON.stringify({ status_pc: pcCompleto ? 'descartado' : 'ativo' })
       });
 
       notif('Descarte físico registrado — concluído');
       window.fecharModalDescarte();
-      await carregarTickets();
+      // Fade-out visual do item na fila antes de recarregar
+      const filaDivs = document.querySelectorAll('.desc-row:not(.done)');
+      filaDivs.forEach(d => { d.style.transition = 'opacity .4s, transform .4s'; d.style.opacity='0'; d.style.transform='translateX(30px)'; });
+      await new Promise(r => setTimeout(r, 420));
+      await Promise.all([carregarTickets(), carregarPCs()]);
     }catch(err){
       console.error(err);
       notif('Erro ao registrar descarte.');
@@ -546,6 +625,160 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     respondidos.forEach(t=>ocultados.add(t.id));respondidos=[];renderResp();notif('Lista limpa');
   };
 
+
+  /* ─── CANCELAR ITEM DA FILA — reverte ticket para aberto ─── */
+  window.cancelarItemDescarte = async function(ticketId, pcId, e) {
+    if (e) e.stopPropagation();
+    const ok = confirm('Cancelar este descarte?\nO chamado voltará para ABERTO e o PC para ATIVO.');
+    if (!ok) return;
+    try {
+      await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({
+          status: 'aberto', resolucao: null,
+          resolvido_em: null, item_descartado: null,
+          tecnico_responsavel: null, descricao_resolucao: null
+        })
+      });
+      await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`, {
+        method: 'PATCH', headers: H,
+        body: JSON.stringify({ status_pc: 'ativo' })
+      });
+      notif('Descarte cancelado — chamado reaberto');
+      await Promise.all([carregarTickets(), carregarKPIs(), carregarPCs()]);
+    } catch(err) { notif('Erro ao cancelar descarte.'); }
+  };
+
+
+  /* ═══════════════════════════════════════════════
+     LIMPEZA DO BANCO
+  ═══════════════════════════════════════════════ */
+  let _limpezaDias = 30;
+  let _limpezaPreviewOk = false;
+
+  // Reset da aba de manutenção quando ela é aberta
+  function resetAbaManutencao() {
+    _limpezaPreviewOk = false;
+    _limpezaDias = 30;
+    document.querySelectorAll('.limpeza-prazo-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.dias === '30');
+    });
+    const prev = document.getElementById('limpeza-preview');
+    if (prev) prev.innerHTML = `
+      <div class="limpeza-preview-idle">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Clique em "Ver impacto" para analisar</span>
+      </div>`;
+    const btn = document.getElementById('btn-executar-limpeza');
+    if (btn) btn.disabled = true;
+  }
+
+  // Seletor de prazo
+  document.querySelectorAll('.limpeza-prazo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.limpeza-prazo-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _limpezaDias = parseInt(btn.dataset.dias);
+      // Reset preview ao trocar prazo
+      _limpezaPreviewOk = false;
+      document.getElementById('btn-executar-limpeza').disabled = true;
+      document.getElementById('limpeza-preview').innerHTML = `
+        <div class="limpeza-preview-idle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Clique em "Ver impacto" para analisar</span>
+        </div>`;
+    });
+  });
+
+  window.verImpactoLimpeza = async function() {
+    const btn = document.getElementById('btn-ver-impacto');
+    btn.disabled = true;
+    btn.textContent = 'Analisando…';
+    document.getElementById('limpeza-preview').innerHTML =
+      '<div class="limpeza-preview-idle"><div class="spin"></div> analisando…</div>';
+
+    try {
+      const res = await fetch(`${SB}/functions/v1/fn-limpar-dados`, {
+        method: 'POST',
+        headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dias: _limpezaDias, apenas_preview: true })
+      });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+
+      if (d.tickets_count === 0) {
+        document.getElementById('limpeza-preview').innerHTML = `
+          <div class="limpeza-preview-idle" style="color:var(--green)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Nenhum chamado encerrado encontrado nesse intervalo.</span>
+          </div>`;
+        _limpezaPreviewOk = false;
+        document.getElementById('btn-executar-limpeza').disabled = true;
+      } else {
+        document.getElementById('limpeza-preview').innerHTML = `
+          <div class="limpeza-preview-stats">
+            <div class="limpeza-stat">
+              <span class="limpeza-stat-n" style="color:var(--red)">${d.tickets_count}</span>
+              <span class="limpeza-stat-l">tickets</span>
+            </div>
+            <div class="limpeza-preview-div"></div>
+            <div class="limpeza-stat">
+              <span class="limpeza-stat-n">${d.mensagens_count}</span>
+              <span class="limpeza-stat-l">mensagens</span>
+            </div>
+            <div class="limpeza-preview-div"></div>
+            <div class="limpeza-stat">
+              <span class="limpeza-stat-n" style="color:var(--orange)">${d.imagens_count}</span>
+              <span class="limpeza-stat-l">imagens</span>
+            </div>
+          </div>`;
+        _limpezaPreviewOk = true;
+        document.getElementById('btn-executar-limpeza').disabled = false;
+      }
+    } catch(err) {
+      document.getElementById('limpeza-preview').innerHTML =
+        `<div class="limpeza-preview-idle" style="color:var(--red)">Erro ao analisar: ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ver impacto`;
+    }
+  };
+
+  window.executarLimpeza = async function() {
+    if (!_limpezaPreviewOk) return;
+    const prazoLabel = _limpezaDias >= 9999 ? 'todos os registros encerrados' : `os últimos ${_limpezaDias} dias`;
+    const ok = confirm(
+      `Confirmar limpeza de ${prazoLabel}?\n` +
+      'Tickets, mensagens e imagens serão removidos permanentemente.'
+    );
+    if (!ok) return;
+
+    const btn = document.getElementById('btn-executar-limpeza');
+    btn.disabled = true;
+    btn.textContent = 'Limpando…';
+
+    try {
+      const res = await fetch(`${SB}/functions/v1/fn-limpar-dados`, {
+        method: 'POST',
+        headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dias: _limpezaDias, apenas_preview: false })
+      });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+
+      window.fecharModalLimpeza();
+      notif(
+        `Limpeza concluída — ${d.tickets_deletados} tickets, ` +
+        `${d.imagens_deletadas} imagens, ${d.mb_liberados} MB liberados`
+      );
+      await Promise.all([carregarTickets(), carregarKPIs()]);
+    } catch(err) {
+      notif('Erro na limpeza: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Limpar agora';
+    }
+  };
+
   /* NOTIF */
   function notif(msg){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
 
@@ -559,6 +792,8 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   async function iniciarChat(ticketId, ativo) {
     document.getElementById('chat-input-ti').disabled = !ativo;
     document.getElementById('btn-send-ti').disabled = !ativo;
+    document.getElementById('btn-img-ti').disabled = !ativo;
+    document.getElementById('file-input-ti').disabled = !ativo;
     document.getElementById('chat-input-ti').placeholder = ativo
       ? 'Mensagem para o PC…'
       : 'Chamado encerrado — chat desabilitado.';
@@ -652,7 +887,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
 
   // Upload de imagem para storage
   async function uploadImagem(file) {
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : (file.type.split('/')[1] || 'jpg');
     const nome = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const res = await fetch(`${SB}/storage/v1/object/chat-prints/${nome}`, {
       method: 'POST',
@@ -685,6 +920,25 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     document.getElementById('img-preview-ti').classList.remove('visible');
     document.getElementById('img-prev-thumb').src = '';
   };
+
+  // Suporte a colar imagem (Ctrl+V) no chat
+  document.getElementById('chat-input-ti')?.addEventListener('paste', function(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        imgPendenteTi = file;
+        const url = URL.createObjectURL(file);
+        document.getElementById('img-prev-thumb').src = url;
+        document.getElementById('img-prev-nome').textContent = 'imagem colada';
+        document.getElementById('img-preview-ti').classList.add('visible');
+        break;
+      }
+    }
+  });
 
   // Lightbox compartilhado
   window.abrirLightbox = function(url) {
