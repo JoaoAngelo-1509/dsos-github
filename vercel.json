@@ -1,9 +1,9 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/html/login.html" },
-    { "source": "/login", "destination": "/html/login.html" },
-    { "source": "/painel-pc", "destination": "/html/painel-pc.html" },
-    { "source": "/painel-ti", "destination": "/html/painel-ti.html" }
+    { "source": "/login.html", "destination": "/html/login.html" },
+    { "source": "/painel-pc.html", "destination": "/html/painel-pc.html" },
+    { "source": "/painel-ti.html", "destination": "/html/painel-ti.html" }
   ],
   "headers": [
     {
