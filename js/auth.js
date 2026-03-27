@@ -1,6 +1,6 @@
-// DSos v1.1.0 — auth.js
+// DSos v1.3 alpha alpha — auth.js
 // ── auth.js — Lógica de autenticação da página de login ──
-import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
+import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.test.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
 
 // Expõe toggleTema globalmente para o onclick no HTML
@@ -103,6 +103,7 @@ window.entrar = async function () {
         lado: pc.lado,
         nome
       }));
+      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }
@@ -123,6 +124,7 @@ window.entrar = async function () {
         login: prof.login,
         nome: prof.nome || nome
       }));
+      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }

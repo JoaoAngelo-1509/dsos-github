@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.1.0 — painel-pc.html -->
+  <!-- DSos v1.3 alpha alpha — painel-pc.html -->
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -19,7 +19,7 @@
   <div class="topbar-sep"></div>
   <div>
     <span class="topbar-title">DSos</span>
-    <span class="topbar-sub">— HelpDesk Escolar <span style="color:#0f0;font-size:.75rem;font-weight:700">v1.1</span></span>
+    <span class="topbar-sub">— HelpDesk Escolar <span style="color:#a78bfa;font-size:.75rem;font-weight:700">v1.3 alpha</span></span>
   </div>
   <div class="topbar-right">
     <div class="topbar-info">
@@ -44,19 +44,19 @@
 
     <!-- TABS -->
     <div class="tabs">
-      <button class="tab active" id="tab-abrir" onclick="trocarAba('abrir')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Abrir Chamado
-      </button>
-      <button class="tab" id="tab-chamados" onclick="trocarAba('chamados')">
+      <button class="tab active" id="tab-chamados" onclick="trocarAba('chamados')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         Meus Chamados
         <span class="tab-badge zero" id="tab-badge">0</span>
       </button>
+      <button class="tab" id="tab-abrir" onclick="trocarAba('abrir')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Abrir Chamado
+      </button>
     </div>
 
     <!-- VIEW: ABRIR CHAMADO -->
-    <div class="view active" id="view-abrir">
+    <div class="view" id="view-abrir">
 
       <!-- Banner de aviso de status do PC -->
       <div class="pc-status-banner" id="pc-status-banner">
@@ -103,11 +103,7 @@
               <div class="rapido-opt-nome">Software</div>
               <div class="rapido-opt-desc">Sistema, programas, travamento…</div>
             </div>
-            <div class="rapido-opt" data-v="periferico" onclick="pickRapido(this)">
-              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 2v8"/></svg></div>
-              <div class="rapido-opt-nome">Periférico</div>
-              <div class="rapido-opt-desc">Mouse, teclado, monitor…</div>
-            </div>
+
             <div class="rapido-opt" data-v="rede" onclick="pickRapido(this)">
               <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
               <div class="rapido-opt-nome">Rede</div>
@@ -135,7 +131,7 @@
               <div class="sel-trigger" id="sel-trigger" onclick="toggleSel()" tabindex="0">
                 <svg id="ico-hw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
                 <svg id="ico-sw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                <svg id="ico-pe" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+
                 <svg id="ico-re" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>
                 <svg id="ico-ou" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
                 <span class="sel-placeholder">Selecione o tipo de problema...</span>
@@ -153,11 +149,7 @@
                   <div class="sel-opt-info"><div class="sel-opt-name">Software</div><div class="sel-opt-desc">Sistema, programas, travamentos…</div></div>
                   <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
                 </div>
-                <div class="sel-opt" data-v="periferico" data-i="pe" onclick="pickTipo(this)">
-                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg></div>
-                  <div class="sel-opt-info"><div class="sel-opt-name">Periférico</div><div class="sel-opt-desc">Mouse, teclado, monitor…</div></div>
-                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                </div>
+
                 <div class="sel-opt" data-v="rede" data-i="re" onclick="pickTipo(this)">
                   <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
                   <div class="sel-opt-info"><div class="sel-opt-name">Rede</div><div class="sel-opt-desc">Sem internet, sem rede local…</div></div>
@@ -239,7 +231,7 @@
     </div>
 
     <!-- VIEW: MEUS CHAMADOS -->
-    <div class="view" id="view-chamados">
+    <div class="view active" id="view-chamados">
       <div class="chamados-searchbar">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="chamados-search" placeholder="Buscar chamado..." autocomplete="off" oninput="buscaChamados(this.value)" />
@@ -304,12 +296,11 @@
     <div class="chat-bar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o T.I.</div>
     <div class="chat-msgs" id="chat-msgs"></div>
     <div class="img-preview-row" id="img-preview-row">
-      <img class="img-preview-thumb" id="img-preview-thumb" src="" alt="preview" />
-      <span class="img-preview-nome" id="img-preview-nome"></span>
-      <button class="img-preview-remove" onclick="removerImgPendente()" title="Remover imagem">✕</button>
+      <div id="img-preview-list" class="img-preview-list"></div>
+      <span class="img-preview-count">Máx. 5 imagens</span>
     </div>
     <div class="chat-input-row">
-      <input type="file" id="file-input-chat" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="selecionarImagem(event)" />
+      <input type="file" id="file-input-chat" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="selecionarImagem(event)" />
       <button class="btn-img-attach" id="btn-img-attach" title="Enviar print/imagem" onclick="document.getElementById('file-input-chat').click()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </button>
@@ -332,5 +323,17 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-pc.js"></script>
+
+<script>
+// Sons de notificação — arquivos em sounds/ na raiz do projeto
+window._dsosSom = {
+  _play(src) {
+    const a = new Audio(src);
+    a.volume = 0.6;
+    a.play().catch(e => console.warn('[DSos som] ' + src + ':', e.message));
+  },
+  notificacao() { this._play('../sounds/notification.wav'); }
+};
+</script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-// DSos v1.1.0 — painel-ti.js
+// DSos v1.3 alpha alpha — painel-ti.js
 // ── painel-ti.js — Lógica completa do Painel T.I. ──
-import { SB, H, SB_KEY } from './supabase-config.js';
+import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   // Cliente Realtime
   const sbClient = supabase.createClient(SB, SB_KEY);
@@ -85,7 +85,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     // Realtime — novos tickets e mudanças de status chegam instantaneamente
     sbClient.channel('tickets-realtime')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},
-        ()=>{ carregarTickets(); carregarKPIs(); notif('Novo chamado recebido!'); })
+        (payload)=>{ carregarTickets(); carregarKPIs(); if(payload.new?.chamado_emergencia){ notif('⚡ CHAMADO DE EMERGÊNCIA!'); window._dsosSom?.emergencia(); } else { notif('Novo chamado recebido!'); window._dsosSom?.novoChamado(); } })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},
         ()=>{ carregarTickets(); carregarKPIs(); })
       .subscribe();
@@ -117,15 +117,42 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   }
 
   /* FETCH TICKETS */
-  async function carregarTickets(){
+  async function carregarTickets(q=''){
     try{
+      // Monta filtro de texto: busca em descrição, laboratório e tipo
+      // Para busca por tag do PC: resolve o ID do PC via join (pc_info embedded)
+      // e filtra localmente após fetch (Supabase REST não suporta filtro em join)
+      const qFilter = q
+        ? `&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`
+        : '';
       const [r1,r2,r3]=await Promise.all([
-        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
-        fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)${qFilter}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+        fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)${qFilter}&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
         fetch(`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       ]);
-      tickets     =await r1.json().then(d=>Array.isArray(d)?d:[]);
-      const todos =await r2.json().then(d=>Array.isArray(d)?d:[]);
+      let rawR1 = await r1.json().then(d=>Array.isArray(d)?d:[]);
+      let rawR2 = await r2.json().then(d=>Array.isArray(d)?d:[]);
+      // Filtro local por tag do PC (join não suporta ilike server-side no Supabase REST)
+      // O servidor já filtrou por descricao/laboratorio/tipo. Aqui incluímos também matches por tag.
+      if(q){
+        const ql = q.toLowerCase();
+        const matchTag = t => t.pc_info?.tag?.toLowerCase().includes(ql);
+        // União: mantém o que o servidor trouxe + o que bate pela tag
+        // (já filtrado server-side, apenas garante que tag também inclui)
+        // Na prática: servidor retorna descricao/lab/tipo matches, filtro local adiciona tag
+        // Como já fizemos OR no servidor, aqui só garantimos que tags também passam:
+        // re-buscar sem filtro de texto e filtrar só por tag localmente
+        const [rtag1, rtag2] = await Promise.all([
+          fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
+          fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[])
+        ]);
+        // Mesclar sem duplicatas (union por id)
+        const mergeById = (a, b) => { const ids=new Set(a.map(x=>x.id)); return [...a, ...b.filter(x=>!ids.has(x.id))]; };
+        rawR1 = mergeById(rawR1, rtag1);
+        rawR2 = mergeById(rawR2, rtag2);
+      }
+      tickets     = rawR1;
+      const todos = rawR2;
       respondidos =todos.filter(t=>!ocultados.has(t.id));
       descarteFila=await r3.json().then(d=>Array.isArray(d)?d:[]);
     }catch(e){console.error(e);tickets=[]}
@@ -146,7 +173,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       return`<div class="ticket-row${emerg?' emergency':''}${selectedId===t.id?' selected':''}" onclick="selecionarTicket(${t.id})">
         <div class="tr-icon">${tipoIcon(t.tipo)}</div>
         <div class="tr-main">
-          <div class="tr-id">PC #${t.pc_problema||'—'} / ${tipoLabel(t.tipo)}${emerg?`<span class="emerg-tag">${SVG.zap} EMERG.</span>`:''}</div>
+          <div class="tr-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}${emerg?`<span class="emerg-tag">${SVG.zap} EMERG.</span>`:''}</div>
           <div class="tr-sub">#${t.id}${t.lado?' · lado '+t.lado:''}</div>
           <div class="tr-nome">${SVG.user} ${nome}${tec}</div>
         </div>
@@ -174,7 +201,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       div.innerHTML=`
         <div class="tr-icon">${tipoIcon(t.tipo)}</div>
         <div style="min-width:0">
-          <div class="rc-id">PC #${t.pc_problema||'—'} / ${tipoLabel(t.tipo)}</div>
+          <div class="rc-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}</div>
           <div style="font-size:.54rem;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:3px">${tec}</div>
         </div>
         <div class="rc-date">${d}</div>
@@ -289,7 +316,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     const t=tickets.find(x=>x.id===selectedId);
     if(!t)return;
 
-    const pcTag = t.pc_problema || '—';
+    const pcTag = t.pc_info?.tag || t.pc_problema || '—';
     let msg = '';
 
     if(s==='em_andamento'){
@@ -314,6 +341,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     try{
       await fetch(`${SB}/rest/v1/ticket?id=eq.${selectedId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
       notif(statusLabel(s)+' — chamado atualizado');
+      if(['resolvido','descartado','falso_alarme'].includes(s)) window._dsosSom?.chamadoResolvido();
       selectedId=null;
       await Promise.all([carregarTickets(),carregarKPIs()]);
     }catch(e){notif('Erro ao atualizar chamado.')}
@@ -380,7 +408,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
   /* MODAL TICKET */
   function abrirModal(t,comResolucao){
     modalTicketId=t.id;
-    document.getElementById('m-title').textContent=`#${t.id} — PC #${t.pc_problema||'—'} / ${tipoLabel(t.tipo)}`;
+    document.getElementById('m-title').textContent=`#${t.id} — ${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}`;
     const dt=t.aberto_em?new Date(t.aberto_em):null;
     document.getElementById('m-time').innerHTML=dt?`${SVG.clock} ${dt.toLocaleString('pt-BR')}`:'';
     document.getElementById('m-turno').textContent=dt?`Turno: ${calcTurno(dt)}`:'—';
@@ -391,7 +419,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     const tecWrap=document.getElementById('m-tecnico-wrap');
     if(t.tecnico_responsavel){document.getElementById('m-tecnico').innerHTML=`${SVG.wrench} ${tecNome(t.tecnico_responsavel)}`;tecWrap.style.display='block'}
     else{tecWrap.style.display='none'}
-    document.getElementById('m-pc').textContent=`PC #${t.pc_problema||'—'}`;
+    document.getElementById('m-pc').textContent=t.pc_info?.tag||`PC #${t.pc_problema||'—'}`;
     document.getElementById('m-lab').textContent=`${t.laboratorio||'—'} — Lado ${t.lado||'—'}`;
     document.getElementById('m-tipo').textContent=tipoLabel(t.tipo);
     document.getElementById('m-prio').value=t.prioridade||'medio';
@@ -463,7 +491,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
       const pcId=Array.isArray(updated)&&updated[0]?updated[0].pc_problema:null;
       if(pcId&&pcStatusMap[tipo])
         await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
-      notif('Chamado resolvido com sucesso!');
+      notif('Chamado resolvido com sucesso!'); window._dsosSom?.chamadoResolvido();
       if(selectedId===modalTicketId)selectedId=null;
       window.fecharModal();
       await Promise.all([carregarTickets(),carregarKPIs()]);
@@ -690,6 +718,23 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     });
   });
 
+
+  // Helper: parseia resposta da Edge Function de forma segura
+  // Evita SyntaxError quando a resposta não é JSON (ex: timeout de gateway)
+  async function _parseFnResponse(res) {
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(`HTTP ${res.status} — resposta inválida: ${text.slice(0, 120)}`);
+    }
+    if (!res.ok || data.error) {
+      throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    }
+    return data;
+  }
+
   window.verImpactoLimpeza = async function() {
     const btn = document.getElementById('btn-ver-impacto');
     btn.disabled = true;
@@ -703,8 +748,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
         body: JSON.stringify({ dias: _limpezaDias, apenas_preview: true })
       });
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
+      const d = await _parseFnResponse(res);
 
       if (d.tickets_count === 0) {
         document.getElementById('limpeza-preview').innerHTML = `
@@ -736,6 +780,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         document.getElementById('btn-executar-limpeza').disabled = false;
       }
     } catch(err) {
+      console.error('[verImpactoLimpeza]', err);
       document.getElementById('limpeza-preview').innerHTML =
         `<div class="limpeza-preview-idle" style="color:var(--red)">Erro ao analisar: ${err.message}</div>`;
     } finally {
@@ -755,7 +800,8 @@ import { SB, H, SB_KEY } from './supabase-config.js';
 
     const btn = document.getElementById('btn-executar-limpeza');
     btn.disabled = true;
-    btn.textContent = 'Limpando…';
+    // BUG FIX: usar innerHTML para preservar o ícone SVG
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpando…`;
 
     try {
       const res = await fetch(`${SB}/functions/v1/fn-limpar-dados`, {
@@ -763,19 +809,24 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
         body: JSON.stringify({ dias: _limpezaDias, apenas_preview: false })
       });
-      const d = await res.json();
-      if (d.error) throw new Error(d.error);
+      // BUG FIX: usar helper que valida res.ok e lida com resposta não-JSON
+      const d = await _parseFnResponse(res);
 
-      window.fecharModalLimpeza();
+      // BUG FIX: fecharModalLimpeza() não existe mais — modal virou aba
+      // Só resetar o estado da aba após limpeza bem-sucedida
+      _limpezaPreviewOk = false;
+      resetAbaManutencao();
       notif(
         `Limpeza concluída — ${d.tickets_deletados} tickets, ` +
         `${d.imagens_deletadas} imagens, ${d.mb_liberados} MB liberados`
       );
       await Promise.all([carregarTickets(), carregarKPIs()]);
     } catch(err) {
+      console.error('[executarLimpeza]', err);
       notif('Erro na limpeza: ' + err.message);
+      // BUG FIX: restaurar botão com innerHTML (mantém ícone SVG)
       btn.disabled = false;
-      btn.textContent = 'Limpar agora';
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpar agora`;
     }
   };
 
@@ -882,7 +933,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         })
       });
       await carregarMsgsTi(modalTicketId);
-    } catch(err) { notif('Erro ao enviar mensagem.'); }
+    } catch(err) { notif('Erro ao enviar mensagem.'); window._dsosSom?.erro(); }
   };
 
   // Upload de imagem para storage
@@ -1354,7 +1405,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
     list.innerHTML = todosOsProfs.map(u => {
       const initials = (u.nome || u.login || '?').split(' ').map(w=>w[0]).slice(0,2).join('');
       return `<div class="ti-user-row">
-        <div class="ti-avatar" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:var(--kpi-green)">${initials}</div>
+        <div class="ti-avatar" style="background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.3);color:var(--kpi-green)">${initials}</div>
         <div class="ti-user-info">
           <div class="ti-user-nome">${u.nome || '—'}</div>
           <div class="ti-user-login">@${u.login || '—'}${u.disciplina ? ' · ' + u.disciplina : ''}</div>
@@ -1489,6 +1540,28 @@ import { SB, H, SB_KEY } from './supabase-config.js';
         todosOsProfs = await r.json().then(d=>Array.isArray(d)?d:[]);
       } catch(e){ todosOsProfs=[]; }
       renderProfs();
+    });
+  };
+
+  // Busca debounced nos tickets não respondidos
+  window.buscarTicketsAbertos = function(q) {
+    _debounce('unresp', () => carregarTickets(q));
+  };
+  // Busca debounced nos tickets já respondidos
+  window.buscarTicketsRespondidos = function(q) {
+    _debounce('resp', () => carregarTickets(q));
+  };
+  // Busca server-side de PCs
+  window.buscarPCs = function(q) {
+    _debounce('pcs', async () => {
+      try {
+        let url = `${SB}/rest/v1/v_pc_pub?order=tag.asc&select=*`;
+        if (q) url += `&or=(tag.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*)`;
+        const r = await fetch(url, {headers:H});
+        todosOsPCs = await r.json().then(d=>Array.isArray(d)?d:[]);
+        document.getElementById('badge-pcs').textContent = todosOsPCs.length;
+      } catch(e){ todosOsPCs=[]; }
+      renderPCs();
     });
   };
 

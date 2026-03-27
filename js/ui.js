@@ -1,4 +1,4 @@
-// DSos v1.1.0 — ui.js
+// DSos v1.3 alpha alpha — ui.js
 // ── ui.js — Utilitários de UI compartilhados entre todas as páginas ──
 
 // ── MODO ESCURO ──

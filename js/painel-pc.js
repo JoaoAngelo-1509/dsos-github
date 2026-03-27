@@ -1,6 +1,6 @@
-// DSos v1.1.0 — painel-pc.js
+// DSos v1.3 alpha alpha — painel-pc.js
 // ── painel-pc.js — Lógica completa do Painel do Usuário/PC ──
-import { SB_URL, SB_KEY, H } from './supabase-config.js';
+import { SB_URL, SB_KEY, H } from './supabase-config.test.js';
 
   // Cliente Realtime
   const sbClient = supabase.createClient(SB_URL, SB_KEY);
@@ -258,7 +258,13 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
         <div class="t-right">
           <span class="status-pill pill-${t.status}">${statusLabel(t.status)}</span>
           <span class="t-time">${hora}</span>
-          ${podeChat ? `<span class="chat-arrow"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat</span>` : ''}
+          ${podeChat
+            ? `<button class="btn-chat-ticket" onclick="event.stopPropagation();abrirChat(${t.id})">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Chat
+              </button>`
+            : `<span class="t-enc"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></span>`
+          }
         </div>
       </div>`;
     }).join('');
@@ -346,7 +352,6 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
   }
 
   function iniciarRealtime(ticketId) {
-    // Remove canal anterior se existir
     if (realtimeChannel) {
       sbClient.removeChannel(realtimeChannel);
       realtimeChannel = null;
@@ -358,7 +363,21 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
         schema: 'public',
         table: 'mensagem',
         filter: `ticket_id=eq.${ticketId}`
-      }, () => carregarMsgs(ticketId))
+      }, (payload) => { carregarMsgs(ticketId); if(payload.new?.remetente==='TI') window._dsosSom?.mensagemNova(); })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'ticket',
+        filter: `id=eq.${ticketId}`
+      }, (payload) => {
+        const novo = payload.new;
+        // Tocar som quando chamado for resolvido, descartado ou falso alarme
+        if (['resolvido','descartado','falso_alarme'].includes(novo?.status)) {
+          window._dsosSom?.notificacao();
+        }
+        carregarChamados();
+        carregarMsgs(ticketId);
+      })
       .subscribe();
   }
 
@@ -378,40 +397,45 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
     if (e.key !== 'Enter') return;
     const inp = document.getElementById('chat-input');
     const txt = inp.value.trim();
-    if (!txt && !imgPendente) return;
+    if (!txt && !imgsPendentes.length) return;
     if (!chatTicketId) return;
     inp.value = '';
 
-    let imagem_url = null;
-    if (imgPendente) {
-      try {
-        imagem_url = await uploadImagem(imgPendente);
-      } catch(err) {
-        toast('Erro ao enviar imagem.', 'err');
-        return;
-      }
-      removerImgPendente();
-    }
-
-    // remetente: sempre 'PC' para usuários não-TI (constraint permite apenas 'PC' ou 'TI')
+    // Upload de todas as imagens pendentes (até 5)
     const remetente = 'PC';
     try {
-      await fetch(`${SB_URL}/rest/v1/mensagem`, {
-        method: 'POST', headers: H,
-        body: JSON.stringify({
-          ticket_id: chatTicketId,
-          remetente,
-          conteudo: txt || null,
-          imagem_url,
-          enviado_em: new Date().toISOString()
-        })
-      });
+      // Enviar imagens como mensagens separadas, depois o texto
+      for (const file of imgsPendentes) {
+        let imagem_url = null;
+        try {
+          imagem_url = await uploadImagem(file);
+        } catch(err) {
+          toast('Erro ao enviar imagem: ' + err.message, 'err');
+          continue;
+        }
+        await fetch(`${SB_URL}/rest/v1/mensagem`, {
+          method: 'POST', headers: H,
+          body: JSON.stringify({ ticket_id: chatTicketId, remetente, conteudo: null, imagem_url, enviado_em: new Date().toISOString() })
+        });
+      }
+      // Limpar imagens pendentes
+      imgsPendentes = [];
+      document.getElementById('img-preview-list').innerHTML = '';
+      document.getElementById('img-preview-row').classList.remove('visible');
+
+      // Enviar texto se houver
+      if (txt) {
+        await fetch(`${SB_URL}/rest/v1/mensagem`, {
+          method: 'POST', headers: H,
+          body: JSON.stringify({ ticket_id: chatTicketId, remetente, conteudo: txt, imagem_url: null, enviado_em: new Date().toISOString() })
+        });
+      }
       await carregarMsgs(chatTicketId);
-    } catch(e) { toast('Erro ao enviar mensagem.', 'err'); }
+    } catch(e) { toast('Erro ao enviar mensagem.', 'err'); window._dsosSom?.erro(); }
   };
 
   // ── UPLOAD DE IMAGEM ──
-  let imgPendente = null;
+  let imgsPendentes = []; // array de File — até 5 imagens por mensagem
 
   async function uploadImagem(file) {
     const ext = file.name.split('.').pop() || 'jpg';
@@ -431,22 +455,41 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
   }
 
   window.selecionarImagem = function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    imgPendente = file;
-    const url = URL.createObjectURL(file);
-    document.getElementById('img-preview-thumb').src = url;
-    document.getElementById('img-preview-nome').textContent = file.name;
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    const MAX = 5;
+    // Somar com as já pendentes
+    const total = imgsPendentes.length + files.length;
+    if (total > MAX) {
+      toast(`Máximo de ${MAX} imagens por mensagem.`, 'err');
+      event.target.value = '';
+      return;
+    }
+    files.forEach(file => {
+      imgsPendentes.push(file);
+      const url = URL.createObjectURL(file);
+      const wrap = document.createElement('div');
+      wrap.className = 'img-preview-item';
+      wrap.innerHTML = `<img src="${url}" class="img-preview-thumb" />
+        <span class="img-preview-nome">${file.name}</span>
+        <button class="img-preview-remove" onclick="removerImgPendente(${imgsPendentes.length - 1}, this.closest('.img-preview-item'))">✕</button>`;
+      document.getElementById('img-preview-list').appendChild(wrap);
+    });
     document.getElementById('img-preview-row').classList.add('visible');
     document.getElementById('chat-input').focus();
-    // reset o input para permitir selecionar o mesmo arquivo de novo
     event.target.value = '';
   };
 
-  window.removerImgPendente = function() {
-    imgPendente = null;
-    document.getElementById('img-preview-row').classList.remove('visible');
-    document.getElementById('img-preview-thumb').src = '';
+  window.removerImgPendente = function(idx, el) {
+    imgsPendentes.splice(idx, 1);
+    el?.remove();
+    // Re-indexar botões
+    document.querySelectorAll('#img-preview-list .img-preview-remove').forEach((btn, i) => {
+      btn.setAttribute('onclick', `removerImgPendente(${i}, this.closest('.img-preview-item'))`);
+    });
+    if (!imgsPendentes.length) {
+      document.getElementById('img-preview-row').classList.remove('visible');
+    }
   };
 
   // ── LIGHTBOX ──
@@ -478,7 +521,7 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
     document.querySelectorAll('.sel-t-icon').forEach(i => i.style.display = 'none');
     const ic = document.getElementById('ico-' + opt.dataset.i);
     if (ic) ic.style.display = 'block';
-    const nomes = { hardware:'Hardware', software:'Software', periferico:'Periférico', rede:'Rede', outro:'Outro' };
+    const nomes = { hardware:'Hardware', software:'Software', rede:'Rede', outro:'Outro' };
     document.getElementById('sel-val').textContent = nomes[tipo] || tipo;
     document.getElementById('sel-trigger').classList.add('valued');
     document.getElementById('sel-wrap').classList.remove('open');
@@ -586,6 +629,8 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
     tipoRapido = null;
     document.querySelectorAll('.rapido-opt').forEach(o => o.classList.remove('selected'));
     document.getElementById('btn-rapido-send').disabled = true;
+    // Após abrir chamado → redirecionar para Meus Chamados
+    trocarAba('chamados');
   };
 
   // ── LOGOUT ── remove a sessão e volta para o login

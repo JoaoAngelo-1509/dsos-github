@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.1.0 — painel-ti.html -->
+  <!-- DSos v1.3 alpha alpha — painel-ti.html -->
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
@@ -17,7 +17,7 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:#22c55e;font-size:.72rem;font-weight:700">v1.1</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:#8b5cf6;font-size:.72rem;font-weight:700">v1.3 alpha</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
@@ -100,6 +100,10 @@
 
     <!-- ABA: NÃO RESPONDIDOS -->
     <div class="tab-panel active" id="panel-abertos">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="unresp-search" placeholder="Buscar por PC, tipo ou laboratório…" oninput="buscarTicketsAbertos(this.value)" autocomplete="off" />
+      </div>
       <div class="tbl-head" style="grid-template-columns:32px 1fr 90px 50px 82px">
         <span></span><span>PC / Tipo</span><span>Laboratório</span><span>Hora</span><span style="text-align:right">Status</span>
       </div>
@@ -115,6 +119,10 @@
 
     <!-- ABA: JÁ RESPONDIDOS -->
     <div class="tab-panel" id="panel-respondidos">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="resp-search" placeholder="Buscar por PC, tipo ou laboratório…" oninput="buscarTicketsRespondidos(this.value)" autocomplete="off" />
+      </div>
       <div class="resp-filters">
         <button class="rf-btn active" onclick="filtrar('all',this)"><span class="rf-dot" style="background:var(--muted)"></span>Todos</button>
         <button class="rf-btn" onclick="filtrar('em_andamento',this)"><span class="rf-dot" style="background:var(--yellow)"></span>Em andamento</button>
@@ -167,7 +175,7 @@
     <!-- ABA: COMPUTADORES -->
     <div class="tab-panel" id="panel-pcs">
       <div class="pc-filters">
-        <input class="pc-search" id="pc-search" placeholder="Buscar por tag ou laboratório…" oninput="filtrarPCs()" />
+        <input class="pc-search" id="pc-search" placeholder="Buscar por tag ou laboratório…" oninput="buscarPCs(this.value);filtrarPCs()" />
         <button class="pf-btn active" id="pf-todos"      onclick="setPcFiltro('todos',this)">Todos</button>
         <button class="pf-btn"        id="pf-ativo"      onclick="setPcFiltro('ativo',this)">Ativos</button>
         <button class="pf-btn"        id="pf-manutencao" onclick="setPcFiltro('em_manutencao',this)">Manutenção</button>
@@ -675,5 +683,19 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-ti.js"></script>
+
+<script>
+// Sons de notificação — arquivos em sounds/ na raiz do projeto
+// Usa .catch() porque Audio.play() retorna Promise — try/catch não captura rejeições async
+window._dsosSom = {
+  _play(src) {
+    const a = new Audio(src);
+    a.volume = 0.6;
+    a.play().catch(e => console.warn('[DSos som] ' + src + ':', e.message));
+  },
+  novoChamado()      { this._play('../sounds/notification.wav'); },
+  chamadoResolvido() { this._play('../sounds/conclusion.wav');   }
+};
+</script>
 </body>
 </html>
