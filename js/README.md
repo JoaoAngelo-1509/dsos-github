@@ -26,10 +26,10 @@ Arquivos necessários:
 js/supabase-config.js — configuração do banco de produção
 js/supabase-config.test.js — configuração do banco de teste
 Esses arquivos não existem no repositório. Você precisa criá-los na pasta js/ com o seguinte conteúdo, substituindo os valores pelas suas chaves reais do Supabase, que podem ser encontradas em supabase.com no painel do seu projeto em Settings → API.
+Coloque no modo code para copiar a base abaixo:
 
 
-
-jsconst PROJECT_URL = 'SUA_SUPABASE_URL_AQUI';
+const PROJECT_URL = 'SUA_SUPABASE_URL_AQUI';
 const ANON_KEY    = 'SUA_ANON_KEY_AQUI';
 
 export const H = {
