@@ -248,8 +248,8 @@
     .mfield-value{font-size:.72rem;color:var(--text);font-weight:600}
     .mfield.full{grid-column:1/-1}
     .mdesc{background:var(--input-bg);border:1px solid var(--glass-b);border-radius:4px;padding:7px 10px;font-size:.7rem;line-height:1.55;color:var(--text);font-family:inherit}
-    .msel{background:var(--input-bg);border:1px solid var(--glass-b);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:.7rem;color:var(--text);outline:none;cursor:pointer;transition:background .3s;color-scheme:dark}
-    [data-theme="light"] .msel{color-scheme:light}
+    .msel{background:#191414;border:1px solid var(--glass-b);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:.7rem;color:var(--text);outline:none;cursor:pointer;transition:background .3s;color-scheme:dark}
+    [data-theme="light"] .msel{color-scheme:light; background-color: whitesmoke;}
     .msel:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim)}
     .res-desc-view{background:var(--res-desc-bg);border:1px solid var(--res-desc-b);border-radius:4px;padding:7px 10px;font-size:.7rem;line-height:1.55;color:var(--res-desc-c);font-family:inherit;white-space:pre-wrap}
     .tecnico-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);border-radius:3px;padding:3px 9px;font-size:.66rem;color:var(--green);font-weight:600}
@@ -655,3 +655,23 @@
       .tab { padding: 7px 8px; }
       .ticket-row { grid-template-columns: 24px 1fr 60px; }
     }
+      /* ── BOTÃO DELETAR PC (btn-ti-del-pc) ── */
+  .btn-ti-del-pc {
+  background: none;
+  border: 1px solid var(--glass-b);
+  border-radius: 4px;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: var(--muted2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .18s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.btn-ti-del-pc:hover {
+  border-color: #ff5555;
+  color: #ff5555;
+  background: rgba(192, 23, 26, .08);
+}

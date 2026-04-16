@@ -1,6 +1,6 @@
 // DSos v1.3 alpha alpha — painel-ti.js
 // ── painel-ti.js — Lógica completa do Painel T.I. ──
-import { SB, H, SB_KEY } from './supabase-config.test.js';
+import { SB, H, SB_KEY } from './supabase-config.js';
 
   // Cliente Realtime
   const sbClient = supabase.createClient(SB, SB_KEY);
@@ -68,7 +68,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     if(session.tipo!=='ti'){window.location.href='login.html';return}
 
     try{
-      // v_usuario_ti_pub é usada porque a tabela usuario_ti tem RLS (qual=false) que bloqueia SELECT pela anon key
       const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?select=id,login,nome`,{headers:H});
       const lista=await r.json();
       if(Array.isArray(lista)) lista.forEach(u=>{tiMap[u.id]=u});
@@ -82,7 +81,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
     await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs(),carregarTIs(),carregarProfs()]);
 
-    // Realtime — novos tickets e mudanças de status chegam instantaneamente
     sbClient.channel('tickets-realtime')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},
         (payload)=>{ carregarTickets(); carregarKPIs(); if(payload.new?.chamado_emergencia){ notif('⚡ CHAMADO DE EMERGÊNCIA!'); window._dsosSom?.emergencia(); } else { notif('Novo chamado recebido!'); window._dsosSom?.novoChamado(); } })
@@ -90,7 +88,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
         ()=>{ carregarTickets(); carregarKPIs(); })
       .subscribe();
 
-    // Polling a cada 30s como fallback para quando o realtime cair
     setInterval(()=>{ carregarTickets(); carregarKPIs(); carregarPCs(); }, 30000);
   });
 
@@ -100,7 +97,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   async function carregarKPIs(){
     try{
       const hoje=new Date().toISOString().split('T')[0];
-      // Busca pendentes direto do banco para não depender do array local
       const [rHoje, rPend] = await Promise.all([
         fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=status`,{headers:H}),
         fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&select=id`,{headers:H}),
@@ -119,9 +115,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   /* FETCH TICKETS */
   async function carregarTickets(q=''){
     try{
-      // Monta filtro de texto: busca em descrição, laboratório e tipo
-      // Para busca por tag do PC: resolve o ID do PC via join (pc_info embedded)
-      // e filtra localmente após fetch (Supabase REST não suporta filtro em join)
       const qFilter = q
         ? `&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`
         : '';
@@ -132,21 +125,13 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       ]);
       let rawR1 = await r1.json().then(d=>Array.isArray(d)?d:[]);
       let rawR2 = await r2.json().then(d=>Array.isArray(d)?d:[]);
-      // Filtro local por tag do PC (join não suporta ilike server-side no Supabase REST)
-      // O servidor já filtrou por descricao/laboratorio/tipo. Aqui incluímos também matches por tag.
       if(q){
         const ql = q.toLowerCase();
         const matchTag = t => t.pc_info?.tag?.toLowerCase().includes(ql);
-        // União: mantém o que o servidor trouxe + o que bate pela tag
-        // (já filtrado server-side, apenas garante que tag também inclui)
-        // Na prática: servidor retorna descricao/lab/tipo matches, filtro local adiciona tag
-        // Como já fizemos OR no servidor, aqui só garantimos que tags também passam:
-        // re-buscar sem filtro de texto e filtrar só por tag localmente
         const [rtag1, rtag2] = await Promise.all([
           fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
           fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[])
         ]);
-        // Mesclar sem duplicatas (union por id)
         const mergeById = (a, b) => { const ids=new Set(a.map(x=>x.id)); return [...a, ...b.filter(x=>!ids.has(x.id))]; };
         rawR1 = mergeById(rawR1, rtag1);
         rawR2 = mergeById(rawR2, rtag2);
@@ -226,7 +211,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       const pcStatus=t.pc_info?.status_pc||'descartado';
       const item=t.item_descartado||'(item não especificado)';
       const d=t.resolvido_em?new Date(t.resolvido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
-      // Concluído se: PC marcado como descartado OU descarte físico já foi registrado (nota salva)
       const feito=pcStatus==='descartado'||!!t.descricao_resolucao;
       const descProblema=t.descricao||'';
       const itemEsc=item.replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -255,7 +239,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   }
 
   /* ABAS */
-  // Memória da última aba visitada em cada grupo
   const _ultimaAba = { chamados: 'abertos', gestao: 'pcs' };
   const _grupoDeAba = {
     abertos:'chamados', respondidos:'chamados', descarte:'chamados',
@@ -263,29 +246,21 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   };
 
   window.mudarAba = function(aba) {
-    // Desativar todas as tabs e panels
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    // Ativar tab e panel
     document.getElementById('tab-' + aba)?.classList.add('active');
     document.getElementById('panel-' + aba)?.classList.add('active');
-    // Memorizar última aba do grupo
     const grupo = _grupoDeAba[aba];
     if (grupo) _ultimaAba[grupo] = aba;
-    // Ações específicas por aba
     if (aba === 'manutencao') resetAbaManutencao();
-    // Atualizar badge do grupo Chamados
     _atualizarBadgeGrupo();
   };
 
   window.mudarGrupo = function(grupo) {
-    // Atualizar pills de grupo
     document.querySelectorAll('.grupo-pill').forEach(p => p.classList.remove('active'));
     document.getElementById('grupo-' + grupo)?.classList.add('active');
-    // Mostrar/ocultar tabs de nível 2
     document.getElementById('tabs-chamados').style.display = grupo === 'chamados' ? '' : 'none';
     document.getElementById('tabs-gestao').style.display   = grupo === 'gestao'   ? '' : 'none';
-    // Abrir última aba visitada neste grupo
     mudarAba(_ultimaAba[grupo]);
   };
 
@@ -310,7 +285,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     ['btn-progresso','btn-resolvido','btn-descartado','btn-falso'].forEach(id=>{document.getElementById(id).disabled=!has});
   }
 
-  /* SET STATUS (ações críticas com confirmação) */
+  /* SET STATUS */
   window.setStatus=async function(s){
     if(!selectedId)return;
     const t=tickets.find(x=>x.id===selectedId);
@@ -323,7 +298,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       msg = `Colocar o chamado #${t.id} do PC #${pcTag} como EM PROGRESSO?\n` +
             'Isso indica que alguém do T.I. já está atuando nesse chamado.';
     }else if(s==='descartado'){
-      // Descartado abre mini-modal para capturar o item antes de ir pra fila
+      // FIX: Descartado via action bar → sempre vai pra fila de descarte
       abrirMiniModalDescarte(t);
       return;
     }else if(s==='falso_alarme'){
@@ -348,6 +323,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   };
 
   window.abrirResolucao=function(){if(!selectedId)return;const t=tickets.find(x=>x.id===selectedId);if(t)abrirModal(t,true)};
+
   /* ─── MINI-MODAL: captura item antes de enviar pra fila de descarte ─── */
   let _descarteTicket = null;
 
@@ -373,8 +349,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     window.fecharMiniModalDescarte();
 
     try {
-      // Envia pra fila: status=descartado + item_descartado preenchido
-      // PC vai para em_manutencao (aguardando descarte físico)
       await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`, {
         method: 'PATCH', headers: H,
         body: JSON.stringify({
@@ -402,7 +376,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   document.getElementById('mini-item-input')
     ?.addEventListener('keydown', e => { if (e.key === 'Enter') window.confirmarEnvioFila(); });
-
 
 
   /* MODAL TICKET */
@@ -433,7 +406,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     document.getElementById('item-desc').style.display='none';
     document.getElementById('modal').classList.add('open');
 
-    // Iniciar chat para este ticket
+    // FIX: garantir que o chat só inicia se os elementos existirem no DOM
     removerImgTi();
     const ativo = t.status === 'aberto' || t.status === 'em_andamento';
     iniciarChat(t.id, ativo);
@@ -460,27 +433,38 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   window.toggleItemDesc=function(){
     document.getElementById('item-desc').style.display=document.getElementById('res-tipo').value==='descarte'?'block':'none';
   };
+
   window.confirmarResolucao=async function(){
     const tipo=document.getElementById('res-tipo').value;
     if(!tipo){notif('Selecione o tipo de resolução.');return}
     const itemDesc=document.getElementById('item-desc').value.trim();
     const descRes=document.getElementById('res-desc').value.trim();
-    const statusMap={consertado:'resolvido',descarte:'descartado',aguardando_peca:'em_andamento'};
-    const pcStatusMap={consertado:'ativo',descarte:'descartado',aguardando_peca:'em_manutencao'};
+
+    // FIX: resolução "descarte" via modal → vai pra fila de descarte, não marca direto
+    if(tipo === 'descarte'){
+      const t = tickets.find(x=>x.id===modalTicketId) || respondidos.find(x=>x.id===modalTicketId);
+      if(t){
+        // Fechar modal ticket antes de abrir mini-modal
+        window.fecharModal();
+        // Pequeno delay para o modal fechar antes do próximo abrir
+        setTimeout(()=> abrirMiniModalDescarte(t), 120);
+      }
+      return;
+    }
+
+    const statusMap={consertado:'resolvido',aguardando_peca:'em_andamento'};
+    const pcStatusMap={consertado:'ativo',aguardando_peca:'em_manutencao'};
     const novoStatus=statusMap[tipo];
     const body={status:novoStatus,resolucao:tipo,
-      resolvido_em:(novoStatus==='resolvido'||novoStatus==='descartado')?new Date().toISOString():null,
+      resolvido_em:(novoStatus==='resolvido')?new Date().toISOString():null,
       tecnico_responsavel:session.id,descricao_resolucao:descRes||null};
-    if(tipo==='descarte'&&itemDesc) body.item_descartado=itemDesc;
 
-    // Confirmação antes de aplicar resolução formal
     const t=tickets.find(x=>x.id===modalTicketId);
     if(t){
       const pcTag=t.pc_problema||'—';
-      const rotulo={consertado:'CONCERTADO',descarte:'DESCARTE',aguardando_peca:'AGUARDANDO PEÇA'}[tipo]||tipo;
+      const rotulo={consertado:'CONSERTADO',aguardando_peca:'AGUARDANDO PEÇA'}[tipo]||tipo;
       const ok=confirm(
         `Confirmar resolução "${rotulo}" para o chamado #${t.id} (PC #${pcTag})?\n` +
-        (tipo==='descarte' && itemDesc ? `Item para descarte: ${itemDesc}\n` : '') +
         (descRes ? `Resumo: ${descRes}` : '')
       );
       if(!ok)return;
@@ -500,29 +484,14 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   /* ═══════════════════════════════════════
      MODAL DE DESCARTE FÍSICO
-     Chamado pelo botão "Feito" na fila
   ═══════════════════════════════════════ */
-
-  /**
-   * Abre o modal pré-preenchido com os dados do ticket de descarte.
-   * pcId          — id do PC a ter status_pc atualizado para 'descartado'
-   * ticketId      — id do ticket para salvar a nota do descarte
-   * itemDescartado — texto já salvo no ticket (campo item_descartado)
-   * descricao     — descrição do problema original (preenchida em "Por que?")
-   */
   window.abrirModalDescarte=function(pcId, ticketId, itemDescartado, descricao, e){
     if(e) e.stopPropagation();
     descarteAtual = { pcId, ticketId };
 
-    // Pré-preenche "o que foi descartado" com o item já registrado
     document.getElementById('desc-oque').value = (itemDescartado && itemDescartado !== '(item não especificado)') ? itemDescartado : '';
-
-    // "Por que?" — vem da descrição do chamado original (só leitura, informativo)
     document.getElementById('desc-porque').value = descricao || 'Sem conserto viável — identificado pelo T.I.';
-
-    // Limpa campo livre
     document.getElementById('desc-como').value = '';
-    // Sempre começa desmarcado — só marca se for o PC inteiro
     document.getElementById('desc-pc-completo').checked = false;
 
     document.getElementById('modal-descarte').classList.add('open');
@@ -534,16 +503,10 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     descarteAtual = { pcId: null, ticketId: null };
   };
 
-  // Fechar clicando fora
   document.getElementById('modal-descarte').addEventListener('click', e=>{
     if(e.target===document.getElementById('modal-descarte')) window.fecharModalDescarte();
   });
 
-  /**
-   * Confirma o descarte físico:
-   * 1. Salva a nota detalhada em descricao_resolucao no ticket
-   * 2. Atualiza status_pc do PC para 'descartado' (hardware fora de uso)
-   */
   window.confirmarDescarteFisico=async function(){
     const oque        = document.getElementById('desc-oque').value.trim();
     const como        = document.getElementById('desc-como').value.trim();
@@ -567,7 +530,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     if(!okConfirm)return;
 
     try{
-      // Monta nota de descarte físico para rastreabilidade
       const linhas = [`[DESCARTE FÍSICO REGISTRADO]`, `Item: ${oque}`];
       if(como) linhas.push(`Meio: ${como}`);
       if(pcCompleto) linhas.push(`PC marcado como descartado.`);
@@ -575,14 +537,11 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       linhas.push(`Técnico: ${session.nome||session.login}`);
       const nota = linhas.join('\n');
 
-      // Grava nota no ticket e marca técnico responsável
       await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{
         method:'PATCH', headers:H,
         body:JSON.stringify({ descricao_resolucao: nota, tecnico_responsavel: session.id })
       });
 
-      // Se PC completo: marca como descartado
-      // Se apenas periférico: volta o PC para ativo (estava em_manutencao desde a fila)
       await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{
         method:'PATCH', headers:H,
         body:JSON.stringify({ status_pc: pcCompleto ? 'descartado' : 'ativo' })
@@ -590,7 +549,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
       notif('Descarte físico registrado — concluído');
       window.fecharModalDescarte();
-      // Fade-out visual do item na fila antes de recarregar
       const filaDivs = document.querySelectorAll('.desc-row:not(.done)');
       filaDivs.forEach(d => { d.style.transition = 'opacity .4s, transform .4s'; d.style.opacity='0'; d.style.transform='translateX(30px)'; });
       await new Promise(r => setTimeout(r, 420));
@@ -601,7 +559,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     }
   };
 
-  /* Abre guia PNRS no MMA */
   window.abrirGuia=function(){
     window.open('https://www.mma.gov.br/cidades-sustentaveis/residuos-solidos/politica-nacional-de-residuos-solidos.html','_blank');
   };
@@ -653,8 +610,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     respondidos.forEach(t=>ocultados.add(t.id));respondidos=[];renderResp();notif('Lista limpa');
   };
 
-
-  /* ─── CANCELAR ITEM DA FILA — reverte ticket para aberto ─── */
+  /* ─── CANCELAR ITEM DA FILA ─── */
   window.cancelarItemDescarte = async function(ticketId, pcId, e) {
     if (e) e.stopPropagation();
     const ok = confirm('Cancelar este descarte?\nO chamado voltará para ABERTO e o PC para ATIVO.');
@@ -684,7 +640,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   let _limpezaDias = 30;
   let _limpezaPreviewOk = false;
 
-  // Reset da aba de manutenção quando ela é aberta
   function resetAbaManutencao() {
     _limpezaPreviewOk = false;
     _limpezaDias = 30;
@@ -701,13 +656,11 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     if (btn) btn.disabled = true;
   }
 
-  // Seletor de prazo
   document.querySelectorAll('.limpeza-prazo-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.limpeza-prazo-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _limpezaDias = parseInt(btn.dataset.dias);
-      // Reset preview ao trocar prazo
       _limpezaPreviewOk = false;
       document.getElementById('btn-executar-limpeza').disabled = true;
       document.getElementById('limpeza-preview').innerHTML = `
@@ -718,9 +671,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     });
   });
 
-
-  // Helper: parseia resposta da Edge Function de forma segura
-  // Evita SyntaxError quando a resposta não é JSON (ex: timeout de gateway)
   async function _parseFnResponse(res) {
     const text = await res.text();
     let data;
@@ -743,9 +693,14 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       '<div class="limpeza-preview-idle"><div class="spin"></div> analisando…</div>';
 
     try {
+      // FIX: headers completos incluindo Content-Type para Edge Function
       const res = await fetch(`${SB}/functions/v1/fn-limpar-dados`, {
         method: 'POST',
-        headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
+        headers: {
+          'apikey': H.apikey,
+          'Authorization': H.Authorization,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ dias: _limpezaDias, apenas_preview: true })
       });
       const d = await _parseFnResponse(res);
@@ -800,20 +755,21 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
     const btn = document.getElementById('btn-executar-limpeza');
     btn.disabled = true;
-    // BUG FIX: usar innerHTML para preservar o ícone SVG
     btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpando…`;
 
     try {
+      // FIX: headers explícitos sem o Prefer do CRUD REST
       const res = await fetch(`${SB}/functions/v1/fn-limpar-dados`, {
         method: 'POST',
-        headers: { 'apikey': H.apikey, 'Authorization': H.Authorization, 'Content-Type': 'application/json' },
+        headers: {
+          'apikey': H.apikey,
+          'Authorization': H.Authorization,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ dias: _limpezaDias, apenas_preview: false })
       });
-      // BUG FIX: usar helper que valida res.ok e lida com resposta não-JSON
       const d = await _parseFnResponse(res);
 
-      // BUG FIX: fecharModalLimpeza() não existe mais — modal virou aba
-      // Só resetar o estado da aba após limpeza bem-sucedida
       _limpezaPreviewOk = false;
       resetAbaManutencao();
       notif(
@@ -824,7 +780,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     } catch(err) {
       console.error('[executarLimpeza]', err);
       notif('Erro na limpeza: ' + err.message);
-      // BUG FIX: restaurar botão com innerHTML (mantém ícone SVG)
       btn.disabled = false;
       btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpar agora`;
     }
@@ -839,20 +794,27 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   let imgPendenteTi = null;
 
-  // Chamado ao abrir o modal — carrega chat e inicia polling
+  // FIX: checagem segura de elementos antes de manipular
   async function iniciarChat(ticketId, ativo) {
-    document.getElementById('chat-input-ti').disabled = !ativo;
-    document.getElementById('btn-send-ti').disabled = !ativo;
-    document.getElementById('btn-img-ti').disabled = !ativo;
-    document.getElementById('file-input-ti').disabled = !ativo;
-    document.getElementById('chat-input-ti').placeholder = ativo
+    const chatInput   = document.getElementById('chat-input-ti');
+    const btnSend     = document.getElementById('btn-send-ti');
+    const btnImg      = document.getElementById('btn-img-ti');
+    const fileInput   = document.getElementById('file-input-ti');
+    const statusLabel = document.getElementById('chat-status-label');
+
+    if (!chatInput || !btnSend) return; // modal ainda não está no DOM
+
+    chatInput.disabled  = !ativo;
+    btnSend.disabled    = !ativo;
+    if (btnImg)     btnImg.disabled     = !ativo;
+    if (fileInput)  fileInput.disabled  = !ativo;
+    chatInput.placeholder = ativo
       ? 'Mensagem para o PC…'
       : 'Chamado encerrado — chat desabilitado.';
-    document.getElementById('chat-status-label').textContent = ativo ? 'Em aberto' : 'Encerrado';
+    if (statusLabel) statusLabel.textContent = ativo ? 'Em aberto' : 'Encerrado';
 
     await carregarMsgsTi(ticketId);
 
-    // Cancela canal anterior e abre novo
     if (realtimeChannel) {
       sbClient.removeChannel(realtimeChannel);
       realtimeChannel = null;
@@ -876,6 +838,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       );
       const msgs = await r.json();
       const chat = document.getElementById('chat-msgs-ti');
+      if (!chat) return;
       if (!Array.isArray(msgs) || !msgs.length) {
         chat.innerHTML = `<div class="chat-empty-ti">Nenhuma mensagem ainda. Escreva para o usuário.</div>`;
         return;
@@ -936,7 +899,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     } catch(err) { notif('Erro ao enviar mensagem.'); window._dsosSom?.erro(); }
   };
 
-  // Upload de imagem para storage
   async function uploadImagem(file) {
     const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : (file.type.split('/')[1] || 'jpg');
     const nome = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -968,11 +930,12 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   window.removerImgTi = function() {
     imgPendenteTi = null;
-    document.getElementById('img-preview-ti').classList.remove('visible');
-    document.getElementById('img-prev-thumb').src = '';
+    const prev = document.getElementById('img-preview-ti');
+    if (prev) prev.classList.remove('visible');
+    const thumb = document.getElementById('img-prev-thumb');
+    if (thumb) thumb.src = '';
   };
 
-  // Suporte a colar imagem (Ctrl+V) no chat
   document.getElementById('chat-input-ti')?.addEventListener('paste', function(e) {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -991,7 +954,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     }
   });
 
-  // Lightbox compartilhado
   window.abrirLightbox = function(url) {
     document.getElementById('lightbox-img').src = url;
     document.getElementById('lightbox').classList.add('open');
@@ -1060,7 +1022,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       return `<div class="pc-card${cls}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px">
           <div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${pc.tag || '—'}</div>
-          <button class="btn-ti-del" title="Remover PC" onclick="deletarPC(${pc.id},'${pc.tag}',event)">
+          <button class="btn-ti-del-pc" title="Remover PC" onclick="deletarPC(${pc.id},'${pc.tag}',event)">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>
         </div>
@@ -1092,7 +1054,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   };
 
   window.abrirModalPC = function(id) {
-    // normaliza o id para número e evita problemas de comparação (string vs number)
     const numericId = id != null ? Number(id) : null;
     pcEditandoId = numericId;
     const editando = numericId != null;
@@ -1105,7 +1066,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
       const pc = todosOsPCs.find(p => String(p.id) === String(numericId));
       if (!pc) return;
       document.getElementById('mpc-tag').value = pc.tag || '';
-      document.getElementById('mpc-tag').disabled = true; // tag não pode mudar
+      document.getElementById('mpc-tag').disabled = true;
       document.getElementById('mpc-lab').value = pc.laboratorio || '';
       document.getElementById('mpc-lado').value = pc.lado?.trim() || 'A';
       document.getElementById('mpc-status').value = pc.status_pc || 'ativo';
@@ -1139,7 +1100,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     if (!lab) { notif('Informe o laboratório.'); return; }
 
     if (pcEditandoId === null) {
-      // CADASTRO NOVO
       if (!tag) { notif('Informe a tag do PC.'); return; }
       if (!senha || senha.length < 4) { notif('Senha precisa ter pelo menos 4 caracteres.'); return; }
       try {
@@ -1154,13 +1114,11 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
         await carregarPCs();
       } catch(e) { notif('Erro: ' + e.message); }
     } else {
-      // EDIÇÃO
       try {
         await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`, {
           method: 'POST', headers: H,
           body: JSON.stringify({ p_id: pcEditandoId, p_status_pc: status, p_nova_senha: senha || null })
         });
-        // atualiza lab/lado via PATCH direto (esses campos são seguros)
         await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`, {
           method: 'PATCH', headers: H,
           body: JSON.stringify({ laboratorio: lab, lado: lado })
@@ -1258,7 +1216,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     if (!nome)  { notif('Informe o nome do usuário.'); return; }
 
     if (tiEditandoId === null) {
-      // CADASTRO
       if (!login) { notif('Informe o login.'); return; }
       if (!senha || senha.length < 4) { notif('Senha precisa ter no mínimo 4 caracteres.'); return; }
       try {
@@ -1274,7 +1231,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
         notif('Erro: ' + (e.message.includes('duplicate') ? 'login já existe.' : e.message));
       }
     } else {
-      // EDIÇÃO
       try {
         await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`, {
           method: 'POST', headers: H,
@@ -1302,15 +1258,10 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
 
   /* ═══════════════════════════════════════
      EASTER EGG 🥚
-     Ativa clicando 5× no título "DSos"
-     Troque as variáveis abaixo pela piada!
   ═══════════════════════════════════════ */
-
-  // ── CONFIGURE AQUI ──────────────────────────────────────────────────
-  const EGG_FOTO   = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';        // URL da foto (ex: 'https://...jpg') — deixe vazio para placeholder
+  const EGG_FOTO   = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
   const EGG_NOME   = 'Rickelme';
   const EGG_FRASE  = '"Eu não fiz o design, fiz no Canva"';
-  // ────────────────────────────────────────────────────────────────────
 
   let eggClicks = 0, eggTimer = null;
   document.getElementById('egg-trigger').addEventListener('click', () => {
@@ -1337,9 +1288,7 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   };
   function fecharEggKey(e) { if (e.key === 'Escape') window.fecharEgg(); }
 
-  /* ═══════════════════════════════════════
-     TOGGLES DE SENHA (olho)
-  ═══════════════════════════════════════ */
+  /* TOGGLES DE SENHA */
   window.toggleSenhaMPC = function() {
     const inp = document.getElementById('mpc-senha');
     const ico = document.getElementById('ico-olho-mpc');
@@ -1504,7 +1453,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
   let _bTimers = {};
   function _debounce(key, fn, ms=350){ clearTimeout(_bTimers[key]); _bTimers[key]=setTimeout(fn,ms); }
 
-  // Busca na fila de descarte
   window.buscarDescarte = function(q) {
     _debounce('desc', async () => {
       try {
@@ -1517,7 +1465,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     });
   };
 
-  // Busca técnicos T.I.
   window.buscarTIs = function(q) {
     _debounce('ti', async () => {
       try {
@@ -1530,7 +1477,6 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     });
   };
 
-  // Busca professores
   window.buscarProfs = function(q) {
     _debounce('prof', async () => {
       try {
@@ -1543,15 +1489,12 @@ import { SB, H, SB_KEY } from './supabase-config.test.js';
     });
   };
 
-  // Busca debounced nos tickets não respondidos
   window.buscarTicketsAbertos = function(q) {
     _debounce('unresp', () => carregarTickets(q));
   };
-  // Busca debounced nos tickets já respondidos
   window.buscarTicketsRespondidos = function(q) {
     _debounce('resp', () => carregarTickets(q));
   };
-  // Busca server-side de PCs
   window.buscarPCs = function(q) {
     _debounce('pcs', async () => {
       try {

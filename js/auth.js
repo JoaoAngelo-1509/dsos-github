@@ -1,6 +1,6 @@
 // DSos v1.3 alpha alpha — auth.js
 // ── auth.js — Lógica de autenticação da página de login ──
-import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.test.js';
+import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
 
 // Expõe toggleTema globalmente para o onclick no HTML

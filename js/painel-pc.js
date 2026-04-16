@@ -1,6 +1,6 @@
 // DSos v1.3 alpha alpha — painel-pc.js
 // ── painel-pc.js — Lógica completa do Painel do Usuário/PC ──
-import { SB_URL, SB_KEY, H } from './supabase-config.test.js';
+import { SB_URL, SB_KEY, H } from './supabase-config.js';
 
   // Cliente Realtime
   const sbClient = supabase.createClient(SB_URL, SB_KEY);
