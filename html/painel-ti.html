@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.3 alpha alpha — painel-ti.html -->
+  <!-- DSos v1.4 alpha alpha — painel-ti.html -->
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
@@ -17,13 +17,17 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:#8b5cf6;font-size:.72rem;font-weight:700">v1.3 alpha</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.4 alpha</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
       <span>Turno: <strong id="info-turno">—</strong></span>
     </div>
     <div class="topbar-user"><div class="online-dot"></div><span id="nome-ti">T.I.</span></div>
+    <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+  <span class="notif-bell-count" id="bell-count">0</span>
+</button>
     <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
       <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
