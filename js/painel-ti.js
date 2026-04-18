@@ -795,16 +795,26 @@ function _abrirEgg(){
 window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_fecharEggKey);};
 function _fecharEggKey(e){if(e.key==='Escape')window.fecharEgg();}
 
-document.getElementById('unresp-search')?.addEventListener('input',function(){
-  if(this.value.toLowerCase().trim()==='corinthians'){
-    this.value='';
+document.getElementById('unresp-search')?.addEventListener('input', function() {
+  if (this.value.toLowerCase().trim() === 'corinthians') {
+    this.value = '';
     notif('🖤🤍 VAI CORINTHIANS! Campeão do mundo 2000! 🏆');
-    setTimeout(()=>{
-      const card=document.querySelector('.card');
-      if(card){card.style.transition='box-shadow .3s';card.style.boxShadow='0 0 0 3px #000, 0 0 0 6px #fff, 0 0 40px rgba(0,0,0,.8)';setTimeout(()=>{card.style.boxShadow='';},2000)}
-    },500);
+    setTimeout(() => {
+      const card = document.querySelector('.card');
+      if (card) {
+        card.style.transition = 'box-shadow .3s';
+        card.style.boxShadow = '0 0 0 3px #000, 0 0 0 6px #fff, 0 0 40px rgba(0,0,0,.8)';
+        setTimeout(() => {
+          card.style.boxShadow = '';
+          carregarTickets(''); // ← reload DEPOIS da animação terminar
+        }, 2000);
+      } else {
+        carregarTickets(''); // ← fallback se não achar o card
+      }
+    }, 500);
   }
 });
+
 
 let _kpiClicks=0,_kpiTimer=null;
 document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('click',()=>{
