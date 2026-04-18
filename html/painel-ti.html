@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.4 alpha alpha — painel-ti.html -->
+  <!-- DSos v1.5.1 alpha alpha — painel-ti.html -->
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
@@ -17,7 +17,7 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.4 alpha</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.5.2</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
@@ -678,12 +678,36 @@
     </div>
   </div>
 </div>
+<!-- ══════════════════════════════════════════════════════
+     SNIPPET: painel-ti.html — substituição obrigatória
+     ══════════════════════════════════════════════════════
 
+     Localize a linha:
+         <div class="notif" id="notif"></div>
+     (perto do final do <body>, antes dos <script>)
 
+     SUBSTITUA essa linha por este bloco inteiro:
+     ══════════════════════════════════════════════════════ -->
 
-
-
-<div class="notif" id="notif"></div>
+<!-- MODAL CONFIRMAÇÃO CUSTOMIZADO -->
+<div class="dsos-confirm-bg" id="dsos-confirm">
+  <div class="dsos-confirm-card">
+    <div class="dsos-confirm-header">
+      <div class="dsos-confirm-ico danger" id="dsos-confirm-ico">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </div>
+      <div class="dsos-confirm-titles">
+        <div class="dsos-confirm-title" id="dsos-confirm-title">Confirmar?</div>
+        <div class="dsos-confirm-sub" id="dsos-confirm-sub" style="display:none"></div>
+      </div>
+    </div>
+    <div class="dsos-confirm-detail" id="dsos-confirm-detail" style="display:none"></div>
+    <div class="dsos-confirm-footer">
+      <button class="dsos-confirm-cancel" id="dsos-confirm-cancel">Cancelar</button>
+      <button class="dsos-confirm-ok danger" id="dsos-confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-ti.js"></script>
 
