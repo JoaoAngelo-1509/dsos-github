@@ -1,9 +1,8 @@
-// DSos v1.5.0 — painel-pc.js
+// DSos v1.4 — painel-pc.js
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
-let realtimeGlobal  = null; // canal global para badges de não-lidas (independente do chat aberto)
 
 let session=null, tipo=null, tipoRapido=null, emergAtivo=false, tickets=[], chatTicketId=null;
 
@@ -30,7 +29,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('rapido-title-txt').textContent = 'Selecione o tipo de problema e informe a tag do PC. O T.I. será notificado imediatamente.';
     window.toggleEmerg();
     await carregarChamados();
-    _iniciarRealtimeGlobal();
     setInterval(carregarChamados, 30000);
     return;
   }
@@ -65,58 +63,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   } catch(e) { /* silencioso */ }
 
   await carregarChamados();
-  _iniciarRealtimeGlobal();
   setInterval(carregarChamados, 30000);
 });
 
 function _icoSol(){return`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`}
 function _icoLua(){return`<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`}
-
-// Canal Realtime global: atualiza badges de não-lidas sem depender do chat estar aberto
-// Escuta qualquer INSERT em mensagem — filtra por remetente TI no callback
-function _iniciarRealtimeGlobal() {
-  if (realtimeGlobal) { sbClient.removeChannel(realtimeGlobal); realtimeGlobal = null; }
-  realtimeGlobal = sbClient
-    .channel('pc-global-notif')
-    .on('postgres_changes', {
-      event:  'INSERT',
-      schema: 'public',
-      table:  'mensagem'
-    }, async (payload) => {
-      // Só interessa mensagens do TI para o PC
-      if (payload.new?.remetente !== 'TI') return;
-      const tid = payload.new?.ticket_id;
-      // Se o chat desse ticket já está aberto, o realtimeChannel do chat cuida disso
-      if (tid && tid === chatTicketId) return;
-      // Atualiza badges sem recarregar a lista inteira (só não-lidas)
-      await _atualizarNaoLidas();
-      window._dsosSom?.notificacao?.();
-    })
-    .on('postgres_changes', {
-      event:  'UPDATE',
-      schema: 'public',
-      table:  'ticket'
-    }, async () => {
-      // Status do ticket mudou — atualiza a lista
-      await carregarChamados();
-    })
-    .subscribe();
-}
-
-// Busca apenas não-lidas e re-renderiza sem recarregar tickets (mais leve)
-async function _atualizarNaoLidas() {
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/rpc/rpc_nao_lidas_por_ticket`, {
-      method: 'POST', headers: H, body: '{}'
-    });
-    const nl = await r.json();
-    window._naoLidasPC = {};
-    if (Array.isArray(nl)) nl.forEach(x => {
-      window._naoLidasPC[x.ticket_id] = parseInt(x.nao_lidas_pc) || 0;
-    });
-  } catch(e) { /* silencioso */ }
-  renderChamados();
-}
 
 window.toggleTema = function() {
   const html = document.documentElement, dark = html.dataset.theme === 'dark';
@@ -187,7 +138,12 @@ async function carregarChamados(q='') {
     const filtroBase=session.tipo==='professor'
       ?`nome_solicitante=eq.${encodeURIComponent(session.nome)}`
       :`pc_origem=eq.${encodeURIComponent(session.id)}`;
-    const searchFilter=q?`&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`:'';
+
+    // Busca por texto: inclui nome_solicitante além de descricao, laboratorio, tipo
+    const searchFilter=q
+      ?`&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*,nome_solicitante.ilike.*${encodeURIComponent(q)}*)`
+      :'';
+
     const r=await fetch(`${SB_URL}/rest/v1/ticket?${filtroBase}${searchFilter}&order=aberto_em.desc&select=*`,{headers:H});
     const data=await r.json();tickets=Array.isArray(data)?data:[];
   }catch(e){tickets=[];}
@@ -215,9 +171,19 @@ function renderChamados() {
     const hora=t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
     const nl=window._naoLidasPC?.[t.id]||0;
     const nlBadge=nl>0&&podeChat?`<span class="ticket-unread-badge-pc visible"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${nl}</span>`:'';
+
+    // Nome do solicitante — exibido abaixo do tipo
+    const nomeHtml = t.nome_solicitante
+      ? `<div class="t-nome-solicitante"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${_esc(t.nome_solicitante)}</div>`
+      : '';
+
     return`<div class="ticket-card ${t.status}" onclick="${podeChat?`abrirChat(${t.id})`:`abrirDetalhes(${t.id})`}" style="position:relative">
       <div class="t-icon">${tipoIcon(t.tipo)}</div>
-      <div class="t-info"><div class="t-title">${t.tipo||'—'}</div><div class="t-meta">#${t.id} · ${t.laboratorio||'—'} Lado ${t.lado||'—'}</div></div>
+      <div class="t-info">
+        <div class="t-title">${t.tipo||'—'}</div>
+        <div class="t-meta">#${t.id} · ${t.laboratorio||'—'} Lado ${t.lado||'—'}</div>
+        ${nomeHtml}
+      </div>
       <div class="t-right">
         <span class="status-pill pill-${t.status}">${statusLabel(t.status)}</span>
         <span class="t-time">${hora}</span>
@@ -447,12 +413,7 @@ window.resetForm = function() {
   trocarAba('chamados');
 };
 
-window.sair = function() {
-  if (realtimeGlobal)  { sbClient.removeChannel(realtimeGlobal);  realtimeGlobal  = null; }
-  if (realtimeChannel) { sbClient.removeChannel(realtimeChannel); realtimeChannel = null; }
-  sessionStorage.removeItem('dsos_session');
-  window.location.href = 'login.html';
-};
+window.sair = function() { sessionStorage.removeItem('dsos_session');window.location.href='login.html'; };
 
 function toast(msg,t){
   const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t} show`;

@@ -12,6 +12,16 @@
 </head>
 <body>
 <div class="bg"></div>
+<div id="aviso-som" style="
+  position:fixed;bottom:16px;right:16px;z-index:9000;
+  background:rgba(192,23,26,.92);color:#fff;
+  border-radius:8px;padding:10px 16px;font-size:.72rem;font-family:'Sora',sans-serif;
+  display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.5);
+  cursor:pointer;
+" onclick="window._dsosSom.desbloquear()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+  Clique aqui para ativar notificações sonoras
+</div>
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -672,20 +682,65 @@
 <script type="module" src="../js/painel-ti.js"></script>
 
 <script>
-// ─── SONS DE NOTIFICAÇÃO ───────────────────────────────────────────────────
-// CORREÇÃO: método emergencia() estava faltando — o JS chamava
-// window._dsosSom?.emergencia?.() para chamados de emergência e
-// silenciava sem erro, nunca tocando o som nem exibindo a notif.
 window._dsosSom = {
-  _play(src) {
-    const a = new Audio(src);
-    a.volume = 0.6;
-    a.play().catch(e => console.warn('[DSos som] ' + src + ':', e.message));
+  _ctx: null,
+  _buffers: {},
+  _desbloqueado: false,
+
+  async _getCtx() {
+    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this._ctx.state === 'suspended') await this._ctx.resume();
+    return this._ctx;
   },
+
+  async _carregarBuffer(src) {
+    if (this._buffers[src]) return this._buffers[src];
+    try {
+      const res = await fetch(src);
+      const arr = await res.arrayBuffer();
+      const ctx = await this._getCtx();
+      this._buffers[src] = await ctx.decodeAudioData(arr);
+    } catch(e) { console.warn('[DSos som] erro ao carregar:', src, e); }
+    return this._buffers[src];
+  },
+
+  async _play(src) {
+    try {
+      const ctx = await this._getCtx();
+      const buf = await this._carregarBuffer(src);
+      if (!buf) return;
+      const source = ctx.createBufferSource();
+      source.buffer = buf;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.6;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start(0);
+    } catch(e) { console.warn('[DSos som]', src, e.message); }
+  },
+
+  desbloquear() {
+    if (this._desbloqueado) return;
+    this._desbloqueado = true;
+    this._getCtx().then(() => {
+      // Pré-carrega os sons após desbloquear
+      this._carregarBuffer('../sounds/notification.mp3');
+      this._carregarBuffer('../sounds/conclusion.mp3');
+      // Esconde o aviso se existir
+      const aviso = document.getElementById('aviso-som');
+      if (aviso) aviso.style.display = 'none';
+    });
+  },
+
   novoChamado()      { this._play('../sounds/notification.mp3'); },
   chamadoResolvido() { this._play('../sounds/conclusion.mp3');   },
-  emergencia()       { this._play('../sounds/notification.mp3'); }  // ← CORRIGIDO
+  emergencia()       { this._play('../sounds/notification.mp3'); }
 };
+
+// Desbloqueia no primeiro clique/toque/tecla
+['click','keydown','touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => window._dsosSom.desbloquear(), { once: true })
+);
 </script>
 </body>
 </html>

@@ -359,3 +359,17 @@ body{height:100vh;height:100dvh;display:flex;flex-direction:column;background:va
 @media(max-width:768px){.topbar{padding:8px 14px;gap:10px}.topbar-logo{height:30px}.topbar-info{gap:10px;font-size:.66rem}.topbar-right{gap:8px}.workspace{padding:10px 10px}.panel{max-width:100%}.form-inner,.rapido-inner{max-width:100%}}
 @media(max-width:600px){.topbar{padding:7px 10px;gap:8px;flex-wrap:nowrap}.topbar-logo{height:26px}.topbar-sep,.topbar-sub,.topbar-info{display:none}.topbar-user{padding:3px 8px;font-size:.64rem;gap:5px}.topbar-right{gap:6px}.btn-sair{padding:3px 8px;font-size:.62rem}.workspace{padding:8px 6px}.tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}.tabs::-webkit-scrollbar{display:none}.tab{padding:10px 14px;font-size:.72rem;white-space:nowrap;flex-shrink:0}.rapido-wrap{padding:14px 12px;gap:12px}.rapido-tipos{gap:7px}.rapido-opt{padding:12px 8px}.rapido-opt-ico{font-size:1.2rem}.rapido-opt-nome{font-size:.7rem}.rapido-opt-desc{font-size:.56rem}.form-wrap{padding:14px 12px}.form-inner{gap:14px}.desc-area{height:80px}.form-footer{padding:10px 12px;flex-wrap:wrap;gap:8px}.foot-meta{flex:1;min-width:0}.btn-submit{width:100%;justify-content:center;padding:11px}.ticket-list{padding:6px}.modal{width:98vw;max-height:95vh;border-radius:6px}.modal-head{padding:10px 12px}.modal-htitle{font-size:.78rem}.chat-msgs{max-height:200px;padding:8px 10px}.chat-input-row{padding:7px 10px;gap:5px}.msg{max-width:88%}.suc-card{width:94vw}.toast{width:90vw;text-align:center;white-space:normal;font-size:.72rem}}
 @media(max-width:400px){.topbar-title{font-size:.8rem}.tab{padding:9px 10px;font-size:.66rem}.tab-badge{display:none}.rapido-tipos{grid-template-columns:1fr 1fr}.btn-rapido-send{font-size:.82rem}.form-wrap{padding:10px 8px}}
+
+.t-nome-solicitante {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .58rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.t-nome-solicitante svg {
+  flex-shrink: 0;
+  color: var(--green);
+  opacity: .8;
+}
