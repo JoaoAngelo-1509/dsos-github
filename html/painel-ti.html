@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.5.1 alpha alpha — painel-ti.html -->
+  <!-- DSos v1.5.3 — painel-ti.html -->
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
@@ -17,7 +17,7 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.5.2</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.5.3</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
@@ -233,7 +233,6 @@
       </div>
     </div>
 
-
     <!-- ABA: MANUTENÇÃO -->
     <div class="tab-panel" id="panel-manutencao">
       <div class="manutencao-wrap">
@@ -291,7 +290,7 @@
   </div><!-- /card -->
 </div><!-- /center -->
 
-<!-- EASTER EGG 🥚 — clique 5x no "DSos" -->
+<!-- EASTER EGG 🥚 -->
 <div class="egg-bg" id="egg-bg" onclick="fecharEgg()">
   <div class="egg-card">
     <img class="egg-img" id="egg-img" src="" alt="easter egg" onerror="this.src='https://placehold.co/320x400/1a1a1a/c0171a?text=📸+Foto+aqui'" />
@@ -300,6 +299,8 @@
   </div>
   <div class="egg-close-hint">clique em qualquer lugar para fechar</div>
 </div>
+
+<!-- MODAL PC -->
 <div class="modal-pc-bg" id="modal-pc">
   <div class="modal-pc">
     <div class="modal-pc-head">
@@ -357,9 +358,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════
-     MODAL — CADASTRO / EDIÇÃO DE USUÁRIO T.I.
-══════════════════════════════════ -->
+<!-- MODAL USUÁRIO T.I. -->
 <div class="modal-pc-bg" id="modal-ti-user">
   <div class="modal-pc">
     <div class="modal-pc-head">
@@ -400,9 +399,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════
-     MODAL — CADASTRO / EDIÇÃO DE PROFESSOR
-══════════════════════════════════ -->
+<!-- MODAL PROFESSOR -->
 <div class="modal-pc-bg" id="modal-professor">
   <div class="modal-pc">
     <div class="modal-pc-head">
@@ -447,6 +444,7 @@
   </div>
 </div>
 
+<!-- MODAL TICKET -->
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-head">
@@ -497,7 +495,7 @@
         <textarea class="res-desc-area" id="res-desc" placeholder="Descreva o que foi feito… (opcional)"></textarea>
       </div>
 
-      <!-- ── SEÇÃO DE CHAT ── -->
+      <!-- SEÇÃO DE CHAT -->
       <div class="chat-section" id="chat-section">
         <div class="chat-section-bar">
           <span style="display:flex;align-items:center;gap:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o PC</span>
@@ -531,14 +529,7 @@
   <img id="lightbox-img" src="" alt="imagem ampliada" onclick="event.stopPropagation()" />
 </div>
 
-<!-- ══════════════════════════════════
-     MODAL — REGISTRAR DESCARTE FÍSICO
-     Abre ao clicar "Feito" na fila
-══════════════════════════════════ -->
-<!-- ══════════════════════════════════════════════
-     MINI-MODAL — O que será descartado?
-     Abre ao clicar DESCARTADO na action bar
-════════════════════════════════════════════════ -->
+<!-- MINI-MODAL DESCARTE -->
 <div class="mini-modal-bg" id="mini-modal-descarte">
   <div class="mini-modal">
     <div class="mini-modal-head">
@@ -566,6 +557,7 @@
   </div>
 </div>
 
+<!-- MODAL DESCARTE FÍSICO -->
 <div class="modal-desc-bg" id="modal-descarte">
   <div class="modal-desc">
 
@@ -583,8 +575,6 @@
     </div>
 
     <div class="modal-desc-body">
-
-      <!-- Coluna esquerda: formulário -->
       <div class="desc-form-col">
         <div class="desc-field">
           <div class="desc-field-label">
@@ -599,7 +589,6 @@
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg>
             Por que foi descartado?
           </div>
-          <!-- Pré-preenchido com a descrição do problema — somente leitura -->
           <input class="desc-input" id="desc-porque" type="text" readonly placeholder="(motivo do chamado)" />
         </div>
 
@@ -611,7 +600,6 @@
           <textarea class="desc-textarea" id="desc-como" placeholder="Ex: Entregue à empresa ABREE para reciclagem em 11/03/2026. Responsável: Prof. Carlos."></textarea>
         </div>
 
-        <!-- Checkbox estilizado: marcar PC como descartado -->
         <label class="desc-toggle-label" for="desc-pc-completo">
           <div class="desc-toggle-track">
             <input type="checkbox" id="desc-pc-completo" class="desc-toggle-input" />
@@ -624,7 +612,6 @@
         </label>
       </div>
 
-      <!-- Coluna direita: empresas e nota PNRS -->
       <div class="desc-info-col">
         <div class="desc-info-title">Empresas de Descarte Adequado</div>
         <div class="empresa-list">
@@ -678,42 +665,17 @@
     </div>
   </div>
 </div>
-<!-- ══════════════════════════════════════════════════════
-     SNIPPET: painel-ti.html — substituição obrigatória
-     ══════════════════════════════════════════════════════
 
-     Localize a linha:
-         <div class="notif" id="notif"></div>
-     (perto do final do <body>, antes dos <script>)
+<div class="notif" id="notif"></div>
 
-     SUBSTITUA essa linha por este bloco inteiro:
-     ══════════════════════════════════════════════════════ -->
-
-<!-- MODAL CONFIRMAÇÃO CUSTOMIZADO -->
-<div class="dsos-confirm-bg" id="dsos-confirm">
-  <div class="dsos-confirm-card">
-    <div class="dsos-confirm-header">
-      <div class="dsos-confirm-ico danger" id="dsos-confirm-ico">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </div>
-      <div class="dsos-confirm-titles">
-        <div class="dsos-confirm-title" id="dsos-confirm-title">Confirmar?</div>
-        <div class="dsos-confirm-sub" id="dsos-confirm-sub" style="display:none"></div>
-      </div>
-    </div>
-    <div class="dsos-confirm-detail" id="dsos-confirm-detail" style="display:none"></div>
-    <div class="dsos-confirm-footer">
-      <button class="dsos-confirm-cancel" id="dsos-confirm-cancel">Cancelar</button>
-      <button class="dsos-confirm-ok danger" id="dsos-confirm-ok">Confirmar</button>
-    </div>
-  </div>
-</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-ti.js"></script>
 
 <script>
-// Sons de notificação — arquivos em sounds/ na raiz do projeto
-// Usa .catch() porque Audio.play() retorna Promise — try/catch não captura rejeições async
+// ─── SONS DE NOTIFICAÇÃO ───────────────────────────────────────────────────
+// CORREÇÃO: método emergencia() estava faltando — o JS chamava
+// window._dsosSom?.emergencia?.() para chamados de emergência e
+// silenciava sem erro, nunca tocando o som nem exibindo a notif.
 window._dsosSom = {
   _play(src) {
     const a = new Audio(src);
@@ -721,7 +683,8 @@ window._dsosSom = {
     a.play().catch(e => console.warn('[DSos som] ' + src + ':', e.message));
   },
   novoChamado()      { this._play('../sounds/notification.mp3'); },
-  chamadoResolvido() { this._play('../sounds/conclusion.mp3');   }
+  chamadoResolvido() { this._play('../sounds/conclusion.mp3');   },
+  emergencia()       { this._play('../sounds/notification.mp3'); }  // ← CORRIGIDO
 };
 </script>
 </body>

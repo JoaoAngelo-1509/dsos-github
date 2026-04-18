@@ -1,4 +1,4 @@
-// DSos v1.4 — painel-ti.js
+// DSos v1.5.3 — painel-ti.js
 import { SB, H, SB_KEY } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
@@ -32,14 +32,11 @@ function tipoIcon(t)  { return SVG[t?.toLowerCase()]||SVG.outro }
 function tipoLabel(t) { return{hardware:'Hardware',software:'Software',periferico:'Periférico',rede:'Rede',outro:'Outro'}[t]||t||'—' }
 function statusCor(s) { return{em_andamento:'rr-yellow',resolvido:'rr-green',descartado:'rr-black',falso_alarme:'rr-red'}[s]||'rr-yellow' }
 function statusLabel(s){ return{em_andamento:'EM PROGRESSO',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO ALARME'}[s]||s }
-
-// [CORREÇÃO 1] pill com suporte a aguardando_peca
 function statusPill(s){
-  const cls={aberto:'sp-aberto',em_andamento:'sp-andamento',resolvido:'sp-resolvido',descartado:'sp-descartado',falso_alarme:'sp-falso',aguardando_peca:'sp-aguard'};
-  const lbl={aberto:'ABERTO',em_andamento:'EM PROG.',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO',aguardando_peca:'AGUARD. PEÇA'};
+  const cls={aberto:'sp-aberto',em_andamento:'sp-andamento',resolvido:'sp-resolvido',descartado:'sp-descartado',falso_alarme:'sp-falso'};
+  const lbl={aberto:'ABERTO',em_andamento:'EM PROG.',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO'};
   return`<span class="spill ${cls[s]||''}">${lbl[s]||s}</span>`;
 }
-
 function statusPcPill(s){
   const m={ativo:'pc-ativo',em_manutencao:'pc-manutencao',descartado:'pc-descartado'};
   const l={ativo:'Ativo',em_manutencao:'Em manutenção',descartado:'Descartado'};
@@ -47,83 +44,6 @@ function statusPcPill(s){
 }
 function tecNome(id){ const u=tiMap[id]; return u?(u.nome||u.login):'—' }
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-
-/* ══════════════════════════════════════════
-   TOAST — legível em dark e light
-══════════════════════════════════════════ */
-const _notifIcons = {
-  ok:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-  err:  `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  warn: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>`,
-  info: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg>`,
-};
-
-function notif(msg, tipo = 'info') {
-  const el = document.getElementById('notif');
-  if (!el) return;
-  const t = {ok:'ok',err:'err',error:'err',warn:'warn',warning:'warn',info:'info'}[tipo] || 'info';
-  el.className = `notif notif-${t}`;
-  el.innerHTML = `<span class="notif-icon">${_notifIcons[t]}</span><span>${msg}</span>`;
-  clearTimeout(el._timer);
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
-  el._timer = setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-/* ══════════════════════════════════════════
-   CONFIRM MODAL CUSTOMIZADO
-══════════════════════════════════════════ */
-const _confirmIcons = {
-  danger:  `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
-  warning: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>`,
-  info:    `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-};
-
-function dsoConfirm({ titulo, sub = '', detalhe = '', tipo = 'danger', okLabel = 'Confirmar', cancelLabel = 'Cancelar' } = {}) {
-  return new Promise(resolve => {
-    const bg        = document.getElementById('dsos-confirm');
-    const ico       = document.getElementById('dsos-confirm-ico');
-    const titleEl   = document.getElementById('dsos-confirm-title');
-    const subEl     = document.getElementById('dsos-confirm-sub');
-    const detEl     = document.getElementById('dsos-confirm-detail');
-    const okBtn     = document.getElementById('dsos-confirm-ok');
-    const cancelBtn = document.getElementById('dsos-confirm-cancel');
-    if (!bg) { resolve(window.confirm(titulo)); return; }
-
-    ico.innerHTML       = _confirmIcons[tipo] || _confirmIcons.danger;
-    ico.className       = `dsos-confirm-ico ${tipo}`;
-    titleEl.textContent = titulo;
-    subEl.textContent   = sub;
-    subEl.style.display = sub ? '' : 'none';
-    detEl.textContent   = detalhe;
-    detEl.style.display = detalhe ? '' : 'none';
-    okBtn.textContent   = okLabel;
-    okBtn.className     = `dsos-confirm-ok ${tipo}`;
-    cancelBtn.textContent = cancelLabel;
-
-    bg.classList.add('open');
-
-    function fechar(result) {
-      bg.classList.remove('open');
-      okBtn.removeEventListener('click', onOk);
-      cancelBtn.removeEventListener('click', onCancel);
-      bg.removeEventListener('click', onBg);
-      document.removeEventListener('keydown', onKey);
-      resolve(result);
-    }
-    const onOk     = () => fechar(true);
-    const onCancel = () => fechar(false);
-    const onBg     = (e) => { if (e.target === bg) fechar(false); };
-    const onKey    = (e) => { if (e.key === 'Escape') fechar(false); if (e.key === 'Enter') fechar(true); };
-
-    okBtn.addEventListener('click', onOk);
-    cancelBtn.addEventListener('click', onCancel);
-    bg.addEventListener('click', onBg);
-    document.addEventListener('keydown', onKey);
-    setTimeout(() => okBtn.focus(), 80);
-  });
-}
 
 /* TEMA */
 window.toggleTema=function(){
@@ -164,19 +84,22 @@ window.addEventListener('DOMContentLoaded',async()=>{
   sbClient.channel('tickets-realtime')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},payload=>{
       carregarTickets();carregarKPIs();
-      if(payload.new?.chamado_emergencia){notif('⚡ CHAMADO DE EMERGÊNCIA!','warn');window._dsosSom?.emergencia?.();}
-      else{notif('Novo chamado recebido!','info');window._dsosSom?.novoChamado?.();}
+      if(payload.new?.chamado_emergencia){
+        notif('⚡ CHAMADO DE EMERGÊNCIA!');
+        window._dsosSom?.emergencia?.();
+      }else{
+        notif('Novo chamado recebido!');
+        window._dsosSom?.novoChamado?.();
+      }
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},()=>{carregarTickets();carregarKPIs();})
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem'},payload=>{
       carregarNaoLidas();
-      // [CORREÇÃO 1] toca som quando PC envia mensagem para o TI
-      if(payload.new?.remetente==='PC') window._dsosSom?.novoChamado?.();
+      if(payload.new?.remetente==='PC')window._dsosSom?.novoChamado?.();
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem'},()=>carregarNaoLidas())
     .subscribe();
 
-  // [CORREÇÃO 1] inclui carregarNaoLidas() no polling de 30s
   setInterval(()=>{carregarTickets();carregarKPIs();carregarPCs();carregarNaoLidas();},30000);
 });
 
@@ -204,10 +127,9 @@ function _atualizarBellBadge(){
 async function carregarKPIs(){
   try{
     const hoje=new Date().toISOString().split('T')[0];
-    // [CORREÇÃO 1] inclui aguardando_peca nos pendentes
     const [rHoje,rPend]=await Promise.all([
       fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=status`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento,aguardando_peca)&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&select=id`,{headers:H}),
     ]);
     const all=await rHoje.json(),pend=await rPend.json();
     document.getElementById('kpi-pendentes').textContent=Array.isArray(pend)?pend.length:0;
@@ -220,9 +142,8 @@ async function carregarKPIs(){
 async function carregarTickets(q=''){
   try{
     const qF=q?`&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`:'';
-    // [CORREÇÃO 1] inclui aguardando_peca na query de tickets ativos
     const [r1,r2,r3]=await Promise.all([
-      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento,aguardando_peca)${qF}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)${qF}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)${qF}&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
     ]);
@@ -230,9 +151,8 @@ async function carregarTickets(q=''){
     let rawR2=await r2.json().then(d=>Array.isArray(d)?d:[]);
     if(q){
       const ql=q.toLowerCase(),matchTag=t=>t.pc_info?.tag?.toLowerCase().includes(ql);
-      // [CORREÇÃO 1] mantém aguardando_peca no filtro de busca por tag também
       const [rt1,rt2]=await Promise.all([
-        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento,aguardando_peca)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
+        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
         fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
       ]);
       const merge=(a,b)=>{const ids=new Set(a.map(x=>x.id));return[...a,...b.filter(x=>!ids.has(x.id))]};
@@ -248,8 +168,7 @@ async function carregarTickets(q=''){
 /* RENDER NÃO RESPONDIDOS */
 function renderUnresp(){
   const list=document.getElementById('unresp-list');
-  // [CORREÇÃO 1] badge conta aberto + em_andamento + aguardando_peca
-  const abertos=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento'||t.status==='aguardando_peca');
+  const abertos=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento');
   document.getElementById('badge-unresp').textContent=abertos.length;
   if(!abertos.length){list.innerHTML=`<div class="empty"><div class="eicon">${SVG.checkOk}</div><p>Nenhum chamado pendente</p></div>`;atualizarBotoes();return}
   list.innerHTML=abertos.map(t=>{
@@ -258,7 +177,7 @@ function renderUnresp(){
     const nome=t.nome_solicitante||'(sem nome)';
     const tec=t.tecnico_responsavel?`<span style="color:var(--green);display:inline-flex;align-items:center;gap:2px;margin-left:4px">${SVG.wrench} ${tecNome(t.tecnico_responsavel)}</span>`:'';
     const nl=naoLidasMap[t.id]?.ti||0;
-    const nlHtml=nl>0?`<span class="ticket-unread-badge visible">${SVG.chat} ${nl}</span>`:'' ;
+    const nlHtml=nl>0?`<span class="ticket-unread-badge visible">${SVG.chat} ${nl}</span>`:'';
     return`<div class="ticket-row${emerg?' emergency':''}${selectedId===t.id?' selected':''}" onclick="selecionarTicket(${t.id})" style="position:relative">
       <div class="tr-icon">${tipoIcon(t.tipo)}</div>
       <div class="tr-main">
@@ -372,24 +291,18 @@ window.setStatus=async function(s){
   if(!selectedId)return;
   const t=tickets.find(x=>x.id===selectedId);if(!t)return;
   const pcTag=t.pc_info?.tag||t.pc_problema||'—';
-  if(s==='em_andamento'){
-    const ok=await dsoConfirm({titulo:'Colocar em andamento?',sub:`Chamado #${t.id} — PC ${pcTag}`,tipo:'warning',okLabel:'Em andamento'});
-    if(!ok)return;
-  }else if(s==='descartado'){
-    abrirMiniModalDescarte(t);return;
-  }else if(s==='falso_alarme'){
-    const ok=await dsoConfirm({titulo:'Marcar como falso alarme?',sub:`Chamado #${t.id} — PC ${pcTag}`,tipo:'warning',okLabel:'Falso Alarme'});
-    if(!ok)return;
-  }
+  if(s==='em_andamento'&&!confirm(`Colocar chamado #${t.id} (PC ${pcTag}) como EM PROGRESSO?`))return;
+  else if(s==='descartado'){abrirMiniModalDescarte(t);return;}
+  else if(s==='falso_alarme'&&!confirm(`Marcar chamado #${t.id} (PC ${pcTag}) como FALSO ALARME?`))return;
   const body={status:s,tecnico_responsavel:session.id};
   if(s==='falso_alarme')body.resolvido_em=new Date().toISOString();
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${selectedId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
-    notif(statusLabel(s)+' — atualizado','ok');
+    notif(statusLabel(s)+' — atualizado');
     if(['resolvido','descartado','falso_alarme'].includes(s))window._dsosSom?.chamadoResolvido?.();
     selectedId=null;
     await Promise.all([carregarTickets(),carregarKPIs()]);
-  }catch(e){notif('Erro ao atualizar chamado.','err')}
+  }catch(e){notif('Erro ao atualizar chamado.')}
 };
 window.abrirResolucao=function(){if(!selectedId)return;const t=tickets.find(x=>x.id===selectedId);if(t)abrirModal(t,true)};
 
@@ -411,9 +324,9 @@ window.confirmarEnvioFila=async function(){
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'descartado',resolucao:'descarte',resolvido_em:new Date().toISOString(),tecnico_responsavel:session.id,item_descartado:item})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'em_manutencao'})});
-    notif('Enviado para fila de descarte','ok');selectedId=null;
+    notif('Enviado para fila de descarte');selectedId=null;
     await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
-  }catch(e){notif('Erro ao enviar para fila.','err')}
+  }catch(e){notif('Erro ao enviar para fila.')}
 };
 document.getElementById('mini-modal-descarte')?.addEventListener('click',e=>{if(e.target===document.getElementById('mini-modal-descarte'))window.fecharMiniModalDescarte()});
 document.getElementById('mini-item-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')window.confirmarEnvioFila()});
@@ -446,8 +359,7 @@ function abrirModal(t,comResolucao){
   document.getElementById('item-desc').style.display='none';
   document.getElementById('modal').classList.add('open');
   removerImgTi();
-  // [CORREÇÃO 1] aguardando_peca também é considerado ativo para o chat
-  const ativo=t.status==='aberto'||t.status==='em_andamento'||t.status==='aguardando_peca';
+  const ativo=t.status==='aberto'||t.status==='em_andamento';
   iniciarChat(t.id,ativo);
   if(ativo)marcarLidoTi(t.id);
 }
@@ -469,14 +381,14 @@ document.getElementById('modal').addEventListener('click',e=>{if(e.target===docu
 window.salvarPrioridade=async function(){
   if(!modalTicketId)return;
   await fetch(`${SB}/rest/v1/ticket?id=eq.${modalTicketId}`,{method:'PATCH',headers:H,body:JSON.stringify({prioridade:document.getElementById('m-prio').value})});
-  notif('Prioridade atualizada','ok');await carregarTickets();
+  notif('Prioridade atualizada');await carregarTickets();
 };
 
 /* RESOLUÇÃO */
 window.toggleItemDesc=function(){document.getElementById('item-desc').style.display=document.getElementById('res-tipo').value==='descarte'?'block':'none';};
 window.confirmarResolucao=async function(){
   const tipo=document.getElementById('res-tipo').value;
-  if(!tipo){notif('Selecione o tipo de resolução.','warn');return}
+  if(!tipo){notif('Selecione o tipo de resolução.');return}
   const descRes=document.getElementById('res-desc').value.trim();
   if(tipo==='descarte'){
     const t=tickets.find(x=>x.id===modalTicketId)||respondidos.find(x=>x.id===modalTicketId);
@@ -486,30 +398,23 @@ window.confirmarResolucao=async function(){
   const statusMap={consertado:'resolvido',aguardando_peca:'em_andamento'};
   const pcStatusMap={consertado:'ativo',aguardando_peca:'em_manutencao'};
   const novoStatus=statusMap[tipo];
+  const body={status:novoStatus,resolucao:tipo,resolvido_em:novoStatus==='resolvido'?new Date().toISOString():null,tecnico_responsavel:session.id,descricao_resolucao:descRes||null};
   const t=tickets.find(x=>x.id===modalTicketId);
   if(t){
-    const rotulo={consertado:'Consertado',aguardando_peca:'Aguardando Peça'}[tipo]||tipo;
-    const ok=await dsoConfirm({
-      titulo:`Confirmar "${rotulo}"?`,
-      sub:`Chamado #${t.id} — PC ${t.pc_info?.tag||t.pc_problema}`,
-      detalhe:descRes?`Resumo: ${descRes}`:'',
-      tipo:tipo==='consertado'?'info':'warning',
-      okLabel:rotulo,
-    });
-    if(!ok)return;
+    const rotulo={consertado:'CONSERTADO',aguardando_peca:'AGUARDANDO PEÇA'}[tipo]||tipo;
+    if(!confirm(`Confirmar "${rotulo}" para chamado #${t.id}?\n${descRes?'Resumo: '+descRes:''}`))return;
   }
   try{
-    const body={status:novoStatus,resolucao:tipo,resolvido_em:novoStatus==='resolvido'?new Date().toISOString():null,tecnico_responsavel:session.id,descricao_resolucao:descRes||null};
     const r=await fetch(`${SB}/rest/v1/ticket?id=eq.${modalTicketId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
     const updated=await r.json();
     const pcId=Array.isArray(updated)&&updated[0]?updated[0].pc_problema:null;
     if(pcId&&pcStatusMap[tipo])
       await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
-    notif('Chamado resolvido!','ok');window._dsosSom?.chamadoResolvido?.();
+    notif('Chamado resolvido!');window._dsosSom?.chamadoResolvido?.();
     if(selectedId===modalTicketId)selectedId=null;
     window.fecharModal();
     await Promise.all([carregarTickets(),carregarKPIs()]);
-  }catch(e){notif('Erro ao resolver chamado.','err')}
+  }catch(e){notif('Erro ao resolver chamado.')}
 };
 
 /* MODAL DESCARTE FÍSICO */
@@ -525,25 +430,14 @@ window.abrirModalDescarte=function(pcId,ticketId,itemDescartado,descricao,e){
 };
 window.fecharModalDescarte=function(){document.getElementById('modal-descarte').classList.remove('open');descarteAtual={pcId:null,ticketId:null};};
 document.getElementById('modal-descarte').addEventListener('click',e=>{if(e.target===document.getElementById('modal-descarte'))window.fecharModalDescarte()});
-
 window.confirmarDescarteFisico=async function(){
   const oque=document.getElementById('desc-oque').value.trim();
   const como=document.getElementById('desc-como').value.trim();
   const pcCompleto=document.getElementById('desc-pc-completo').checked;
-  if(!oque){notif('Informe o que foi descartado.','warn');document.getElementById('desc-oque').focus();return}
+  if(!oque){notif('Informe o que foi descartado.');document.getElementById('desc-oque').focus();return}
   const{pcId,ticketId}=descarteAtual;
-  if(!pcId){notif('Erro: PC não identificado.','err');return}
-  const detalheLinhas=[`Item: ${oque}`];
-  if(como)detalheLinhas.push(`Meio: ${como}`);
-  if(pcCompleto)detalheLinhas.push('PC será marcado como DESCARTADO.');
-  const ok=await dsoConfirm({
-    titulo:'Confirmar descarte físico?',
-    sub:'Esta ação é registrada para rastreabilidade PNRS.',
-    detalhe:detalheLinhas.join('\n'),
-    tipo:'danger',
-    okLabel:'Confirmar Descarte',
-  });
-  if(!ok)return;
+  if(!pcId){notif('Erro: PC não identificado.');return}
+  if(!confirm(`Confirmar DESCARTE FÍSICO?\nItem: ${oque}\n${como?'Meio: '+como+'\n':''}${pcCompleto?'PC será marcado DESCARTADO.':'PC permanece ativo.'}`))return;
   try{
     const linhas=[`[DESCARTE FÍSICO REGISTRADO]`,`Item: ${oque}`];
     if(como)linhas.push(`Meio: ${como}`);
@@ -551,64 +445,42 @@ window.confirmarDescarteFisico=async function(){
     linhas.push(`Registrado em: ${new Date().toLocaleString('pt-BR')}`,`Técnico: ${session.nome||session.login}`);
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({descricao_resolucao:linhas.join('\n'),tecnico_responsavel:session.id})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcCompleto?'descartado':'ativo'})});
-    notif('Descarte físico registrado','ok');window.fecharModalDescarte();
+    notif('Descarte físico registrado');window.fecharModalDescarte();
     await Promise.all([carregarTickets(),carregarPCs()]);
-  }catch(err){console.error(err);notif('Erro ao registrar descarte.','err')}
+  }catch(err){console.error(err);notif('Erro ao registrar descarte.')}
 };
 window.abrirGuia=function(){window.open('https://www.mma.gov.br/cidades-sustentaveis/residuos-solidos/politica-nacional-de-residuos-solidos.html','_blank')};
 
 /* FILTRO / DISPENSAR / REABRIR / LIMPAR / CANCELAR */
 window.filtrar=function(f,btn){filtroAtivo=f;document.querySelectorAll('.rf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderResp();};
 window.dispensar=function(id,e){e.stopPropagation();ocultados.add(id);respondidos=respondidos.filter(r=>r.id!==id);renderResp();};
-
 window.reabrirTicket=async function(id,e){
   e.stopPropagation();
-  const ok=await dsoConfirm({
-    titulo:`Reabrir chamado #${id}?`,
-    sub:'Status volta para ABERTO e PC para ATIVO.',
-    tipo:'warning',
-    okLabel:'Reabrir',
-  });
-  if(!ok)return;
+  if(!confirm(`Reabrir chamado #${id}?\nStatus volta para ABERTO e PC para ATIVO.`))return;
   try{
     const tr=await fetch(`${SB}/rest/v1/ticket?id=eq.${id}&select=pc_problema`,{headers:H});
     const td=await tr.json();const pcId=Array.isArray(td)&&td[0]?td[0].pc_problema:null;
     await fetch(`${SB}/rest/v1/ticket?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,tecnico_responsavel:null,descricao_resolucao:null})});
     if(pcId)await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'ativo'})});
-    notif('Chamado #'+id+' reaberto','ok');
+    notif('Chamado #'+id+' reaberto');
     ocultados.add(id);respondidos=respondidos.filter(r=>r.id!==id);
     await Promise.all([carregarTickets(),carregarKPIs()]);mudarAba('abertos');
-  }catch(e){notif('Erro ao reabrir chamado.','err')}
+  }catch(e){notif('Erro ao reabrir chamado.')}
 };
-
-window.limparRespondidos=async function(){
+window.limparRespondidos=function(){
   if(!respondidos.length)return;
-  const ok=await dsoConfirm({
-    titulo:'Limpar lista de respondidos?',
-    sub:'Os dados permanecem no banco. Apenas a visualização será limpa.',
-    tipo:'info',
-    okLabel:'Limpar lista',
-  });
-  if(!ok)return;
-  respondidos.forEach(t=>ocultados.add(t.id));respondidos=[];renderResp();notif('Lista limpa','ok');
+  if(!confirm('Limpar lista?\n(Dados permanecem no banco.)'))return;
+  respondidos.forEach(t=>ocultados.add(t.id));respondidos=[];renderResp();notif('Lista limpa');
 };
-
 window.cancelarItemDescarte=async function(ticketId,pcId,e){
   if(e)e.stopPropagation();
-  const ok=await dsoConfirm({
-    titulo:'Cancelar descarte?',
-    sub:'Chamado volta para ABERTO e PC volta para ATIVO.',
-    tipo:'warning',
-    okLabel:'Cancelar descarte',
-    cancelLabel:'Manter',
-  });
-  if(!ok)return;
+  if(!confirm('Cancelar descarte?\nChamado volta para ABERTO e PC para ATIVO.'))return;
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,item_descartado:null,tecnico_responsavel:null,descricao_resolucao:null})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'ativo'})});
-    notif('Descarte cancelado — chamado reaberto','ok');
+    notif('Descarte cancelado — chamado reaberto');
     await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
-  }catch(err){notif('Erro ao cancelar descarte.','err')}
+  }catch(err){notif('Erro ao cancelar descarte.')}
 };
 
 /* LIMPEZA */
@@ -654,31 +526,26 @@ window.verImpactoLimpeza=async function(){
     btn.disabled=false;btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ver impacto`;
   }
 };
-
 window.executarLimpeza=async function(){
   if(!_limpezaPreviewOk)return;
   const prazoLabel=_limpezaDias>=9999?'todos os registros encerrados':`os últimos ${_limpezaDias} dias`;
-  const ok=await dsoConfirm({
-    titulo:'Executar limpeza do banco?',
-    sub:`Limpar ${prazoLabel}.`,
-    detalhe:'Esta ação é IRREVERSÍVEL. Tickets encerrados, mensagens e imagens serão deletados permanentemente.',
-    tipo:'danger',
-    okLabel:'Limpar agora',
-  });
-  if(!ok)return;
+  if(!confirm(`Confirmar limpeza de ${prazoLabel}?\nAção IRREVERSÍVEL.`))return;
   const btn=document.getElementById('btn-executar-limpeza');
   btn.disabled=true;btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpando…`;
   try{
     const res=await fetch(`${SB}/functions/v1/fn-limpar-dados`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':'application/json'},body:JSON.stringify({dias:_limpezaDias,apenas_preview:false})});
     const d=await _parseFnResponse(res);
     _limpezaPreviewOk=false;resetAbaManutencao();
-    notif(`Limpeza: ${d.tickets_deletados} tickets, ${d.imagens_deletadas} imgs, ${d.mb_liberados}MB`,'ok');
+    notif(`Limpeza: ${d.tickets_deletados} tickets, ${d.imagens_deletadas} imgs, ${d.mb_liberados}MB`);
     await Promise.all([carregarTickets(),carregarKPIs()]);
   }catch(err){
-    notif('Erro: '+err.message,'err');btn.disabled=false;
+    notif('Erro: '+err.message);btn.disabled=false;
     btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpar agora`;
   }
 };
+
+/* NOTIF */
+function notif(msg){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
 
 /* ═══ CHAT TI ═══ */
 let imgPendenteTi=null;
@@ -726,7 +593,7 @@ window.enviarMsgTi=async function(e){
   if(!txt&&!imgPendenteTi)return;if(!modalTicketId)return;
   inp.value='';
   let imagem_url=null;
-  if(imgPendenteTi){try{imagem_url=await uploadImagem(imgPendenteTi);}catch(err){notif('Erro ao enviar imagem.','err');return}removerImgTi();}
+  if(imgPendenteTi){try{imagem_url=await uploadImagem(imgPendenteTi);}catch(err){notif('Erro ao enviar imagem.');return}removerImgTi();}
   try{
     await fetch(`${SB}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({
       ticket_id:modalTicketId,remetente:'TI',conteudo:txt||null,imagem_url,
@@ -734,7 +601,7 @@ window.enviarMsgTi=async function(e){
       nome_remetente:session.nome||session.login||'T.I.'
     })});
     await carregarMsgsTi(modalTicketId);
-  }catch(err){notif('Erro ao enviar mensagem.','err')}
+  }catch(err){notif('Erro ao enviar mensagem.')}
 };
 async function uploadImagem(file){
   const ext=(file.name&&file.name.includes('.'))?file.name.split('.').pop():(file.type.split('/')[1]||'jpg');
@@ -797,20 +664,7 @@ function renderPCs(){
     return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${pc.tag||'—'}</div><button class="btn-ti-del-pc" title="Remover" onclick="deletarPC(${pc.id},'${pc.tag}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${pc.laboratorio||'—'}</span><span>Lado ${pc.lado||'—'}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
   }).join('');
 }
-
-window.deletarPC=async function(id,tag,e){
-  e.stopPropagation();
-  const ok=await dsoConfirm({
-    titulo:`Remover PC "${tag}"?`,
-    sub:'Todos os chamados vinculados serão excluídos permanentemente.',
-    tipo:'danger',
-    okLabel:'Remover PC',
-  });
-  if(!ok)return;
-  try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`PC ${tag} removido.`,'ok');await carregarPCs();}
-  catch(e){notif('Erro ao remover.','err')}
-};
-
+window.deletarPC=async function(id,tag,e){e.stopPropagation();if(!confirm(`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`PC ${tag} removido.`);await carregarPCs();}catch(e){notif('Erro ao remover.')}};
 window.abrirModalPC=function(id){
   const numericId=id!=null?Number(id):null;pcEditandoId=numericId;const editando=numericId!=null;
   document.getElementById('mpc-title').textContent=editando?'Editar Computador':'Cadastrar Computador';
@@ -827,14 +681,14 @@ document.getElementById('modal-pc').addEventListener('click',e=>{if(e.target===d
 window.salvarPC=async function(){
   const tag=document.getElementById('mpc-tag').value.trim().toUpperCase(),lab=document.getElementById('mpc-lab').value.trim();
   const lado=document.getElementById('mpc-lado').value,senha=document.getElementById('mpc-senha').value,status=document.getElementById('mpc-status').value;
-  if(!lab){notif('Informe o laboratório.','warn');return}
+  if(!lab){notif('Informe o laboratório.');return}
   if(pcEditandoId===null){
-    if(!tag){notif('Informe a tag.','warn');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.','warn');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_tag:tag,p_laboratorio:lab,p_lado:lado,p_senha:senha})});const res=await r.json();if(!r.ok)throw new Error(res.message||'Erro');notif(`PC ${tag} cadastrado!`,'ok');window.fecharModalPC();await carregarPCs();}
-    catch(e){notif('Erro: '+e.message,'err')}
+    if(!tag){notif('Informe a tag.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
+    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_tag:tag,p_laboratorio:lab,p_lado:lado,p_senha:senha})});const res=await r.json();if(!r.ok)throw new Error(res.message||'Erro');notif(`PC ${tag} cadastrado!`);window.fecharModalPC();await carregarPCs();}
+    catch(e){notif('Erro: '+e.message)}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:H,body:JSON.stringify({laboratorio:lab,lado:lado})});notif('PC atualizado!','ok');window.fecharModalPC();await carregarPCs();}
-    catch(e){notif('Erro ao atualizar.','err')}
+    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:H,body:JSON.stringify({laboratorio:lab,lado:lado})});notif('PC atualizado!');window.fecharModalPC();await carregarPCs();}
+    catch(e){notif('Erro ao atualizar.')}
   }
 };
 
@@ -858,22 +712,17 @@ window.fecharModalTI=function(){document.getElementById('modal-ti-user').classLi
 document.getElementById('modal-ti-user').addEventListener('click',e=>{if(e.target===document.getElementById('modal-ti-user'))window.fecharModalTI()});
 window.salvarTI=async function(){
   const nome=document.getElementById('mti-nome').value.trim(),login=document.getElementById('mti-login').value.trim(),senha=document.getElementById('mti-senha').value;
-  if(!nome){notif('Informe o nome.','warn');return}
+  if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){
-    if(!login){notif('Informe o login.','warn');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.','warn');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`${nome} cadastrado!`,'ok');window.fecharModalTI();await carregarTIs();}
-    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message),'err')}
+    if(!login){notif('Informe o login.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
+    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`${nome} cadastrado!`);window.fecharModalTI();await carregarTIs();}
+    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null})});notif('Atualizado!','ok');window.fecharModalTI();await carregarTIs();}
-    catch(e){notif('Erro ao atualizar.','err')}
+    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null})});notif('Atualizado!');window.fecharModalTI();await carregarTIs();}
+    catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarTI=async function(id,nome){
-  const ok=await dsoConfirm({titulo:`Remover "${nome}"?`,sub:'O usuário perderá acesso ao sistema.',tipo:'danger',okLabel:'Remover'});
-  if(!ok)return;
-  try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`,'ok');await carregarTIs();}
-  catch(e){notif('Erro.','err')}
-};
+window.deletarTI=async function(id,nome){if(!confirm(`Remover "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
 
 /* ═══ PROFESSORES ═══ */
 let todosOsProfs=[],profEditandoId=null;
@@ -891,22 +740,17 @@ window.fecharModalProf=function(){document.getElementById('modal-professor').cla
 document.getElementById('modal-professor').addEventListener('click',e=>{if(e.target===document.getElementById('modal-professor'))window.fecharModalProf()});
 window.salvarProf=async function(){
   const nome=document.getElementById('mprof-nome').value.trim(),login=document.getElementById('mprof-login').value.trim(),disciplina=document.getElementById('mprof-disciplina').value.trim(),senha=document.getElementById('mprof-senha').value;
-  if(!nome){notif('Informe o nome.','warn');return}
+  if(!nome){notif('Informe o nome.');return}
   if(profEditandoId===null){
-    if(!login){notif('Informe o login.','warn');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.','warn');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`Prof. ${nome} cadastrado!`,'ok');window.fecharModalProf();await carregarProfs();}
-    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message),'err')}
+    if(!login){notif('Informe o login.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
+    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`Prof. ${nome} cadastrado!`);window.fecharModalProf();await carregarProfs();}
+    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});notif('Prof. atualizado!','ok');window.fecharModalProf();await carregarProfs();}
-    catch(e){notif('Erro ao atualizar.','err')}
+    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});notif('Prof. atualizado!');window.fecharModalProf();await carregarProfs();}
+    catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarProf=async function(id,nome){
-  const ok=await dsoConfirm({titulo:`Remover prof. "${nome}"?`,sub:'O professor perderá acesso ao sistema.',tipo:'danger',okLabel:'Remover'});
-  if(!ok)return;
-  try{await fetch(`${SB}/rest/v1/professor?id=eq.${id}`,{method:'DELETE',headers:H});notif(`Prof. ${nome} removido.`,'ok');await carregarProfs();}
-  catch(e){notif('Erro.','err')}
-};
+window.deletarProf=async function(id,nome){if(!confirm(`Remover prof. "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/professor?id=eq.${id}`,{method:'DELETE',headers:H});notif(`Prof. ${nome} removido.`);await carregarProfs();}catch(e){notif('Erro.')}};
 
 /* ═══ BUSCA DEBOUNCED ═══ */
 let _bTimers={};
@@ -935,7 +779,6 @@ const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6v
 const EGG_NOME='Rickelme';
 const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
 
-// EGG 1: 5 cliques no título DSos
 let _eggClicks=0,_eggTimer=null;
 document.getElementById('egg-trigger')?.addEventListener('click',()=>{
   _eggClicks++;clearTimeout(_eggTimer);
@@ -952,11 +795,10 @@ function _abrirEgg(){
 window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_fecharEggKey);};
 function _fecharEggKey(e){if(e.key==='Escape')window.fecharEgg();}
 
-// EGG 2: digitar "corinthians" na busca
 document.getElementById('unresp-search')?.addEventListener('input',function(){
   if(this.value.toLowerCase().trim()==='corinthians'){
     this.value='';
-    notif('🖤🤍 VAI CORINTHIANS! Campeão do mundo 2000! 🏆','info');
+    notif('🖤🤍 VAI CORINTHIANS! Campeão do mundo 2000! 🏆');
     setTimeout(()=>{
       const card=document.querySelector('.card');
       if(card){card.style.transition='box-shadow .3s';card.style.boxShadow='0 0 0 3px #000, 0 0 0 6px #fff, 0 0 40px rgba(0,0,0,.8)';setTimeout(()=>{card.style.boxShadow='';},2000)}
@@ -964,15 +806,13 @@ document.getElementById('unresp-search')?.addEventListener('input',function(){
   }
 });
 
-// EGG 3: 3 cliques no KPI de resolvidos
 let _kpiClicks=0,_kpiTimer=null;
 document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('click',()=>{
   _kpiClicks++;clearTimeout(_kpiTimer);
   _kpiTimer=setTimeout(()=>{_kpiClicks=0},1200);
-  if(_kpiClicks>=3){_kpiClicks=0;notif('💪 Bom trabalho! Continue assim, campeão.','ok');}
+  if(_kpiClicks>=3){_kpiClicks=0;notif('💪 Bom trabalho! Continue assim, campeão.');}
 });
 
-// EGG 4: Konami Code
 const _konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter'];
 let _konamiIdx=0;
 document.addEventListener('keydown',e=>{
@@ -980,7 +820,7 @@ document.addEventListener('keydown',e=>{
   else _konamiIdx=0;
 });
 function _konamiMode(){
-  notif('🖤🤍 MODO CORINTHIANS ATIVADO! Vai Timão! 🏆','info');
+  notif('🖤🤍 MODO CORINTHIANS ATIVADO! Vai Timão! 🏆');
   const body=document.body;
   body.style.transition='filter .3s';
   body.style.filter='grayscale(1) contrast(1.2)';
