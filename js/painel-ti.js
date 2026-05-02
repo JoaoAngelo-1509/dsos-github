@@ -722,7 +722,28 @@ window.salvarTI=async function(){
     catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarTI=async function(id,nome){if(!confirm(`Remover "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
+window.deletarTI = async function(id, nome) {
+  if (!confirm(`Remover "${nome}"?`)) return;
+  try {
+    const r = await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`, {
+      method: 'POST', headers: H,
+      body: JSON.stringify({ p_id: id })
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      // Mensagem vinda do banco (ex: "Não é possível remover o único usuário T.I...")
+      const msg = err.message || err.hint || 'Erro ao remover usuário.';
+      notif(`⚠️ ${msg}`);
+      return;
+    }
+
+    notif(`${nome} removido com sucesso.`);
+    await carregarTIs();
+  } catch (e) {
+    notif('Erro de conexão ao tentar remover usuário.');
+  }
+};
 
 /* ═══ PROFESSORES ═══ */
 let todosOsProfs=[],profEditandoId=null;
