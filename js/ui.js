@@ -1,12 +1,30 @@
 // DSos v1.3 alpha alpha — ui.js
 // ── ui.js — Utilitários de UI compartilhados entre todas as páginas ──
 
+// ── PATHS DE BACKGROUND ──
+const BGPATH = {
+  light: '../images/BG.svg',
+  dark: '../images/BG_dark_mode.svg'
+};
+
 // ── MODO ESCURO ──
 // chave de storage: 'dsos_tema_login'
 export function applyTheme() {
   const saved = localStorage.getItem('dsos_tema_login');
   if (saved === 'dark') {
     document.documentElement.dataset.theme = 'dark';
+  }
+  applyBgTheme();
+}
+
+function applyBgTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  const bgEl = document.querySelector('.bg');
+  
+  if (bgEl) {
+    const bgUrl = isDark ? BGPATH.dark : BGPATH.light;
+    bgEl.style.backgroundImage = `url('${bgUrl}')`;
   }
 }
 
@@ -16,6 +34,7 @@ export function toggleTema() {
   html.dataset.theme = dark ? 'light' : 'dark';
   localStorage.setItem('dsos_tema_login', html.dataset.theme);
   updateTemaIcon(!dark);
+  applyBgTheme();
 }
 
 export function updateTemaIcon(isDark) {
