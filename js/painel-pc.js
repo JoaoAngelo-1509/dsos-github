@@ -1,39 +1,66 @@
-// DSos v1.5.2 — painel-pc.js
+// DSos v1.5 — painel-pc.js
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
-import { initSessionGuard, destroySessionGuard } from './session-guard.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
-let realtimeGlobal  = null;
 
 let session=null, tipo=null, tipoRapido=null, emergAtivo=false, tickets=[], chatTicketId=null;
 
+// ── RATE LIMITING DE TICKETS ───────────────────────────────────────────────
+// Verifica no banco se o solicitante atingiu 5 aberturas nos últimos 5 minutos.
+// Emergências (chamado_emergencia = true) nunca são verificadas.
+async function _checkTicketRateLimit() {
+  try {
+    const body = session.tipo === 'professor'
+      ? { p_professor_login: session.nome || session.login }
+      : { p_pc_id: session.id };
+
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/rpc_check_ticket_rate_limit`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify(body)
+    });
+    return await r.json();
+  } catch {
+    // Falha na checagem → não bloqueia (fail-open)
+    return { bloqueado: false };
+  }
+}
+
+// Exibe mensagem de bloqueio com contador regressivo no elemento de toast
+let _ticketRLTimer = null;
+function _exibirBloqueioTicket(segundos) {
+  if (_ticketRLTimer) clearInterval(_ticketRLTimer);
+  let restantes = segundos;
+
+  function _atualizar() {
+    const min = Math.floor(restantes / 60);
+    const seg = String(restantes % 60).padStart(2, '0');
+    const label = min > 0 ? `${min}:${seg}` : `${restantes}s`;
+    toast(`Limite atingido. Aguarde ${label} para abrir novo chamado.`, 'err');
+    if (restantes <= 0) {
+      clearInterval(_ticketRLTimer);
+      _ticketRLTimer = null;
+    }
+    restantes--;
+  }
+
+  _atualizar();
+  _ticketRLTimer = setInterval(_atualizar, 1000);
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 window.addEventListener('DOMContentLoaded', async () => {
-  // ── TEMA: aplica imediatamente, antes de qualquer render
-  const temaSalvo = localStorage.getItem('dsos_tema_login') || 'dark';
-  document.documentElement.dataset.theme = temaSalvo;
+  const temaSalvo = localStorage.getItem('dsos_tema_login');
   if (temaSalvo === 'dark') {
-    document.getElementById('ico-tema').innerHTML = _icoLua();
-  } else {
+    document.documentElement.dataset.theme = 'dark';
     document.getElementById('ico-tema').innerHTML = _icoSol();
   }
 
   const raw = sessionStorage.getItem('dsos_session');
   if (!raw) { window.location.href = 'login.html'; return; }
   session = JSON.parse(raw);
-
-  if (session.tipo !== 'pc' && session.tipo !== 'professor') {
-    window.location.href = 'login.html'; return;
-  }
-
-  // Inicia guard de inatividade — 30 min
-  initSessionGuard({
-    onLogout: () => {
-      destroySessionGuard();
-      sessionStorage.removeItem('dsos_session');
-      window.location.href = 'login.html?motivo=inatividade';
-    }
-  });
+  if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
 
   if (session.tipo === 'professor') {
     document.getElementById('info-nome').textContent  = session.nome || session.login;
@@ -46,7 +73,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('rapido-title-txt').textContent = 'Selecione o tipo de problema e informe a tag do PC. O T.I. será notificado imediatamente.';
     window.toggleEmerg();
     await carregarChamados();
-    _iniciarRealtimeGlobal();
     setInterval(carregarChamados, 30000);
     return;
   }
@@ -81,53 +107,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   } catch(e) { /* silencioso */ }
 
   await carregarChamados();
-  _iniciarRealtimeGlobal();
   setInterval(carregarChamados, 30000);
 });
 
 function _icoSol(){return`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`}
 function _icoLua(){return`<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`}
-
-// Canal Realtime global: atualiza badges de não-lidas sem depender do chat estar aberto
-function _iniciarRealtimeGlobal() {
-  if (realtimeGlobal) { sbClient.removeChannel(realtimeGlobal); realtimeGlobal = null; }
-  realtimeGlobal = sbClient
-    .channel('pc-global-notif')
-    .on('postgres_changes', {
-      event:  'INSERT',
-      schema: 'public',
-      table:  'mensagem'
-    }, async (payload) => {
-      if (payload.new?.remetente !== 'TI') return;
-      const tid = payload.new?.ticket_id;
-      if (tid && tid === chatTicketId) return;
-      await _atualizarNaoLidas();
-      window._dsosSom?.notificacao?.();
-    })
-    .on('postgres_changes', {
-      event:  'UPDATE',
-      schema: 'public',
-      table:  'ticket'
-    }, async () => {
-      await carregarChamados();
-    })
-    .subscribe();
-}
-
-// Busca apenas não-lidas e re-renderiza sem recarregar tickets
-async function _atualizarNaoLidas() {
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/rpc/rpc_nao_lidas_por_ticket`, {
-      method: 'POST', headers: H, body: '{}'
-    });
-    const nl = await r.json();
-    window._naoLidasPC = {};
-    if (Array.isArray(nl)) nl.forEach(x => {
-      window._naoLidasPC[x.ticket_id] = parseInt(x.nao_lidas_pc) || 0;
-    });
-  } catch(e) { /* silencioso */ }
-  renderChamados();
-}
 
 window.toggleTema = function() {
   const html = document.documentElement, dark = html.dataset.theme === 'dark';
@@ -155,7 +139,9 @@ window.pickRapido = function(el) {
 
 window.enviarRapido = async function() {
   if (!tipoRapido) return;
-  let pcOrigemId,pcProblemaId,lab,lado;
+
+  // Resolve PC origem e problema antes de checar rate limit
+  let pcOrigemId, pcProblemaId, lab, lado;
   if (session.tipo==='professor') {
     const tag=document.getElementById('prof-pc-tag-rapido').value.trim().toUpperCase();
     if (!tag){toast('Informe a tag do PC com problema.','err');return}
@@ -165,10 +151,31 @@ window.enviarRapido = async function() {
       if(!Array.isArray(pcs)||!pcs.length){toast('Tag do PC não encontrada.','err');return}
       pcOrigemId=pcs[0].id;pcProblemaId=pcs[0].id;lab=pcs[0].laboratorio;lado=pcs[0].lado;
     }catch(e){toast('Erro ao buscar PC.','err');return}
-  } else {pcOrigemId=session.id;pcProblemaId=session.id;lab=session.laboratorio;lado=session.lado;}
+  } else {
+    pcOrigemId=session.id;pcProblemaId=session.id;lab=session.laboratorio;lado=session.lado;
+  }
+
+  // Chamados rápidos de professor são sempre emergência → pula rate limit
+  const ehEmergencia = session.tipo === 'professor';
+
+  if (!ehEmergencia) {
+    const rl = await _checkTicketRateLimit();
+    if (rl?.bloqueado) {
+      _exibirBloqueioTicket(rl.segundos_restantes || 300);
+      return;
+    }
+  }
+
   const btn=document.getElementById('btn-rapido-send');btn.classList.add('loading');
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({pc_origem:pcOrigemId,pc_problema:pcProblemaId,tipo:tipoRapido,descricao:'(chamado rápido)',laboratorio:lab,lado,status:'aberto',prioridade:'medio',aberto_em:new Date().toISOString(),nome_solicitante:session.nome,chamado_emergencia:session.tipo==='professor'})});
+    const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({
+      pc_origem:pcOrigemId,pc_problema:pcProblemaId,
+      tipo:tipoRapido,descricao:'(chamado rápido)',
+      laboratorio:lab,lado,status:'aberto',prioridade:'medio',
+      aberto_em:new Date().toISOString(),
+      nome_solicitante:session.nome,
+      chamado_emergencia:ehEmergencia
+    })});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const data=await r.json();const id=Array.isArray(data)?data[0]?.id:data?.id;
     document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
@@ -202,6 +209,7 @@ async function carregarChamados(q='') {
     const r=await fetch(`${SB_URL}/rest/v1/ticket?${filtroBase}${searchFilter}&order=aberto_em.desc&select=*`,{headers:H});
     const data=await r.json();tickets=Array.isArray(data)?data:[];
   }catch(e){tickets=[];}
+  // Busca não lidas do PC
   try{
     const r=await fetch(`${SB_URL}/rest/v1/rpc/rpc_nao_lidas_por_ticket`,{method:'POST',headers:H,body:'{}'});
     const nl=await r.json();
@@ -412,6 +420,17 @@ window.abrirChamado = async function() {
   const desc=document.getElementById('descricao').value.trim();
   if(!desc){toast('Adicione uma descrição do problema.','err');return}
   if(session.tipo==='professor'&&!emergAtivo){toast('Professores só podem abrir chamados de emergência.','err');return}
+
+  // Emergências (emergAtivo ou professor) pulam o rate limit
+  const ehEmergencia = emergAtivo || session.tipo === 'professor';
+  if (!ehEmergencia) {
+    const rl = await _checkTicketRateLimit();
+    if (rl?.bloqueado) {
+      _exibirBloqueioTicket(rl.segundos_restantes || 300);
+      return;
+    }
+  }
+
   let pcOrigemId=session.tipo==='pc'?session.id:null,pcProblemaId=session.tipo==='pc'?session.id:null;
   if(emergAtivo){
     const epTag=document.getElementById('emerg-pc').value.trim();
@@ -426,7 +445,15 @@ window.abrirChamado = async function() {
   }
   const btn=document.getElementById('btn-submit');btn.classList.add('loading');
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({pc_origem:pcOrigemId,pc_problema:pcProblemaId,tipo,descricao:desc,laboratorio:session.laboratorio,lado:session.lado,status:'aberto',prioridade:'medio',aberto_em:new Date().toISOString(),nome_solicitante:session.nome,chamado_emergencia:emergAtivo||session.tipo==='professor'})});
+    const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({
+      pc_origem:pcOrigemId,pc_problema:pcProblemaId,
+      tipo,descricao:desc,
+      laboratorio:session.laboratorio,lado:session.lado,
+      status:'aberto',prioridade:'medio',
+      aberto_em:new Date().toISOString(),
+      nome_solicitante:session.nome,
+      chamado_emergencia:ehEmergencia
+    })});
     if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||'HTTP '+r.status)}
     const data=await r.json();const id=Array.isArray(data)?data[0]?.id:data?.id;
     document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
@@ -452,13 +479,7 @@ window.resetForm = function() {
   trocarAba('chamados');
 };
 
-window.sair = function () {
-  destroySessionGuard();
-  if (realtimeGlobal)  { sbClient.removeChannel(realtimeGlobal);  realtimeGlobal  = null; }
-  if (realtimeChannel) { sbClient.removeChannel(realtimeChannel); realtimeChannel = null; }
-  sessionStorage.removeItem('dsos_session');
-  window.location.href = 'login.html';
-};
+window.sair = function() { sessionStorage.removeItem('dsos_session');window.location.href='login.html'; };
 
 function toast(msg,t){
   const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t} show`;
