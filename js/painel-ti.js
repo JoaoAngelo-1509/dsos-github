@@ -1,4 +1,4 @@
-// DSos v1.5.3 — painel-ti.js
+// DSos v1.4 — painel-ti.js
 import { SB, H, SB_KEY } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
@@ -57,11 +57,13 @@ window.toggleTema=function(){
 
 /* INIT */
 window.addEventListener('DOMContentLoaded',async()=>{
-  const saved=localStorage.getItem('dsos_tema_login');
-  if(saved){
-    document.documentElement.dataset.theme=saved;
-    if(saved==='light') document.getElementById('ico-tema').innerHTML=`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+  // ── TEMA: aplica imediatamente, antes de qualquer render
+  const saved = localStorage.getItem('dsos_tema_login') || 'dark';
+  document.documentElement.dataset.theme = saved;
+  if (saved === 'light') {
+    document.getElementById('ico-tema').innerHTML = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
   }
+
   const raw=sessionStorage.getItem('dsos_session');
   if(!raw){window.location.href='login.html';return}
   session=JSON.parse(raw);
@@ -84,13 +86,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
   sbClient.channel('tickets-realtime')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},payload=>{
       carregarTickets();carregarKPIs();
-      if(payload.new?.chamado_emergencia){
-        notif('⚡ CHAMADO DE EMERGÊNCIA!');
-        window._dsosSom?.emergencia?.();
-      }else{
-        notif('Novo chamado recebido!');
-        window._dsosSom?.novoChamado?.();
-      }
+      if(payload.new?.chamado_emergencia){notif('⚡ CHAMADO DE EMERGÊNCIA!');window._dsosSom?.emergencia?.();}
+      else{notif('Novo chamado recebido!');window._dsosSom?.novoChamado?.();}
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},()=>{carregarTickets();carregarKPIs();})
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem'},payload=>{
@@ -722,28 +719,7 @@ window.salvarTI=async function(){
     catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarTI = async function(id, nome) {
-  if (!confirm(`Remover "${nome}"?`)) return;
-  try {
-    const r = await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`, {
-      method: 'POST', headers: H,
-      body: JSON.stringify({ p_id: id })
-    });
-
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      // Mensagem vinda do banco (ex: "Não é possível remover o único usuário T.I...")
-      const msg = err.message || err.hint || 'Erro ao remover usuário.';
-      notif(`⚠️ ${msg}`);
-      return;
-    }
-
-    notif(`${nome} removido com sucesso.`);
-    await carregarTIs();
-  } catch (e) {
-    notif('Erro de conexão ao tentar remover usuário.');
-  }
-};
+window.deletarTI=async function(id,nome){if(!confirm(`Remover "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
 
 /* ═══ PROFESSORES ═══ */
 let todosOsProfs=[],profEditandoId=null;
@@ -800,6 +776,7 @@ const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6v
 const EGG_NOME='Rickelme';
 const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
 
+// EGG 1: 5 cliques no título DSos
 let _eggClicks=0,_eggTimer=null;
 document.getElementById('egg-trigger')?.addEventListener('click',()=>{
   _eggClicks++;clearTimeout(_eggTimer);
@@ -816,27 +793,19 @@ function _abrirEgg(){
 window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_fecharEggKey);};
 function _fecharEggKey(e){if(e.key==='Escape')window.fecharEgg();}
 
-document.getElementById('unresp-search')?.addEventListener('input', function() {
-  if (this.value.toLowerCase().trim() === 'corinthians') {
-    this.value = '';
+// EGG 2: digitar "corinthians" na busca
+document.getElementById('unresp-search')?.addEventListener('input',function(){
+  if(this.value.toLowerCase().trim()==='corinthians'){
+    this.value='';
     notif('🖤🤍 VAI CORINTHIANS! Campeão do mundo 2000! 🏆');
-    setTimeout(() => {
-      const card = document.querySelector('.card');
-      if (card) {
-        card.style.transition = 'box-shadow .3s';
-        card.style.boxShadow = '0 0 0 3px #000, 0 0 0 6px #fff, 0 0 40px rgba(0,0,0,.8)';
-        setTimeout(() => {
-          card.style.boxShadow = '';
-          carregarTickets(''); // ← reload DEPOIS da animação terminar
-        }, 2000);
-      } else {
-        carregarTickets(''); // ← fallback se não achar o card
-      }
-    }, 500);
+    setTimeout(()=>{
+      const card=document.querySelector('.card');
+      if(card){card.style.transition='box-shadow .3s';card.style.boxShadow='0 0 0 3px #000, 0 0 0 6px #fff, 0 0 40px rgba(0,0,0,.8)';setTimeout(()=>{card.style.boxShadow='';},2000)}
+    },500);
   }
 });
 
-
+// EGG 3: 3 cliques no KPI de resolvidos
 let _kpiClicks=0,_kpiTimer=null;
 document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('click',()=>{
   _kpiClicks++;clearTimeout(_kpiTimer);
@@ -844,6 +813,7 @@ document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('cl
   if(_kpiClicks>=3){_kpiClicks=0;notif('💪 Bom trabalho! Continue assim, campeão.');}
 });
 
+// EGG 4: Konami Code
 const _konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter'];
 let _konamiIdx=0;
 document.addEventListener('keydown',e=>{

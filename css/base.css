@@ -27,13 +27,25 @@ body { font-family: 'Sora', sans-serif; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── BACKGROUND ──
+   Light mode → BG.svg
+   Dark mode  → BG_dark_mode.svg
+   Regras ordenadas do mais específico para o menos específico.
+   O fallback sem data-theme assume dark (padrão do sistema).
+*/
 .bg {
   position: fixed;
   inset: 0;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
+  background: url('../images/BG_dark_mode.svg') center center / cover no-repeat;
   z-index: 0;
+}
+
+[data-theme="dark"] .bg {
+  background: url('../images/BG_dark_mode.svg') center center / cover no-repeat;
+}
+
+[data-theme="light"] .bg {
+  background: url('../images/BG.svg') center center / cover no-repeat;
 }
 
 /* LIGHTBOX COMPARTILHADO */
