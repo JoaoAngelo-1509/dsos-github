@@ -1,8 +1,10 @@
-// DSos v1.4 — painel-pc.js
+// DSos v1.5.2 — painel-pc.js
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
+import { initSessionGuard, destroySessionGuard } from './session-guard.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
+let realtimeGlobal  = null;
 
 let session=null, tipo=null, tipoRapido=null, emergAtivo=false, tickets=[], chatTicketId=null;
 
@@ -19,7 +21,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   const raw = sessionStorage.getItem('dsos_session');
   if (!raw) { window.location.href = 'login.html'; return; }
   session = JSON.parse(raw);
-  if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
+
+  if (session.tipo !== 'pc' && session.tipo !== 'professor') {
+    window.location.href = 'login.html'; return;
+  }
+
+  // Inicia guard de inatividade — 30 min
+  initSessionGuard({
+    onLogout: () => {
+      destroySessionGuard();
+      sessionStorage.removeItem('dsos_session');
+      window.location.href = 'login.html?motivo=inatividade';
+    }
+  });
 
   if (session.tipo === 'professor') {
     document.getElementById('info-nome').textContent  = session.nome || session.login;
@@ -32,6 +46,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('rapido-title-txt').textContent = 'Selecione o tipo de problema e informe a tag do PC. O T.I. será notificado imediatamente.';
     window.toggleEmerg();
     await carregarChamados();
+    _iniciarRealtimeGlobal();
     setInterval(carregarChamados, 30000);
     return;
   }
@@ -66,11 +81,53 @@ window.addEventListener('DOMContentLoaded', async () => {
   } catch(e) { /* silencioso */ }
 
   await carregarChamados();
+  _iniciarRealtimeGlobal();
   setInterval(carregarChamados, 30000);
 });
 
 function _icoSol(){return`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`}
 function _icoLua(){return`<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`}
+
+// Canal Realtime global: atualiza badges de não-lidas sem depender do chat estar aberto
+function _iniciarRealtimeGlobal() {
+  if (realtimeGlobal) { sbClient.removeChannel(realtimeGlobal); realtimeGlobal = null; }
+  realtimeGlobal = sbClient
+    .channel('pc-global-notif')
+    .on('postgres_changes', {
+      event:  'INSERT',
+      schema: 'public',
+      table:  'mensagem'
+    }, async (payload) => {
+      if (payload.new?.remetente !== 'TI') return;
+      const tid = payload.new?.ticket_id;
+      if (tid && tid === chatTicketId) return;
+      await _atualizarNaoLidas();
+      window._dsosSom?.notificacao?.();
+    })
+    .on('postgres_changes', {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'ticket'
+    }, async () => {
+      await carregarChamados();
+    })
+    .subscribe();
+}
+
+// Busca apenas não-lidas e re-renderiza sem recarregar tickets
+async function _atualizarNaoLidas() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/rpc_nao_lidas_por_ticket`, {
+      method: 'POST', headers: H, body: '{}'
+    });
+    const nl = await r.json();
+    window._naoLidasPC = {};
+    if (Array.isArray(nl)) nl.forEach(x => {
+      window._naoLidasPC[x.ticket_id] = parseInt(x.nao_lidas_pc) || 0;
+    });
+  } catch(e) { /* silencioso */ }
+  renderChamados();
+}
 
 window.toggleTema = function() {
   const html = document.documentElement, dark = html.dataset.theme === 'dark';
@@ -145,7 +202,6 @@ async function carregarChamados(q='') {
     const r=await fetch(`${SB_URL}/rest/v1/ticket?${filtroBase}${searchFilter}&order=aberto_em.desc&select=*`,{headers:H});
     const data=await r.json();tickets=Array.isArray(data)?data:[];
   }catch(e){tickets=[];}
-  // Busca não lidas do PC
   try{
     const r=await fetch(`${SB_URL}/rest/v1/rpc/rpc_nao_lidas_por_ticket`,{method:'POST',headers:H,body:'{}'});
     const nl=await r.json();
@@ -396,7 +452,13 @@ window.resetForm = function() {
   trocarAba('chamados');
 };
 
-window.sair = function() { sessionStorage.removeItem('dsos_session');window.location.href='login.html'; };
+window.sair = function () {
+  destroySessionGuard();
+  if (realtimeGlobal)  { sbClient.removeChannel(realtimeGlobal);  realtimeGlobal  = null; }
+  if (realtimeChannel) { sbClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+  sessionStorage.removeItem('dsos_session');
+  window.location.href = 'login.html';
+};
 
 function toast(msg,t){
   const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t} show`;
