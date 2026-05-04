@@ -57,13 +57,11 @@ window.toggleTema=function(){
 
 /* INIT */
 window.addEventListener('DOMContentLoaded',async()=>{
-  // ── TEMA: aplica imediatamente, antes de qualquer render
-  const saved = localStorage.getItem('dsos_tema_login') || 'dark';
-  document.documentElement.dataset.theme = saved;
-  if (saved === 'light') {
-    document.getElementById('ico-tema').innerHTML = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+  const saved=localStorage.getItem('dsos_tema_login');
+  if(saved){
+    document.documentElement.dataset.theme=saved;
+    if(saved==='light') document.getElementById('ico-tema').innerHTML=`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
   }
-
   const raw=sessionStorage.getItem('dsos_session');
   if(!raw){window.location.href='login.html';return}
   session=JSON.parse(raw);
@@ -544,7 +542,7 @@ window.executarLimpeza=async function(){
 /* NOTIF */
 function notif(msg){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
 
-/* ═══ CHAT TI ═══ */
+/* CHAT TI */
 let imgPendenteTi=null;
 async function iniciarChat(ticketId,ativo){
   const chatInput=document.getElementById('chat-input-ti'),btnSend=document.getElementById('btn-send-ti');
@@ -689,10 +687,17 @@ window.salvarPC=async function(){
   }
 };
 
-/* ═══ EQUIPE TI ═══ */
+/* ═══ EQUIPE TI — CORRIGIDO: email incluído em salvarTI e abrirModalTI ═══ */
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
-  try{const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];document.getElementById('badge-ti').textContent=todosOsTIs.length;document.getElementById('ti-count').textContent=todosOsTIs.length;}catch(e){todosOsTIs=[];}
+  try{
+    // Busca incluindo email para preencher o modal corretamente
+    const r=await fetch(`${SB}/rest/v1/usuario_ti?order=nome.asc&select=id,login,nome,email`,{headers:H});
+    todosOsTIs=await r.json();
+    if(!Array.isArray(todosOsTIs))todosOsTIs=[];
+    document.getElementById('badge-ti').textContent=todosOsTIs.length;
+    document.getElementById('ti-count').textContent=todosOsTIs.length;
+  }catch(e){todosOsTIs=[];}
   renderTIs();
 }
 function renderTIs(){
@@ -701,22 +706,79 @@ function renderTIs(){
   list.innerHTML=todosOsTIs.map(u=>{
     const isMe=session&&u.id===session.id;
     const initials=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');
-    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar">${initials}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''}</div><div class="ti-user-login">@${u.login||'—'}</div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+    // Badge 2FA: verde se tem email, cinza se não tem
+    const emailBadge=u.email
+      ?`<span style="font-size:.5rem;background:rgba(6,182,212,.15);color:var(--green);border:1px solid rgba(6,182,212,.3);border-radius:3px;padding:1px 5px;font-weight:700">2FA ✓</span>`
+      :`<span style="font-size:.5rem;background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--glass-b);border-radius:3px;padding:1px 5px">sem 2FA</span>`;
+    return`<div class="ti-user-row${isMe?' me-row':''}">
+      <div class="ti-avatar">${initials}</div>
+      <div class="ti-user-info">
+        <div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''} ${emailBadge}</div>
+        <div class="ti-user-login">@${u.login||'—'}${u.email?' · '+u.email:''}</div>
+      </div>
+      <button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button>
+      <button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>`;
   }).join('');
 }
-window.abrirModalTI=function(id){tiEditandoId=id;const ed=id!==null;document.getElementById('mti-title').textContent=ed?'Editar Usuário T.I.':'Cadastrar Usuário T.I.';document.getElementById('mti-senha-hint').style.display=ed?'block':'none';document.getElementById('mti-login').disabled=ed;document.getElementById('mti-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';if(ed){const u=todosOsTIs.find(x=>x.id===id);if(!u)return;document.getElementById('mti-nome').value=u.nome||'';document.getElementById('mti-login').value=u.login||'';document.getElementById('mti-senha').value='';}else{['mti-nome','mti-login','mti-senha'].forEach(i=>document.getElementById(i).value='');document.getElementById('mti-login').disabled=false;}document.getElementById('modal-ti-user').classList.add('open');setTimeout(()=>document.getElementById('mti-nome').focus(),120);};
+
+// CORRIGIDO: abrirModalTI agora preenche o campo email
+window.abrirModalTI=function(id){
+  tiEditandoId=id;
+  const ed=id!==null;
+  document.getElementById('mti-title').textContent=ed?'Editar Usuário T.I.':'Cadastrar Usuário T.I.';
+  document.getElementById('mti-senha-hint').style.display=ed?'block':'none';
+  document.getElementById('mti-login').disabled=ed;
+  document.getElementById('mti-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';
+  if(ed){
+    const u=todosOsTIs.find(x=>x.id===id);
+    if(!u)return;
+    document.getElementById('mti-nome').value=u.nome||'';
+    document.getElementById('mti-login').value=u.login||'';
+    document.getElementById('mti-email').value=u.email||'';  // CORRIGIDO: preenche email
+    document.getElementById('mti-senha').value='';
+  }else{
+    ['mti-nome','mti-login','mti-email','mti-senha'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('mti-login').disabled=false;
+  }
+  document.getElementById('modal-ti-user').classList.add('open');
+  setTimeout(()=>document.getElementById('mti-nome').focus(),120);
+};
 window.fecharModalTI=function(){document.getElementById('modal-ti-user').classList.remove('open');tiEditandoId=null;};
 document.getElementById('modal-ti-user').addEventListener('click',e=>{if(e.target===document.getElementById('modal-ti-user'))window.fecharModalTI()});
+
+// CORRIGIDO: salvarTI agora passa p_email para a RPC
 window.salvarTI=async function(){
-  const nome=document.getElementById('mti-nome').value.trim(),login=document.getElementById('mti-login').value.trim(),senha=document.getElementById('mti-senha').value;
+  const nome=document.getElementById('mti-nome').value.trim();
+  const login=document.getElementById('mti-login').value.trim();
+  const email=document.getElementById('mti-email').value.trim();
+  const senha=document.getElementById('mti-senha').value;
   if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){
-    if(!login){notif('Informe o login.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`${nome} cadastrado!`);window.fecharModalTI();await carregarTIs();}
-    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
+    if(!login){notif('Informe o login.');return}
+    if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
+    try{
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{
+        method:'POST',headers:H,
+        body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_email:email||null})
+      });
+      if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
+      notif(`${nome} cadastrado!`);
+      window.fecharModalTI();
+      await carregarTIs();
+    }catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null})});notif('Atualizado!');window.fecharModalTI();await carregarTIs();}
-    catch(e){notif('Erro ao atualizar.')}
+    try{
+      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{
+        method:'POST',headers:H,
+        body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null,p_email:email||null})
+      });
+      notif('Atualizado!');
+      window.fecharModalTI();
+      await carregarTIs();
+    }catch(e){notif('Erro ao atualizar.')}
   }
 };
 window.deletarTI=async function(id,nome){if(!confirm(`Remover "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
@@ -753,14 +815,14 @@ window.deletarProf=async function(id,nome){if(!confirm(`Remover prof. "${nome}"?
 let _bTimers={};
 function _debounce(key,fn,ms=350){clearTimeout(_bTimers[key]);_bTimers[key]=setTimeout(fn,ms)}
 window.buscarDescarte=q=>_debounce('desc',async()=>{try{let u=`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`;if(q)u+=`&or=(item_descartado.ilike.*${encodeURIComponent(q)}*,descricao.ilike.*${encodeURIComponent(q)}*)`;descarteFila=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){descarteFila=[]}renderDescarte()});
-window.buscarTIs=q=>_debounce('ti',async()=>{try{let u=`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*)`;todosOsTIs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsTIs=[]}renderTIs()});
+window.buscarTIs=q=>_debounce('ti',async()=>{try{let u=`${SB}/rest/v1/usuario_ti?order=nome.asc&select=id,login,nome,email`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*)`;todosOsTIs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsTIs=[]}renderTIs()});
 window.buscarProfs=q=>_debounce('prof',async()=>{try{let u=`${SB}/rest/v1/professor?order=nome.asc&select=id,nome,login,disciplina`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*,disciplina.ilike.*${encodeURIComponent(q)}*)`;todosOsProfs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsProfs=[]}renderProfs()});
 window.buscarTicketsAbertos=q=>_debounce('unresp',()=>carregarTickets(q));
 window.buscarTicketsRespondidos=q=>_debounce('resp',()=>carregarTickets(q));
 window.buscarPCs=q=>_debounce('pcs',async()=>{try{let u=`${SB}/rest/v1/v_pc_pub?order=tag.asc&select=*`;if(q)u+=`&or=(tag.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*)`;todosOsPCs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);document.getElementById('badge-pcs').textContent=todosOsPCs.length;}catch(e){todosOsPCs=[]}renderPCs()});
 
 /* TOGGLES SENHA */
-function _toggleOlho(inputId,icoId){const i=document.getElementById(inputId),ic=document.getElementById(icoId);if(!i||!ic)return;const s=i.type==='password';i.type=s?'text':'password';ic.innerHTML=s?`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`:` <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;}
+function _toggleOlho(inputId,icoId){const i=document.getElementById(inputId),ic=document.getElementById(icoId);if(!i||!ic)return;const s=i.type==='password';i.type=s?'text':'password';ic.innerHTML=s?`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;}
 window.toggleSenhaMPC=()=>_toggleOlho('mpc-senha','ico-olho-mpc');
 window.toggleSenhaTI=()=>_toggleOlho('mti-senha','ico-olho-ti');
 window.toggleSenhaProf=()=>_toggleOlho('mprof-senha','ico-olho-prof');
@@ -776,7 +838,6 @@ const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6v
 const EGG_NOME='Rickelme';
 const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
 
-// EGG 1: 5 cliques no título DSos
 let _eggClicks=0,_eggTimer=null;
 document.getElementById('egg-trigger')?.addEventListener('click',()=>{
   _eggClicks++;clearTimeout(_eggTimer);
@@ -793,7 +854,6 @@ function _abrirEgg(){
 window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_fecharEggKey);};
 function _fecharEggKey(e){if(e.key==='Escape')window.fecharEgg();}
 
-// EGG 2: digitar "corinthians" na busca
 document.getElementById('unresp-search')?.addEventListener('input',function(){
   if(this.value.toLowerCase().trim()==='corinthians'){
     this.value='';
@@ -805,7 +865,6 @@ document.getElementById('unresp-search')?.addEventListener('input',function(){
   }
 });
 
-// EGG 3: 3 cliques no KPI de resolvidos
 let _kpiClicks=0,_kpiTimer=null;
 document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('click',()=>{
   _kpiClicks++;clearTimeout(_kpiTimer);
@@ -813,7 +872,6 @@ document.getElementById('kpi-resolvidos')?.closest('.kpi')?.addEventListener('cl
   if(_kpiClicks>=3){_kpiClicks=0;notif('💪 Bom trabalho! Continue assim, campeão.');}
 });
 
-// EGG 4: Konami Code
 const _konami=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a','Enter'];
 let _konamiIdx=0;
 document.addEventListener('keydown',e=>{

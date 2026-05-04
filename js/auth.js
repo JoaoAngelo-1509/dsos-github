@@ -1,19 +1,14 @@
-// DSos v1.5 — auth.js
-// ── auth.js — Lógica de autenticação da página de login ──
+// DSos v1.5 — auth.js  (2FA OTP adicionado)
 import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
 
-// Expõe toggleTema globalmente para o onclick no HTML
 window.toggleTema = toggleTema;
 
-// ── APLICA TEMA SALVO AO CARREGAR ──
 applyTheme();
 
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('dsos_tema_login');
-  if (saved === 'dark') {
-    updateTemaIcon(true);
-  }
+  if (saved === 'dark') updateTemaIcon(true);
 });
 
 // ── TOGGLE VISIBILIDADE DE SENHA ──
@@ -30,110 +25,29 @@ window.toggleSenha = function () {
        <circle cx="12" cy="12" r="3"/>`;
 };
 
-// ── EXIBE MENSAGEM DE ERRO ──
+// ── ERRO ──
 function mostrarErro(msg) {
-  const erro = document.getElementById('erro');
-  erro.textContent = msg;
-  erro.classList.add('visivel');
+  const e = document.getElementById('erro');
+  e.textContent = msg;
+  e.classList.add('visivel');
 }
-
-// ── LIMPA MENSAGEM DE ERRO ──
 function limparErro() {
   document.getElementById('erro').classList.remove('visivel');
 }
 
-// ── RATE LIMITING ──────────────────────────────────────────────────────────
-// Chave local para contagem otimista (reduz chamadas ao banco quando possível)
-const _RL_KEY = 'dsos_rl';
-let _bloqueioTimer = null;
-
-function _getRLLocal() {
-  try { return JSON.parse(localStorage.getItem(_RL_KEY) || 'null'); } catch { return null; }
-}
-function _setRLLocal(data) {
-  localStorage.setItem(_RL_KEY, JSON.stringify(data));
-}
-function _limparRLLocal() {
-  localStorage.removeItem(_RL_KEY);
-}
-
-// Obtém IP público de forma leve (fallback 'unknown' se falhar)
-async function _getIP() {
-  try {
-    const r = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
-    const d = await r.json();
-    return d.ip || 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
-
-// Verifica rate limit no banco
-async function _checkRateLimit(identificador, ip) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_check_rate_limit`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ p_identificador: identificador, p_ip: ip })
-  });
-  return await r.json();
-}
-
-// Registra tentativa no banco
-async function _registrarTentativa(identificador, ip, sucesso) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_registrar_tentativa`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_identificador: identificador, p_ip: ip, p_sucesso: sucesso })
-    });
-  } catch { /* silencioso — não bloqueia o fluxo */ }
-}
-
-// Inicia o contador regressivo no botão e no campo de erro
-function _iniciarContagemRegressiva(segundos) {
-  const btn = document.getElementById('btn');
-  if (_bloqueioTimer) clearInterval(_bloqueioTimer);
-
-  let restantes = segundos;
-
-  function _atualizar() {
-    const min = Math.floor(restantes / 60);
-    const seg = String(restantes % 60).padStart(2, '0');
-    const label = min > 0 ? `${min}:${seg}` : `${restantes}s`;
-    btn.disabled = true;
-    btn.querySelector('span').textContent = `Aguarde ${label}`;
-    mostrarErro(
-      restantes >= 60
-        ? `Muitas tentativas. Tente novamente em ${min}m${seg}s.`
-        : `Muitas tentativas. Tente novamente em ${restantes}s.`
-    );
-    if (restantes <= 0) {
-      clearInterval(_bloqueioTimer);
-      _bloqueioTimer = null;
-      btn.disabled = false;
-      btn.querySelector('span').textContent = 'Entrar';
-      limparErro();
-      _limparRLLocal();
-    }
-    restantes--;
-  }
-
-  _atualizar();
-  _bloqueioTimer = setInterval(_atualizar, 1000);
-}
-
-// Verifica se há bloqueio local ainda ativo ao carregar a página
-(function _verificarBloqueioLocalAoCarregar() {
-  const rl = _getRLLocal();
-  if (!rl || !rl.bloqueadoAte) return;
-  const restantes = Math.ceil((rl.bloqueadoAte - Date.now()) / 1000);
-  if (restantes > 0) {
-    _iniciarContagemRegressiva(restantes);
-  } else {
-    _limparRLLocal();
-  }
-})();
-// ──────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ESTADO 2FA
+// _pendingSession: sessão pronta mas aguardando OTP
+// _otpTiId: id do técnico para verificar OTP
+// _otpEmailDestino: email mascarado para mostrar no modal
+// _devOtp: código em claro (apenas quando sem email configurado)
+// _otpResendTimer: timer do botão reenviar
+// ─────────────────────────────────────────────────────────────
+let _pendingSession   = null;
+let _otpTiId          = null;
+let _otpEmailDestino  = null;
+let _devOtp           = null;     // modo dev sem Resend
+let _otpResendTimer   = null;
 
 // ── LOGIN PRINCIPAL ──
 window.entrar = async function () {
@@ -144,159 +58,250 @@ window.entrar = async function () {
 
   limparErro();
 
-  // Bloqueia se o timer ainda estiver rodando
-  if (_bloqueioTimer) return;
-
-  if (!nome) {
-    mostrarErro('Informe seu nome antes de entrar.');
-    document.getElementById('nome').focus();
-    return;
-  }
-
-  if (!usuario || !senha) {
-    mostrarErro('Preencha usuário e senha.');
-    return;
-  }
+  if (!nome)          { mostrarErro('Informe seu nome antes de entrar.'); document.getElementById('nome').focus(); return; }
+  if (!usuario || !senha) { mostrarErro('Preencha usuário e senha.'); return; }
 
   btn.classList.add('loading');
-  btn.disabled = true;
-
-  // Obtém IP e verifica rate limit
-  let ip = 'unknown';
-  try {
-    ip = await _getIP();
-    const rl = await _checkRateLimit(usuario, ip);
-
-    if (rl?.bloqueado) {
-      const seg = rl.segundos_restantes || 60;
-      _setRLLocal({ bloqueadoAte: Date.now() + seg * 1000 });
-      btn.classList.remove('loading');
-      _iniciarContagemRegressiva(seg);
-      return;
-    }
-  } catch {
-    // Se falhar a checagem, deixa prosseguir (fail-open controlado)
-  } finally {
-    if (!_bloqueioTimer) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-    }
-  }
-
-  btn.classList.add('loading');
-  btn.disabled = true;
-
-  let loginOk = false;
 
   try {
-    // 1. Tenta login como T.I via RPC segura
+    // 1. Tenta login como T.I.
     const resTI = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_ti`, {
-      method: 'POST',
-      headers,
+      method: 'POST', headers,
       body: JSON.stringify({ p_login: usuario, p_senha: senha })
     });
     const tiList = await resTI.json();
 
     if (Array.isArray(tiList) && tiList.length > 0) {
-      loginOk = true;
-      await _registrarTentativa(usuario, ip, true);
-      _limparRLLocal();
       const ti = tiList[0];
-      sessionStorage.setItem('dsos_session', JSON.stringify({
-        tipo: 'ti',
-        id: ti.id,
-        login: ti.login,
-        nome
-      }));
-      window.location.href = 'painel-ti.html';
-      return;
+
+      // Prepara sessão mas não salva ainda — aguarda 2FA
+      _pendingSession = { tipo: 'ti', id: ti.id, login: ti.login, nome };
+      _otpTiId        = ti.id;
+
+      // Dispara OTP via Edge Function
+      await _dispararOTP(ti.id);
+      btn.classList.remove('loading');
+      return;  // modal 2FA cuidará do resto
     }
 
-    // 2. Tenta login como PC via RPC segura
+    // 2. Tenta login como PC
     const resPC = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_pc`, {
-      method: 'POST',
-      headers,
+      method: 'POST', headers,
       body: JSON.stringify({ p_tag: usuario.toUpperCase(), p_senha: senha })
     });
     const pcList = await resPC.json();
 
     if (Array.isArray(pcList) && pcList.length > 0) {
-      loginOk = true;
-      await _registrarTentativa(usuario, ip, true);
-      _limparRLLocal();
       const pc = pcList[0];
       sessionStorage.setItem('dsos_session', JSON.stringify({
-        tipo: 'pc',
-        id: pc.id,
-        tag: pc.tag,
-        laboratorio: pc.laboratorio,
-        lado: pc.lado,
-        nome
+        tipo: 'pc', id: pc.id, tag: pc.tag,
+        laboratorio: pc.laboratorio, lado: pc.lado, nome
       }));
-      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch (e) {}
+      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
       window.location.href = 'painel-pc.html';
       return;
     }
 
     // 3. Tenta login como Professor
     const resProf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_professor`, {
-      method: 'POST',
-      headers,
+      method: 'POST', headers,
       body: JSON.stringify({ p_login: usuario, p_senha: senha })
     });
     const profList = await resProf.json();
 
     if (Array.isArray(profList) && profList.length > 0) {
-      loginOk = true;
-      await _registrarTentativa(usuario, ip, true);
-      _limparRLLocal();
       const prof = profList[0];
       sessionStorage.setItem('dsos_session', JSON.stringify({
-        tipo: 'professor',
-        id: prof.id,
-        login: prof.login,
-        nome: prof.nome || nome
+        tipo: 'professor', id: prof.id, login: prof.login, nome: prof.nome || nome
       }));
-      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch (e) {}
+      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
       window.location.href = 'painel-pc.html';
       return;
     }
 
-    // Nenhum login bateu → registra falha e re-verifica bloqueio
-    await _registrarTentativa(usuario, ip, false);
-
-    // Consulta banco para saber se agora está bloqueado
-    try {
-      const rlApos = await _checkRateLimit(usuario, ip);
-      if (rlApos?.bloqueado) {
-        const seg = rlApos.segundos_restantes || 60;
-        _setRLLocal({ bloqueadoAte: Date.now() + seg * 1000 });
-        btn.classList.remove('loading');
-        btn.disabled = false;
-        _iniciarContagemRegressiva(seg);
-        return;
-      }
-      // Exibe quantas tentativas restam
-      const restam = 5 - (rlApos?.tentativas || 0);
-      if (restam <= 2 && restam > 0) {
-        mostrarErro(`Usuário ou senha incorretos. ${restam} tentativa${restam > 1 ? 's' : ''} restante${restam > 1 ? 's' : ''}.`);
-      } else {
-        mostrarErro('Usuário ou senha incorretos.');
-      }
-    } catch {
-      mostrarErro('Usuário ou senha incorretos.');
-    }
+    mostrarErro('Usuário ou senha incorretos.');
 
   } catch (e) {
     mostrarErro('Erro de conexão. Tente novamente.');
     console.error(e);
   } finally {
-    if (!_bloqueioTimer) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-    }
+    btn.classList.remove('loading');
   }
 };
+
+// ── DISPARAR OTP (Edge Function) ──
+async function _dispararOTP(tiId) {
+  const statusEl = document.getElementById('otp-status');
+  if (statusEl) statusEl.textContent = 'Enviando código…';
+
+  try {
+    const res = await fetch(`${SUPABASE_URL.replace('/rest/v1', '')}/functions/v1/fn-enviar-otp`, {
+      method: 'POST',
+      headers: { 'apikey': headers.apikey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ti_id: tiId })
+    });
+    const data = await res.json();
+
+    if (!data.ok && data.erro === 'sem_email') {
+      // Técnico sem email cadastrado — nega acesso com aviso claro
+      _cancelarOTP();
+      mostrarErro('Este usuário T.I. não tem email cadastrado para 2FA. Peça ao administrador para cadastrar o email antes de prosseguir.');
+      return;
+    }
+
+    if (!data.ok) {
+      _cancelarOTP();
+      mostrarErro('Erro ao enviar código 2FA. Tente novamente.');
+      return;
+    }
+
+    _otpEmailDestino = data.email_destino;
+
+    // Modo dev: se retornar codigo (não acontece na EF, mas localmente pode)
+    if (data.codigo) _devOtp = data.codigo;
+
+    _abrirModal2FA();
+
+  } catch(e) {
+    console.error('[2FA]', e);
+    _cancelarOTP();
+    mostrarErro('Erro de conexão ao enviar código 2FA.');
+  }
+}
+
+// ── ABRIR MODAL 2FA ──
+function _abrirModal2FA() {
+  const modal = document.getElementById('modal-2fa');
+  if (!modal) return;
+
+  // Atualiza texto do email
+  const emailEl = document.getElementById('otp-email-destino');
+  if (emailEl) emailEl.textContent = _otpEmailDestino || 'seu email cadastrado';
+
+  // Limpa campos
+  document.querySelectorAll('.otp-digit').forEach(i => { i.value = ''; });
+  document.getElementById('otp-erro')?.classList.remove('visivel');
+
+  modal.classList.add('open');
+  setTimeout(() => document.querySelector('.otp-digit')?.focus(), 120);
+
+  // Inicia contador de reenvio (60s)
+  _iniciarTimerReenvio();
+}
+
+// ── VERIFICAR OTP ──
+window.verificarOTP = async function () {
+  const digits = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+  if (digits.length < 6) {
+    _mostrarErroOTP('Digite os 6 dígitos do código.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-otp-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_verificar_otp_ti`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ p_ti_id: _otpTiId, p_codigo: digits })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      // ✅ OTP correto — finaliza login
+      sessionStorage.setItem('dsos_session', JSON.stringify(_pendingSession));
+      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
+      window.location.href = 'painel-ti.html';
+    } else {
+      const msgs = {
+        invalido: 'Código incorreto. Verifique e tente novamente.',
+        expirado: 'Código expirado. Clique em "Reenviar" para um novo código.'
+      };
+      _mostrarErroOTP(msgs[data.erro] || 'Código inválido.');
+      document.querySelectorAll('.otp-digit').forEach(i => { i.value = ''; });
+      document.querySelector('.otp-digit')?.focus();
+    }
+  } catch(e) {
+    _mostrarErroOTP('Erro de conexão. Tente novamente.');
+    console.error('[2FA verificar]', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar';
+  }
+};
+
+// ── REENVIAR OTP ──
+window.reenviarOTP = async function () {
+  if (!_otpTiId) return;
+  document.getElementById('btn-otp-reenviar').disabled = true;
+  document.getElementById('otp-erro')?.classList.remove('visivel');
+  document.querySelectorAll('.otp-digit').forEach(i => { i.value = ''; });
+  await _dispararOTP(_otpTiId);
+};
+
+// ── CANCELAR 2FA (fechar modal) ──
+window.cancelarOTP = _cancelarOTP;
+function _cancelarOTP() {
+  document.getElementById('modal-2fa')?.classList.remove('open');
+  clearInterval(_otpResendTimer);
+  _pendingSession  = null;
+  _otpTiId         = null;
+  _otpEmailDestino = null;
+  _devOtp          = null;
+}
+
+function _mostrarErroOTP(msg) {
+  const el = document.getElementById('otp-erro');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visivel');
+}
+
+function _iniciarTimerReenvio() {
+  clearInterval(_otpResendTimer);
+  const btn = document.getElementById('btn-otp-reenviar');
+  if (!btn) return;
+  let secs = 60;
+  btn.disabled = true;
+  btn.textContent = `Reenviar (${secs}s)`;
+  _otpResendTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(_otpResendTimer);
+      btn.disabled = false;
+      btn.textContent = 'Reenviar código';
+    } else {
+      btn.textContent = `Reenviar (${secs}s)`;
+    }
+  }, 1000);
+}
+
+// ── NAVEGAÇÃO ENTRE DÍGITOS OTP ──
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.otp-digit').forEach((input, idx, all) => {
+    input.addEventListener('input', e => {
+      // Aceita só dígito
+      input.value = input.value.replace(/\D/g, '').slice(-1);
+      if (input.value && idx < all.length - 1) all[idx + 1].focus();
+      // Se preencheu todos, tenta confirmar
+      const digits = [...all].map(i => i.value).join('');
+      if (digits.length === 6) window.verificarOTP();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) all[idx - 1].focus();
+      if (e.key === 'Enter') window.verificarOTP();
+    });
+    input.addEventListener('paste', e => {
+      e.preventDefault();
+      const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+      [...all].forEach((inp, i) => { inp.value = paste[i] || ''; });
+      const last = Math.min(paste.length, all.length - 1);
+      all[last].focus();
+      if (paste.length === 6) window.verificarOTP();
+    });
+  });
+});
 
 // ── AJUDA ──
 window.ajuda = function (e) {
@@ -304,7 +309,8 @@ window.ajuda = function (e) {
   alert(
     'Informe seu nome completo e as credenciais do seu PC.\n' +
     'O login e a senha do PC são cadastrados pelo T.I.\n' +
-    'Professores também podem fazer login com suas credenciais para abrir chamados de emergência.\n' +
+    'Professores também podem fazer login com suas credenciais para abrir chamados de emergência.\n\n' +
+    'Técnicos de T.I. recebem um código de 6 dígitos por email após inserir suas credenciais.\n' +
     'Em caso de dúvidas, entre em contato com o suporte.'
   );
 };
