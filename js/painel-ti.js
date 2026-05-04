@@ -687,12 +687,11 @@ window.salvarPC=async function(){
   }
 };
 
-/* ═══ EQUIPE TI — CORRIGIDO: email incluído em salvarTI e abrirModalTI ═══ */
+/* ═══ EQUIPE TI ═══ */
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
   try{
-    // Busca incluindo email para preencher o modal corretamente
-    const r=await fetch(`${SB}/rest/v1/usuario_ti?order=nome.asc&select=id,login,nome,email`,{headers:H});
+    const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});
     todosOsTIs=await r.json();
     if(!Array.isArray(todosOsTIs))todosOsTIs=[];
     document.getElementById('badge-ti').textContent=todosOsTIs.length;
@@ -706,41 +705,22 @@ function renderTIs(){
   list.innerHTML=todosOsTIs.map(u=>{
     const isMe=session&&u.id===session.id;
     const initials=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');
-    // Badge 2FA: verde se tem email, cinza se não tem
-    const emailBadge=u.email
-      ?`<span style="font-size:.5rem;background:rgba(6,182,212,.15);color:var(--green);border:1px solid rgba(6,182,212,.3);border-radius:3px;padding:1px 5px;font-weight:700">2FA ✓</span>`
-      :`<span style="font-size:.5rem;background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--glass-b);border-radius:3px;padding:1px 5px">sem 2FA</span>`;
-    return`<div class="ti-user-row${isMe?' me-row':''}">
-      <div class="ti-avatar">${initials}</div>
-      <div class="ti-user-info">
-        <div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''} ${emailBadge}</div>
-        <div class="ti-user-login">@${u.login||'—'}${u.email?' · '+u.email:''}</div>
-      </div>
-      <button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button>
-      <button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
-    </div>`;
+    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar">${initials}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''}</div><div class="ti-user-login">@${u.login||'—'}</div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
   }).join('');
 }
-
-// CORRIGIDO: abrirModalTI agora preenche o campo email
 window.abrirModalTI=function(id){
-  tiEditandoId=id;
-  const ed=id!==null;
+  tiEditandoId=id;const ed=id!==null;
   document.getElementById('mti-title').textContent=ed?'Editar Usuário T.I.':'Cadastrar Usuário T.I.';
   document.getElementById('mti-senha-hint').style.display=ed?'block':'none';
   document.getElementById('mti-login').disabled=ed;
   document.getElementById('mti-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';
   if(ed){
-    const u=todosOsTIs.find(x=>x.id===id);
-    if(!u)return;
+    const u=todosOsTIs.find(x=>x.id===id);if(!u)return;
     document.getElementById('mti-nome').value=u.nome||'';
     document.getElementById('mti-login').value=u.login||'';
-    document.getElementById('mti-email').value=u.email||'';  // CORRIGIDO: preenche email
     document.getElementById('mti-senha').value='';
   }else{
-    ['mti-nome','mti-login','mti-email','mti-senha'].forEach(i=>document.getElementById(i).value='');
+    ['mti-nome','mti-login','mti-senha'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('mti-login').disabled=false;
   }
   document.getElementById('modal-ti-user').classList.add('open');
@@ -748,36 +728,23 @@ window.abrirModalTI=function(id){
 };
 window.fecharModalTI=function(){document.getElementById('modal-ti-user').classList.remove('open');tiEditandoId=null;};
 document.getElementById('modal-ti-user').addEventListener('click',e=>{if(e.target===document.getElementById('modal-ti-user'))window.fecharModalTI()});
-
-// CORRIGIDO: salvarTI agora passa p_email para a RPC
 window.salvarTI=async function(){
   const nome=document.getElementById('mti-nome').value.trim();
   const login=document.getElementById('mti-login').value.trim();
-  const email=document.getElementById('mti-email').value.trim();
   const senha=document.getElementById('mti-senha').value;
   if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){
     if(!login){notif('Informe o login.');return}
     if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
     try{
-      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{
-        method:'POST',headers:H,
-        body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_email:email||null})
-      });
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha})});
       if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
-      notif(`${nome} cadastrado!`);
-      window.fecharModalTI();
-      await carregarTIs();
+      notif(`${nome} cadastrado!`);window.fecharModalTI();await carregarTIs();
     }catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
     try{
-      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{
-        method:'POST',headers:H,
-        body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null,p_email:email||null})
-      });
-      notif('Atualizado!');
-      window.fecharModalTI();
-      await carregarTIs();
+      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null})});
+      notif('Atualizado!');window.fecharModalTI();await carregarTIs();
     }catch(e){notif('Erro ao atualizar.')}
   }
 };
@@ -815,7 +782,7 @@ window.deletarProf=async function(id,nome){if(!confirm(`Remover prof. "${nome}"?
 let _bTimers={};
 function _debounce(key,fn,ms=350){clearTimeout(_bTimers[key]);_bTimers[key]=setTimeout(fn,ms)}
 window.buscarDescarte=q=>_debounce('desc',async()=>{try{let u=`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`;if(q)u+=`&or=(item_descartado.ilike.*${encodeURIComponent(q)}*,descricao.ilike.*${encodeURIComponent(q)}*)`;descarteFila=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){descarteFila=[]}renderDescarte()});
-window.buscarTIs=q=>_debounce('ti',async()=>{try{let u=`${SB}/rest/v1/usuario_ti?order=nome.asc&select=id,login,nome,email`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*)`;todosOsTIs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsTIs=[]}renderTIs()});
+window.buscarTIs=q=>_debounce('ti',async()=>{try{let u=`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*)`;todosOsTIs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsTIs=[]}renderTIs()});
 window.buscarProfs=q=>_debounce('prof',async()=>{try{let u=`${SB}/rest/v1/professor?order=nome.asc&select=id,nome,login,disciplina`;if(q)u+=`&or=(nome.ilike.*${encodeURIComponent(q)}*,login.ilike.*${encodeURIComponent(q)}*,disciplina.ilike.*${encodeURIComponent(q)}*)`;todosOsProfs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){todosOsProfs=[]}renderProfs()});
 window.buscarTicketsAbertos=q=>_debounce('unresp',()=>carregarTickets(q));
 window.buscarTicketsRespondidos=q=>_debounce('resp',()=>carregarTickets(q));

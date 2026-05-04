@@ -314,7 +314,7 @@ body{font-family:'Sora',sans-serif;display:flex;flex-direction:column;background
 .mpc-input:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim)}
 .mpc-input::placeholder{color:var(--muted2)}
 .mpc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mpc-sel{width:100%;background:var(--input-bg);border:1.5px solid var(--glass-b);border-radius:4px;padding:8px 11px;font-family:inherit;font-size:.78rem;color:var(--text);outline:none;cursor:pointer;color-scheme:dark}
+.mpc-sel{width:100%;border:1.5px solid var(--glass-b);border-radius:4px;padding:8px 11px;font-family:inherit;font-size:.78rem;color:var(--text);outline:none;cursor:pointer;color-scheme:dark}
 [data-theme="light"] .mpc-sel{color-scheme:light}
 .mpc-sel:focus{border-color:var(--red)}
 .modal-pc-footer{padding:10px 16px;border-top:1px solid var(--glass-b);background:rgba(0,0,0,.15);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
