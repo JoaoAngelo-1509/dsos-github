@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-  <!-- DSos v1.4 alpha alpha — painel-ti.html -->
+  <!-- DSos v1.5 — painel-ti.html -->
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
@@ -17,7 +17,7 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.4 alpha</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v1.5</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
@@ -25,9 +25,9 @@
     </div>
     <div class="topbar-user"><div class="online-dot"></div><span id="nome-ti">T.I.</span></div>
     <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-  <span class="notif-bell-count" id="bell-count">0</span>
-</button>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="notif-bell-count" id="bell-count">0</span>
+    </button>
     <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
       <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -236,7 +236,6 @@
     <!-- ABA: MANUTENÇÃO -->
     <div class="tab-panel" id="panel-manutencao">
       <div class="manutencao-wrap">
-
         <div class="manutencao-section">
           <div class="manutencao-section-header">
             <div class="manutencao-section-icon">
@@ -247,7 +246,6 @@
               <div class="manutencao-section-desc">Remove tickets encerrados, mensagens de chat e imagens do storage no período selecionado. Ação irreversível.</div>
             </div>
           </div>
-
           <div class="manutencao-controls">
             <div class="mini-modal-label" style="margin-bottom:8px">Limpar chamados encerrados nos últimos</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
@@ -258,19 +256,16 @@
               <button class="limpeza-prazo-btn" data-dias="365">1 ano</button>
               <button class="limpeza-prazo-btn" data-dias="9999" style="border-color:rgba(192,23,26,.35);color:var(--red)">Todos</button>
             </div>
-
             <div id="limpeza-preview" class="limpeza-preview-box" style="margin-bottom:12px">
               <div class="limpeza-preview-idle">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>Clique em "Ver impacto" para analisar</span>
               </div>
             </div>
-
             <div class="limpeza-aviso" style="margin-bottom:14px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
               Esta ação é <strong>irreversível</strong>. Remove tickets encerrados, todas as mensagens de chat e as imagens do storage.
             </div>
-
             <div style="display:flex;gap:8px">
               <button class="btn-mini-confirmar" style="background:var(--input-bg);color:var(--text);border:1px solid var(--glass-b)" onclick="verImpactoLimpeza()" id="btn-ver-impacto">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -283,7 +278,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -333,10 +327,8 @@
           <input class="mpc-input" id="mpc-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaMPC()" id="btn-olho-mpc"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
+            <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
         </div>
@@ -360,7 +352,7 @@
 
 <!-- ══════════════════════════════════
      MODAL — CADASTRO / EDIÇÃO DE USUÁRIO T.I.
-     CORRIGIDO: adicionado campo de email
+     v1.5: email, is_professor, disciplina
 ══════════════════════════════════ -->
 <div class="modal-pc-bg" id="modal-ti-user">
   <div class="modal-pc">
@@ -371,15 +363,20 @@
       </button>
     </div>
     <div class="modal-pc-body">
+
+      <!-- Nome -->
       <div class="mpc-field">
         <div class="mpc-label">Nome completo</div>
         <input class="mpc-input" id="mti-nome" placeholder="Ex: João da Silva" autocomplete="off" />
       </div>
+
+      <!-- Login -->
       <div class="mpc-field">
         <div class="mpc-label">Login de acesso</div>
         <input class="mpc-input" id="mti-login" placeholder="Ex: joao.silva" autocomplete="off" />
       </div>
-      <!-- CAMPO EMAIL — ADICIONADO -->
+
+      <!-- E-mail (2FA) -->
       <div class="mpc-field">
         <div class="mpc-label" style="display:flex;align-items:center;gap:5px">
           E-mail para verificação em 2 etapas
@@ -388,21 +385,43 @@
         <input class="mpc-input" id="mti-email" type="email" placeholder="Ex: joao@escola.sp.gov.br" autocomplete="off" />
         <div class="mpc-hint">Necessário para receber o código de verificação no login. Deixe vazio para desativar o 2FA deste usuário.</div>
       </div>
+
+      <!-- Senha -->
       <div class="mpc-field">
         <div class="mpc-label">Senha</div>
         <div style="position:relative">
           <input class="mpc-input" id="mti-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaTI()" id="btn-olho-ti"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
+            <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
         </div>
         <div class="mpc-hint" id="mti-senha-hint" style="display:none">Deixe em branco para não alterar a senha atual.</div>
       </div>
+
+      <!-- É professor também? — só aparece no cadastro novo (display controlado pelo JS) -->
+      <div class="mpc-field" id="mti-prof-row" style="display:none">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--input-bg);border:1.5px solid var(--glass-b);border-radius:5px;transition:border-color .2s">
+          <input type="checkbox" id="mti-is-professor" onchange="toggleProfessorDisc()"
+            style="width:15px;height:15px;accent-color:var(--green);cursor:pointer;flex-shrink:0" />
+          <div style="flex:1">
+            <div style="font-size:.74rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">
+              Este usuário também é professor
+              <span style="font-size:.5rem;background:rgba(6,182,212,.12);color:var(--green);border:1px solid rgba(6,182,212,.25);border-radius:3px;padding:1px 5px;font-weight:700">PROF</span>
+            </div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.4">Cria automaticamente um perfil de Professor vinculado a este login. No login, o usuário poderá escolher entre T.I. e Professor.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Disciplina — aparece quando "É professor" está marcado -->
+      <div class="mpc-field" id="mti-disc-row" style="display:none">
+        <div class="mpc-label">Disciplina do professor (opcional)</div>
+        <input class="mpc-input" id="mti-disciplina" placeholder="Ex: Matemática, Português…" autocomplete="off" />
+      </div>
+
     </div>
     <div class="modal-pc-footer">
       <button class="btn-mpc-cancel" onclick="fecharModalTI()">Cancelar</button>
@@ -439,10 +458,8 @@
           <input class="mpc-input" id="mprof-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaProf()" id="btn-olho-prof"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
+            <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
         </div>

@@ -1,4 +1,4 @@
-// DSos v1.4 — painel-ti.js
+// DSos v1.5 — painel-ti.js
 import { SB, H, SB_KEY } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
@@ -26,6 +26,7 @@ const SVG={
   chat:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
   tick1:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
   tick2:`<svg width="16" height="11" viewBox="0 0 30 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 9 8 15 18 4"/><polyline points="12 9 18 15 28 4"/></svg>`,
+  professor:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`,
 };
 
 function tipoIcon(t)  { return SVG[t?.toLowerCase()]||SVG.outro }
@@ -634,7 +635,7 @@ window.abrirLightbox=function(url){document.getElementById('lightbox-img').src=u
 window.fecharLightbox=function(){document.getElementById('lightbox').classList.remove('open');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')window.fecharLightbox()});
 
-/* ═══ COMPUTADORES ═══ */
+/* COMPUTADORES */
 let todosOsPCs=[],pcFiltroStatus='todos',pcEditandoId=null;
 async function carregarPCs(){
   try{const r=await fetch(`${SB}/rest/v1/v_pc_pub?order=tag.asc&select=*`,{headers:H});todosOsPCs=await r.json();if(!Array.isArray(todosOsPCs))todosOsPCs=[];document.getElementById('badge-pcs').textContent=todosOsPCs.length;}catch(e){todosOsPCs=[];}
@@ -687,16 +688,10 @@ window.salvarPC=async function(){
   }
 };
 
-/* ═══ EQUIPE TI ═══ */
+/* EQUIPE TI — agora com campo "É professor?" */
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
-  try{
-    const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});
-    todosOsTIs=await r.json();
-    if(!Array.isArray(todosOsTIs))todosOsTIs=[];
-    document.getElementById('badge-ti').textContent=todosOsTIs.length;
-    document.getElementById('ti-count').textContent=todosOsTIs.length;
-  }catch(e){todosOsTIs=[];}
+  try{const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];document.getElementById('badge-ti').textContent=todosOsTIs.length;document.getElementById('ti-count').textContent=todosOsTIs.length;}catch(e){todosOsTIs=[];}
   renderTIs();
 }
 function renderTIs(){
@@ -705,7 +700,8 @@ function renderTIs(){
   list.innerHTML=todosOsTIs.map(u=>{
     const isMe=session&&u.id===session.id;
     const initials=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');
-    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar">${initials}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''}</div><div class="ti-user-login">@${u.login||'—'}</div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+    const profBadge=u.is_professor?`<span style="font-size:.48rem;font-weight:700;letter-spacing:.05em;color:var(--kpi-green);background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);border-radius:3px;padding:1px 5px;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">${SVG.professor} PROF</span>`:'';
+    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar">${initials}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''}${profBadge}</div><div class="ti-user-login">@${u.login||'—'}</div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
   }).join('');
 }
 window.abrirModalTI=function(id){
@@ -714,17 +710,32 @@ window.abrirModalTI=function(id){
   document.getElementById('mti-senha-hint').style.display=ed?'block':'none';
   document.getElementById('mti-login').disabled=ed;
   document.getElementById('mti-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';
+  // Campo is_professor só no cadastro novo
+  const profRow=document.getElementById('mti-prof-row');
+  if(profRow) profRow.style.display=ed?'none':'flex';
+  const discRow=document.getElementById('mti-disc-row');
+  if(discRow) discRow.style.display='none';
   if(ed){
     const u=todosOsTIs.find(x=>x.id===id);if(!u)return;
     document.getElementById('mti-nome').value=u.nome||'';
     document.getElementById('mti-login').value=u.login||'';
     document.getElementById('mti-senha').value='';
+    const cb=document.getElementById('mti-is-professor');
+    if(cb){cb.checked=!!u.is_professor;cb.disabled=true;}
   }else{
     ['mti-nome','mti-login','mti-senha'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('mti-login').disabled=false;
+    const cb=document.getElementById('mti-is-professor');
+    if(cb){cb.checked=false;cb.disabled=false;}
+    document.getElementById('mti-disciplina').value='';
   }
   document.getElementById('modal-ti-user').classList.add('open');
   setTimeout(()=>document.getElementById('mti-nome').focus(),120);
+};
+window.toggleProfessorDisc=function(){
+  const cb=document.getElementById('mti-is-professor');
+  const discRow=document.getElementById('mti-disc-row');
+  if(discRow) discRow.style.display=cb?.checked?'flex':'none';
 };
 window.fecharModalTI=function(){document.getElementById('modal-ti-user').classList.remove('open');tiEditandoId=null;};
 document.getElementById('modal-ti-user').addEventListener('click',e=>{if(e.target===document.getElementById('modal-ti-user'))window.fecharModalTI()});
@@ -732,14 +743,17 @@ window.salvarTI=async function(){
   const nome=document.getElementById('mti-nome').value.trim();
   const login=document.getElementById('mti-login').value.trim();
   const senha=document.getElementById('mti-senha').value;
+  const isProf=document.getElementById('mti-is-professor')?.checked||false;
+  const disciplina=document.getElementById('mti-disciplina')?.value.trim()||null;
   if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){
     if(!login){notif('Informe o login.');return}
     if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
     try{
-      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha})});
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_is_professor:isProf,p_disciplina:disciplina})});
       if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
-      notif(`${nome} cadastrado!`);window.fecharModalTI();await carregarTIs();
+      notif(`${nome} cadastrado${isProf?' (também como Professor)':''}!`);
+      window.fecharModalTI();await carregarTIs();if(isProf)await carregarProfs();
     }catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
     try{
@@ -750,7 +764,7 @@ window.salvarTI=async function(){
 };
 window.deletarTI=async function(id,nome){if(!confirm(`Remover "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
 
-/* ═══ PROFESSORES ═══ */
+/* PROFESSORES */
 let todosOsProfs=[],profEditandoId=null;
 async function carregarProfs(){
   try{const r=await fetch(`${SB}/rest/v1/professor?order=nome.asc&select=id,nome,login,disciplina`,{headers:H});todosOsProfs=await r.json();if(!Array.isArray(todosOsProfs))todosOsProfs=[];document.getElementById('badge-prof').textContent=todosOsProfs.length;document.getElementById('prof-count').textContent=todosOsProfs.length;}catch(e){todosOsProfs=[];}
@@ -778,7 +792,7 @@ window.salvarProf=async function(){
 };
 window.deletarProf=async function(id,nome){if(!confirm(`Remover prof. "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/professor?id=eq.${id}`,{method:'DELETE',headers:H});notif(`Prof. ${nome} removido.`);await carregarProfs();}catch(e){notif('Erro.')}};
 
-/* ═══ BUSCA DEBOUNCED ═══ */
+/* BUSCA DEBOUNCED */
 let _bTimers={};
 function _debounce(key,fn,ms=350){clearTimeout(_bTimers[key]);_bTimers[key]=setTimeout(fn,ms)}
 window.buscarDescarte=q=>_debounce('desc',async()=>{try{let u=`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`;if(q)u+=`&or=(item_descartado.ilike.*${encodeURIComponent(q)}*,descricao.ilike.*${encodeURIComponent(q)}*)`;descarteFila=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);}catch(e){descarteFila=[]}renderDescarte()});
@@ -789,7 +803,7 @@ window.buscarTicketsRespondidos=q=>_debounce('resp',()=>carregarTickets(q));
 window.buscarPCs=q=>_debounce('pcs',async()=>{try{let u=`${SB}/rest/v1/v_pc_pub?order=tag.asc&select=*`;if(q)u+=`&or=(tag.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*)`;todosOsPCs=await fetch(u,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d:[]);document.getElementById('badge-pcs').textContent=todosOsPCs.length;}catch(e){todosOsPCs=[]}renderPCs()});
 
 /* TOGGLES SENHA */
-function _toggleOlho(inputId,icoId){const i=document.getElementById(inputId),ic=document.getElementById(icoId);if(!i||!ic)return;const s=i.type==='password';i.type=s?'text':'password';ic.innerHTML=s?`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`:`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;}
+function _toggleOlho(inputId,icoId){const i=document.getElementById(inputId),ic=document.getElementById(icoId);if(!i||!ic)return;const s=i.type==='password';i.type=s?'text':'password';ic.innerHTML=s?`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>`:` <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;}
 window.toggleSenhaMPC=()=>_toggleOlho('mpc-senha','ico-olho-mpc');
 window.toggleSenhaTI=()=>_toggleOlho('mti-senha','ico-olho-ti');
 window.toggleSenhaProf=()=>_toggleOlho('mprof-senha','ico-olho-prof');
@@ -798,9 +812,7 @@ window.atualizarContadorChatTI=function(inp){document.getElementById('ti-chat-ch
 /* SAIR */
 window.sair=function(){sessionStorage.removeItem('dsos_session');window.location.href='login.html'};
 
-/* ═══════════════════════════════
-   EASTER EGGS 🥚
-═══════════════════════════════ */
+/* EASTER EGGS */
 const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
 const EGG_NOME='Rickelme';
 const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
