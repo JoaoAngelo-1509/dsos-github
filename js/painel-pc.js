@@ -1,10 +1,26 @@
-// DSos v1.5 — painel-pc.js
+// DSos v1.6 — painel-pc.js com Logging Completo
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
 
 let session=null, tipo=null, tipoRapido=null, emergAtivo=false, tickets=[], chatTicketId=null;
+
+// ─────────────────────────────────────────────────────────────────────────
+// LOGGING: Função auxiliar para registrar eventos (fail-safe)
+// ─────────────────────────────────────────────────────────────────────────
+async function _logEvent(rpcName, params = {}) {
+  try {
+    await fetch(`${SB_URL}/rest/v1/rpc/${rpcName}`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify(params)
+    });
+  } catch (e) {
+    // Falhas de logging não afetam operação do usuário
+    console.warn(`[DSos Logging] Erro ao registrar ${rpcName}:`, e.message);
+  }
+}
 
 // ── RATE LIMITING DE TICKETS ───────────────────────────────────────────────
 // Verifica no banco se o solicitante atingiu 5 aberturas nos últimos 5 minutos.
@@ -61,6 +77,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (!raw) { window.location.href = 'login.html'; return; }
   session = JSON.parse(raw);
   if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
+
+  // Log de login bem-sucedido (PC ou Professor)
+  if (session.tipo === 'pc') {
+    _logEvent('rpc_log_login', { p_usuario_id: session.id, p_tipo_usuario: 'pc' });
+  } else if (session.tipo === 'professor') {
+    _logEvent('rpc_log_login', { p_usuario_id: session.id, p_tipo_usuario: 'professor' });
+  }
 
   if (session.tipo === 'professor') {
     document.getElementById('info-nome').textContent  = session.nome || session.login;
@@ -177,7 +200,20 @@ window.enviarRapido = async function() {
       chamado_emergencia:ehEmergencia
     })});
     if(!r.ok)throw new Error('HTTP '+r.status);
-    const data=await r.json();const id=Array.isArray(data)?data[0]?.id:data?.id;
+    const data=await r.json();
+    const id=Array.isArray(data)?data[0]?.id:data?.id;
+    
+    // ━━ LOGGING (chamado rápido) ━━
+    _logEvent('rpc_log_abrir_chamado', {
+      p_ticket_id: id,
+      p_tipo_usuario: session.tipo,
+      p_usuario_id: session.tipo === 'pc' ? session.id : null,
+      p_professor_id: session.tipo === 'professor' ? session.id : null,
+      p_pc_problema_id: pcProblemaId,
+      p_tipo_chamado: tipoRapido,
+      p_é_emergencia: ehEmergencia
+    });
+
     document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
     document.getElementById('overlay').classList.add('open');
     document.querySelectorAll('.rapido-opt').forEach(o=>o.classList.remove('selected'));
@@ -357,9 +393,32 @@ window.enviarMsg = async function(e) {
       let imagem_url=null;
       try{imagem_url=await _uploadImg(file);}catch(err){toast('Erro ao enviar imagem: '+err.message,'err');continue}
       await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:chatTicketId,remetente:'PC',conteudo:null,imagem_url,enviado_em:new Date().toISOString(),nome_remetente:nomeRemetente})});
+      
+      // ━━ LOGGING (imagem) ━━
+      _logEvent('rpc_log_enviar_mensagem', {
+        p_ticket_id: chatTicketId,
+        p_tipo_usuario: session.tipo,
+        p_usuario_id: session.tipo === 'pc' ? session.id : null,
+        p_professor_id: session.tipo === 'professor' ? session.id : null,
+        p_tipo_conteudo: 'imagem',
+        p_tem_texto: false
+      });
     }
     imgsPendentes=[];document.getElementById('img-preview-list').innerHTML='';document.getElementById('img-preview-row').classList.remove('visible');
-    if(txt)await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:chatTicketId,remetente:'PC',conteudo:txt,imagem_url:null,enviado_em:new Date().toISOString(),nome_remetente:nomeRemetente})});
+    if(txt){
+      await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:chatTicketId,remetente:'PC',conteudo:txt,imagem_url:null,enviado_em:new Date().toISOString(),nome_remetente:nomeRemetente})});
+      
+      // ━━ LOGGING (texto) ━━
+      _logEvent('rpc_log_enviar_mensagem', {
+        p_ticket_id: chatTicketId,
+        p_tipo_usuario: session.tipo,
+        p_usuario_id: session.tipo === 'pc' ? session.id : null,
+        p_professor_id: session.tipo === 'professor' ? session.id : null,
+        p_tipo_conteudo: 'texto',
+        p_tem_texto: true,
+        p_tamanho_texto: txt.length
+      });
+    }
     await carregarMsgs(chatTicketId);
   }catch(e){toast('Erro ao enviar mensagem.','err')}
 };
@@ -455,7 +514,20 @@ window.abrirChamado = async function() {
       chamado_emergencia:ehEmergencia
     })});
     if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||'HTTP '+r.status)}
-    const data=await r.json();const id=Array.isArray(data)?data[0]?.id:data?.id;
+    const data=await r.json();
+    const id=Array.isArray(data)?data[0]?.id:data?.id;
+    
+    // ━━ LOGGING (chamado detalhado) ━━
+    _logEvent('rpc_log_abrir_chamado', {
+      p_ticket_id: id,
+      p_tipo_usuario: session.tipo,
+      p_usuario_id: session.tipo === 'pc' ? session.id : null,
+      p_professor_id: session.tipo === 'professor' ? session.id : null,
+      p_pc_problema_id: pcProblemaId,
+      p_tipo_chamado: tipo,
+      p_é_emergencia: ehEmergencia
+    });
+
     document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
     document.getElementById('overlay').classList.add('open');
     await carregarChamados();

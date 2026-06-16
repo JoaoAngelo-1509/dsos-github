@@ -1,4 +1,4 @@
-// DSos v1.5 — painel-ti.js
+// DSos v1.6 — painel-ti.js com Logging Completo (PARTE 1/2)
 import { SB, H, SB_KEY } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
@@ -7,6 +7,22 @@ let realtimeChannel = null;
 let session=null, tickets=[], respondidos=[], descarteFila=[], ocultados=new Set(),
     selectedId=null, filtroAtivo='all', modalTicketId=null, tiMap={}, naoLidasMap={};
 let descarteAtual = { pcId: null, ticketId: null };
+
+// ─────────────────────────────────────────────────────────────────────────
+// LOGGING: Função auxiliar para registrar eventos (fail-safe)
+// ─────────────────────────────────────────────────────────────────────────
+async function _logEvent(rpcName, params = {}) {
+  try {
+    await fetch(`${SB}/rest/v1/rpc/${rpcName}`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify(params)
+    });
+  } catch (e) {
+    // Falhas de logging não afetam operação do usuário
+    console.warn(`[DSos Logging] Erro ao registrar ${rpcName}:`, e.message);
+  }
+}
 
 const SVG={
   hardware:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
@@ -67,6 +83,12 @@ window.addEventListener('DOMContentLoaded',async()=>{
   if(!raw){window.location.href='login.html';return}
   session=JSON.parse(raw);
   if(session.tipo!=='ti'){window.location.href='login.html';return}
+
+  // ━━ LOGGING: Login bem-sucedido ━━
+  _logEvent('rpc_log_login', {
+    p_usuario_id: session.id,
+    p_tipo_usuario: 'ti'
+  });
 
   try{
     const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?select=id,login,nome`,{headers:H});
@@ -294,6 +316,16 @@ window.setStatus=async function(s){
   if(s==='falso_alarme')body.resolvido_em=new Date().toISOString();
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${selectedId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
+    
+    // ━━ LOGGING (alterar status) ━━
+    _logEvent('rpc_log_alterar_status_chamado', {
+      p_ticket_id: selectedId,
+      p_novo_status: s,
+      p_usuario_ti_id: session.id,
+      p_pc_id: t.pc_problema,
+      p_descricao: `Alterado para ${statusLabel(s)}`
+    });
+
     notif(statusLabel(s)+' — atualizado');
     if(['resolvido','descartado','falso_alarme'].includes(s))window._dsosSom?.chamadoResolvido?.();
     selectedId=null;
@@ -320,6 +352,16 @@ window.confirmarEnvioFila=async function(){
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'descartado',resolucao:'descarte',resolvido_em:new Date().toISOString(),tecnico_responsavel:session.id,item_descartado:item})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'em_manutencao'})});
+    
+    // ━━ LOGGING (envio fila) ━━
+    _logEvent('rpc_log_descarte_equipment', {
+      p_ticket_id: t.id,
+      p_pc_id: t.pc_problema,
+      p_item_descartado: item,
+      p_usuario_ti_id: session.id,
+      p_etapa: 'fila'
+    });
+
     notif('Enviado para fila de descarte');selectedId=null;
     await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
   }catch(e){notif('Erro ao enviar para fila.')}
@@ -406,12 +448,25 @@ window.confirmarResolucao=async function(){
     const pcId=Array.isArray(updated)&&updated[0]?updated[0].pc_problema:null;
     if(pcId&&pcStatusMap[tipo])
       await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
+    
+    // ━━ LOGGING (confirmar resolução) ━━
+    _logEvent('rpc_log_alterar_status_chamado', {
+      p_ticket_id: modalTicketId,
+      p_novo_status: novoStatus,
+      p_usuario_ti_id: session.id,
+      p_pc_id: pcId,
+      p_descricao: `Resolvido como ${tipo}: ${descRes || '(sem detalhes)'}`
+    });
+
     notif('Chamado resolvido!');window._dsosSom?.chamadoResolvido?.();
     if(selectedId===modalTicketId)selectedId=null;
     window.fecharModal();
     await Promise.all([carregarTickets(),carregarKPIs()]);
   }catch(e){notif('Erro ao resolver chamado.')}
 };
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* CONTINUAR DO ARQUIVO PARTE 1 - COPIE E COLE ABAIXO APÓS A PARTE 1          */
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 /* MODAL DESCARTE FÍSICO */
 window.abrirModalDescarte=function(pcId,ticketId,itemDescartado,descricao,e){
@@ -441,6 +496,18 @@ window.confirmarDescarteFisico=async function(){
     linhas.push(`Registrado em: ${new Date().toLocaleString('pt-BR')}`,`Técnico: ${session.nome||session.login}`);
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({descricao_resolucao:linhas.join('\n'),tecnico_responsavel:session.id})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcCompleto?'descartado':'ativo'})});
+    
+    // ━━ LOGGING (descarte físico) ━━
+    _logEvent('rpc_log_descarte_equipment', {
+      p_ticket_id: ticketId,
+      p_pc_id: pcId,
+      p_item_descartado: oque,
+      p_usuario_ti_id: session.id,
+      p_etapa: 'concluido',
+      p_meio_descarte: como || null,
+      p_pc_completo: pcCompleto
+    });
+
     notif('Descarte físico registrado');window.fecharModalDescarte();
     await Promise.all([carregarTickets(),carregarPCs()]);
   }catch(err){console.error(err);notif('Erro ao registrar descarte.')}
@@ -531,6 +598,16 @@ window.executarLimpeza=async function(){
   try{
     const res=await fetch(`${SB}/functions/v1/fn-limpar-dados`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':'application/json'},body:JSON.stringify({dias:_limpezaDias,apenas_preview:false})});
     const d=await _parseFnResponse(res);
+    
+    // ━━ LOGGING (limpeza banco) ━━
+    _logEvent('rpc_log_limpeza_banco', {
+      p_usuario_ti_id: session.id,
+      p_dias: _limpezaDias,
+      p_tickets_deletados: d.tickets_deletados,
+      p_imagens_deletadas: d.imagens_deletadas,
+      p_mb_liberados: d.mb_liberados
+    });
+
     _limpezaPreviewOk=false;resetAbaManutencao();
     notif(`Limpeza: ${d.tickets_deletados} tickets, ${d.imagens_deletadas} imgs, ${d.mb_liberados}MB`);
     await Promise.all([carregarTickets(),carregarKPIs()]);
@@ -596,6 +673,19 @@ window.enviarMsgTi=async function(e){
       enviado_em:new Date().toISOString(),
       nome_remetente:session.nome||session.login||'T.I.'
     })});
+    
+    // ━━ LOGGING (mensagem T.I.) ━━
+    if(txt || imagem_url) {
+      _logEvent('rpc_log_enviar_mensagem', {
+        p_ticket_id: modalTicketId,
+        p_tipo_usuario: 'ti',
+        p_usuario_ti_id: session.id,
+        p_tipo_conteudo: imagem_url ? 'imagem' : 'texto',
+        p_tem_texto: !!txt,
+        p_tamanho_texto: txt ? txt.length : 0
+      });
+    }
+
     await carregarMsgsTi(modalTicketId);
   }catch(err){notif('Erro ao enviar mensagem.')}
 };
@@ -680,15 +770,44 @@ window.salvarPC=async function(){
   if(!lab){notif('Informe o laboratório.');return}
   if(pcEditandoId===null){
     if(!tag){notif('Informe a tag.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_tag:tag,p_laboratorio:lab,p_lado:lado,p_senha:senha})});const res=await r.json();if(!r.ok)throw new Error(res.message||'Erro');notif(`PC ${tag} cadastrado!`);window.fecharModalPC();await carregarPCs();}
+    try{
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_tag:tag,p_laboratorio:lab,p_lado:lado,p_senha:senha})});
+      const res=await r.json();
+      if(!r.ok)throw new Error(res.message||'Erro');
+      
+      // ━━ LOGGING (cadastrar PC) ━━
+      _logEvent('rpc_log_cadastrar_pc', {
+        p_usuario_ti_id: session.id,
+        p_pc_tag: tag,
+        p_laboratorio: lab,
+        p_lado: lado
+      });
+
+      notif(`PC ${tag} cadastrado!`);window.fecharModalPC();await carregarPCs();
+    }
     catch(e){notif('Erro: '+e.message)}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:H,body:JSON.stringify({laboratorio:lab,lado:lado})});notif('PC atualizado!');window.fecharModalPC();await carregarPCs();}
+    try{
+      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});
+      await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:H,body:JSON.stringify({laboratorio:lab,lado:lado})});
+      
+      // ━━ LOGGING (alterar status PC) ━━
+      const pcAntigo=todosOsPCs.find(p=>p.id===pcEditandoId);
+      _logEvent('rpc_log_alterar_status_pc', {
+        p_pc_id: pcEditandoId,
+        p_novo_status: status,
+        p_usuario_ti_id: session.id,
+        p_laboratorio: lab,
+        p_descricao: `Status alterado de ${pcAntigo?.status_pc||'?'} para ${status}`
+      });
+
+      notif('PC atualizado!');window.fecharModalPC();await carregarPCs();
+    }
     catch(e){notif('Erro ao atualizar.')}
   }
 };
 
-/* EQUIPE TI — agora com campo "É professor?" */
+/* EQUIPE TI */
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
   try{const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];document.getElementById('badge-ti').textContent=todosOsTIs.length;document.getElementById('ti-count').textContent=todosOsTIs.length;}catch(e){todosOsTIs=[];}
@@ -710,7 +829,6 @@ window.abrirModalTI=function(id){
   document.getElementById('mti-senha-hint').style.display=ed?'block':'none';
   document.getElementById('mti-login').disabled=ed;
   document.getElementById('mti-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';
-  // Campo is_professor só no cadastro novo
   const profRow=document.getElementById('mti-prof-row');
   if(profRow) profRow.style.display=ed?'none':'flex';
   const discRow=document.getElementById('mti-disc-row');
@@ -752,6 +870,14 @@ window.salvarTI=async function(){
     try{
       const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_is_professor:isProf,p_disciplina:disciplina})});
       if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
+      
+      // ━━ LOGGING (cadastrar T.I.) ━━
+      _logEvent('rpc_log_cadastrar_usuario_ti', {
+        p_login: login,
+        p_nome: nome,
+        p_usuario_criador_id: session.id
+      });
+
       notif(`${nome} cadastrado${isProf?' (também como Professor)':''}!`);
       window.fecharModalTI();await carregarTIs();if(isProf)await carregarProfs();
     }catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
@@ -783,11 +909,26 @@ window.salvarProf=async function(){
   if(!nome){notif('Informe o nome.');return}
   if(profEditandoId===null){
     if(!login){notif('Informe o login.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
-    try{const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null})});if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}notif(`Prof. ${nome} cadastrado!`);window.fecharModalProf();await carregarProfs();}
+    try{
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null})});
+      if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
+      
+      // ━━ LOGGING (cadastrar professor) ━━
+      _logEvent('rpc_log_cadastrar_professor', {
+        p_login: login,
+        p_nome: nome,
+        p_disciplina: disciplina || null,
+        p_usuario_ti_criador_id: session.id
+      });
+
+      notif(`Prof. ${nome} cadastrado!`);window.fecharModalProf();await carregarProfs();
+    }
     catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
-    try{await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});notif('Prof. atualizado!');window.fecharModalProf();await carregarProfs();}
-    catch(e){notif('Erro ao atualizar.')}
+    try{
+      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});
+      notif('Prof. atualizado!');window.fecharModalProf();await carregarProfs();
+    }catch(e){notif('Erro ao atualizar.')}
   }
 };
 window.deletarProf=async function(id,nome){if(!confirm(`Remover prof. "${nome}"?`))return;try{await fetch(`${SB}/rest/v1/professor?id=eq.${id}`,{method:'DELETE',headers:H});notif(`Prof. ${nome} removido.`);await carregarProfs();}catch(e){notif('Erro.')}};
@@ -808,6 +949,11 @@ window.toggleSenhaMPC=()=>_toggleOlho('mpc-senha','ico-olho-mpc');
 window.toggleSenhaTI=()=>_toggleOlho('mti-senha','ico-olho-ti');
 window.toggleSenhaProf=()=>_toggleOlho('mprof-senha','ico-olho-prof');
 window.atualizarContadorChatTI=function(inp){document.getElementById('ti-chat-char').textContent=inp.value.length};
+
+/* NAVEGAÇÃO PAINEL LOGS */
+window.abrirPainelLogs = function() {
+  window.open('painel-logs.html', '_self');
+};
 
 /* SAIR */
 window.sair=function(){sessionStorage.removeItem('dsos_session');window.location.href='login.html'};

@@ -1,16 +1,23 @@
-// DSos v1.5 — auth.js
+// DSos v1.3 alpha alpha — auth.js
+// ── auth.js — Lógica de autenticação da página de login ──
 import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
+import { logger } from './logging.js';
 
+// Expõe toggleTema globalmente para o onclick no HTML
 window.toggleTema = toggleTema;
 
+// ── APLICA TEMA SALVO AO CARREGAR ──
 applyTheme();
 
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('dsos_tema_login');
-  if (saved === 'dark') updateTemaIcon(true);
+  if (saved === 'dark') {
+    updateTemaIcon(true);
+  }
 });
 
+// ── TOGGLE VISIBILIDADE DE SENHA ──
 window.toggleSenha = function () {
   const input = document.getElementById('senha');
   const icone = document.getElementById('icone-olho');
@@ -24,105 +31,19 @@ window.toggleSenha = function () {
        <circle cx="12" cy="12" r="3"/>`;
 };
 
+// ── EXIBE MENSAGEM DE ERRO ──
 function mostrarErro(msg) {
   const erro = document.getElementById('erro');
   erro.textContent = msg;
   erro.classList.add('visivel');
 }
 
+// ── LIMPA MENSAGEM DE ERRO ──
 function limparErro() {
   document.getElementById('erro').classList.remove('visivel');
 }
 
-// Modal de escolha de perfil TI/Professor
-function mostrarModalPerfil(tiData, nome) {
-  // Remove se já existe
-  document.getElementById('modal-perfil')?.remove();
-
-  const modal = document.createElement('div');
-  modal.id = 'modal-perfil';
-  modal.style.cssText = `
-    position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
-    z-index:200;display:flex;align-items:center;justify-content:center;
-    animation:fadeIn .2s ease;
-  `;
-  modal.innerHTML = `
-    <div style="
-      background:var(--gray-card);border:2px solid var(--gray-border);border-radius:10px;
-      width:min(380px,90vw);overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4);
-      animation:cardIn .3s cubic-bezier(.22,1,.36,1) both;
-    ">
-      <div style="background:var(--red);padding:20px 24px;">
-        <div style="font-size:.72rem;color:rgba(255,255,255,.7);margin-bottom:4px;">Olá, ${nome || tiData.nome}</div>
-        <div style="font-size:1rem;font-weight:700;color:#fff;">Como deseja entrar?</div>
-      </div>
-      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:10px;">
-        <button id="btn-entrar-ti" style="
-          width:100%;padding:13px 16px;background:var(--red);color:#fff;border:none;border-radius:6px;
-          font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;
-          display:flex;align-items:center;gap:10px;transition:background .2s;
-        ">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Entrar como T.I.
-        </button>
-        <button id="btn-entrar-prof" style="
-          width:100%;padding:13px 16px;background:var(--gray-input);color:var(--text);
-          border:1.5px solid var(--gray-border);border-radius:6px;
-          font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer;
-          display:flex;align-items:center;gap:10px;transition:all .2s;
-        ">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
-          Entrar como Professor
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  document.getElementById('btn-entrar-ti').addEventListener('mouseenter', e => e.currentTarget.style.background = '#910305');
-  document.getElementById('btn-entrar-ti').addEventListener('mouseleave', e => e.currentTarget.style.background = 'var(--red)');
-  document.getElementById('btn-entrar-prof').addEventListener('mouseenter', e => { e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)'; });
-  document.getElementById('btn-entrar-prof').addEventListener('mouseleave', e => { e.currentTarget.style.borderColor = 'var(--gray-border)'; e.currentTarget.style.color = 'var(--text)'; });
-
-  document.getElementById('btn-entrar-ti').addEventListener('click', () => {
-    sessionStorage.setItem('dsos_session', JSON.stringify({
-      tipo: 'ti',
-      id: tiData.id,
-      login: tiData.login,
-      nome: nome
-    }));
-    window.location.href = 'painel-ti.html';
-  });
-
-  document.getElementById('btn-entrar-prof').addEventListener('click', async () => {
-    // Busca dados do professor vinculado
-    try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/professor?id=eq.${tiData.professor_id}&select=id,login,nome,disciplina`, { headers });
-      const profList = await r.json();
-      const prof = Array.isArray(profList) && profList[0] ? profList[0] : null;
-      sessionStorage.setItem('dsos_session', JSON.stringify({
-        tipo: 'professor',
-        id: prof ? prof.id : tiData.professor_id,
-        login: prof ? prof.login : tiData.login,
-        nome: nome,
-        disciplina: prof ? prof.disciplina : null
-      }));
-      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
-      window.location.href = 'painel-pc.html';
-    } catch(e) {
-      // fallback
-      sessionStorage.setItem('dsos_session', JSON.stringify({
-        tipo: 'professor',
-        id: tiData.professor_id,
-        login: tiData.login,
-        nome: nome
-      }));
-      window.location.href = 'painel-pc.html';
-    }
-  });
-}
-
+// ── LOGIN PRINCIPAL ──
 window.entrar = async function () {
   const nome    = document.getElementById('nome').value.trim();
   const usuario = document.getElementById('usuario').value.trim();
@@ -136,6 +57,7 @@ window.entrar = async function () {
     document.getElementById('nome').focus();
     return;
   }
+
   if (!usuario || !senha) {
     mostrarErro('Preencha usuário e senha.');
     return;
@@ -144,7 +66,7 @@ window.entrar = async function () {
   btn.classList.add('loading');
 
   try {
-    // 1. Tenta TI
+    // 1. Tenta login como T.I via RPC segura
     const resTI = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_ti`, {
       method: 'POST',
       headers,
@@ -154,25 +76,19 @@ window.entrar = async function () {
 
     if (Array.isArray(tiList) && tiList.length > 0) {
       const ti = tiList[0];
-
-      // Se é professor também, mostra escolha de perfil
-      if (ti.is_professor && ti.professor_id) {
-        btn.classList.remove('loading');
-        mostrarModalPerfil(ti, nome);
-        return;
-      }
-
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'ti',
         id: ti.id,
         login: ti.login,
         nome
       }));
+      // Log de login bem-sucedido
+      await logger.logLogin(ti.id, 'ti', ti.login, nome);
       window.location.href = 'painel-ti.html';
       return;
     }
 
-    // 2. Tenta PC
+    // 2. Tenta login como PC via RPC segura
     const resPC = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_pc`, {
       method: 'POST',
       headers,
@@ -190,12 +106,14 @@ window.entrar = async function () {
         lado: pc.lado,
         nome
       }));
-      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
+      // Log de login bem-sucedido
+      await logger.logLogin(pc.id, 'pc', pc.tag, nome);
+      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }
 
-    // 3. Tenta Professor
+    // 3. Tenta login como Professor
     const resProf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_professor`, {
       method: 'POST',
       headers,
@@ -211,14 +129,19 @@ window.entrar = async function () {
         login: prof.login,
         nome: prof.nome || nome
       }));
-      try { new Audio('../sounds/login.wav').play().catch(() => {}); } catch(e) {}
+      // Log de login bem-sucedido
+      await logger.logLogin(prof.id, 'professor', prof.login, prof.nome || nome);
+      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }
 
+    // Nenhum tipo de usuário encontrado — log de falha
+    await logger.logLoginFalho(usuario, 'usuario ou senha incorretos');
     mostrarErro('Usuário ou senha incorretos.');
 
   } catch (e) {
+    await logger.logLoginFalho(usuario, `erro de conexão: ${e.message}`);
     mostrarErro('Erro de conexão. Tente novamente.');
     console.error(e);
   } finally {
@@ -226,6 +149,7 @@ window.entrar = async function () {
   }
 };
 
+// ── AJUDA ──
 window.ajuda = function (e) {
   e.preventDefault();
   alert(
@@ -236,6 +160,7 @@ window.ajuda = function (e) {
   );
 };
 
+// ── ENTER NOS CAMPOS ──
 ['nome', 'usuario', 'senha'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') window.entrar(); });
