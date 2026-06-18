@@ -1033,15 +1033,15 @@ function _scRun(current,total,onHit,onFail){
     /* base ring */
     ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
     ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=14;ctx.stroke();
-    /* green zone */
-    ctx.save();ctx.shadowBlur=18;ctx.shadowColor='#00ff78';
+    /* green zone — branco brilhante */
+    ctx.save();ctx.shadowBlur=18;ctx.shadowColor='rgba(255,255,255,.7)';
     ctx.beginPath();ctx.arc(cx,cy,R,zoneStart,zoneEnd);
-    ctx.strokeStyle='#00e676';ctx.lineWidth=14;ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=14;ctx.stroke();
     ctx.restore();
-    /* white zone (perfeito) — amarelo pra diferenciar do branco da agulha */
-    ctx.save();ctx.shadowBlur=22;ctx.shadowColor='rgba(255,220,0,.9)';
+    /* perfect zone — branco puro com glow forte */
+    ctx.save();ctx.shadowBlur=28;ctx.shadowColor='#ffffff';
     ctx.beginPath();ctx.arc(cx,cy,R,whiteStart,whiteEnd);
-    ctx.strokeStyle='#ffe600';ctx.lineWidth=14;ctx.stroke();
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=14;ctx.stroke();
     ctx.restore();
     /* needle */
     const nx=cx+R*Math.cos(angle),ny=cy+R*Math.sin(angle);
