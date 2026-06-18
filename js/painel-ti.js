@@ -959,11 +959,17 @@ window.abrirPainelLogs = function() {
 /* SAIR */
 window.sair=async function(){
   try{
+    const _t=sessionStorage.getItem('dsos_login_time');
+    const _dur=_t?(()=>{const s=Math.floor((Date.now()-parseInt(_t))/1000);return`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`})():null;
+    sessionStorage.removeItem('dsos_login_time');
+    const _ua=navigator.userAgent;const _br=(_ua.match(/(Chrome|Firefox|Safari|Edge|Opera)[\/\s]([\d.]+)/)||[])[1];const _os=/Windows/.test(_ua)?'Windows':/Mac/.test(_ua)?'macOS':/Linux/.test(_ua)?'Linux':/Android/.test(_ua)?'Android':/iPhone|iPad/.test(_ua)?'iOS':'?';
     await _logEvent('rpc_log_logout',{
       p_usuario_id:   session?.id,
       p_usuario_tipo: 'ti',
       p_usuario_login:session?.login,
       p_usuario_nome: session?.nome,
+      p_ip_address:   `${_br||'?'} | ${_os} | ${screen.width}x${screen.height} | ${navigator.language||'N/A'} | ${Intl.DateTimeFormat().resolvedOptions().timeZone||'N/A'}`,
+      ...(_dur?{p_duracao_sessao:_dur}:{}),
     });
   }catch(e){}
   sessionStorage.removeItem('dsos_session');

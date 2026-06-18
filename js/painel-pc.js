@@ -1,10 +1,10 @@
 // DSos v1.6 — painel-pc.js com Logging Completo
-import { SB_URL, SB_KEY, H } from './supabase-config.js';
+import { SB_URL, SB_KEY, H, GROQ_KEY } from './supabase-config.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
 
-let session=null, tipo=null, tipoRapido=null, emergAtivo=false, tickets=[], chatTicketId=null;
+let session=null, tipo=null, emergAtivo=false, tickets=[], chatTicketId=null;
 
 // ─────────────────────────────────────────────────────────────────────────
 // LOGGING: Função auxiliar para registrar eventos (fail-safe)
@@ -21,6 +21,168 @@ async function _logEvent(rpcName, params = {}) {
     console.warn(`[DSos Logging] Erro ao registrar ${rpcName}:`, e.message);
   }
 }
+
+// ── DETECÇÃO DE CHAMADO DUPLICADO ────────────────────────────────────────────
+function _similaridade(a, b) {
+  const words = s => new Set(s.toLowerCase().replace(/[^\w\s]/g,'').split(/\s+/).filter(w => w.length > 2));
+  const wa = words(a), wb = words(b);
+  const intersect = [...wa].filter(w => wb.has(w)).length;
+  const union = new Set([...wa, ...wb]).size;
+  return union === 0 ? 0 : intersect / union;
+}
+
+async function _verificarDuplicata(desc, pcId) {
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/ticket?pc_problema=eq.${pcId}&status=in.(aberto,em_andamento)&select=descricao,aberto_em&order=aberto_em.desc&limit=3`,
+      { headers: H }
+    );
+    if (!r.ok) return false;
+    const tickets = await r.json();
+    for (const t of tickets) {
+      if (!t.descricao || t.descricao === '(chamado rápido)') continue;
+      if (_similaridade(desc, t.descricao) >= 0.6) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// ── CLASSIFICAÇÃO DE PRIORIDADE VIA GROQ AI ──────────────────────────────────
+// Retorna { prioridade, tipo } — uma única chamada para os dois
+async function classificarChamado(descricao) {
+  if (!descricao || descricao === '(chamado rápido)') return { prioridade: 'medio', tipo: null };
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        temperature: 0,
+        max_tokens: 200,
+        messages: [
+          {
+            role: 'system',
+            content: `Você analisa chamados de suporte de TI em uma escola. Responda em exatamente três linhas, sem mais nada:
+
+TIPO: <hardware|software|rede|outro>
+PRIORIDADE: <baixo|medio|alto|falso|emergencia>
+SUGESTAO: <veja as regras abaixo>
+
+Critérios de TIPO:
+- hardware: problema físico (PC não liga, tela, HD, teclado, mouse, fonte)
+- software: programas ou sistema (programa não abre, erro, travamento, vírus)
+- rede: conectividade (sem internet, sem rede, Wi-Fi caindo)
+- outro: qualquer outra coisa
+
+Critérios de PRIORIDADE:
+- emergencia: risco físico real (fogo, fumaça, cheiro de queimado, choque elétrico, alguém machucado)
+- alto: impede completamente o uso do PC ou de programa essencial para a aula
+- medio: atrapalha mas permite uso parcial
+- baixo: problema leve, estético ou que pode esperar
+- falso: qualquer descrição que não seja claramente um problema de informática ou equipamento de TI. Marque como falso: xingamentos, palavrões, ofensas, conteúdo racista, discriminatório ou preconceituoso, nomes de pessoas, frases aleatórias, emojis soltos, texto sem sentido, brincadeiras, testes, reclamações pessoais, problemas de saúde, problemas físicos da sala (cadeira, lâmpada, barulho), pedidos de ajuda com matéria escolar. Se a descrição não mencionar explicitamente um problema com computador, monitor, teclado, mouse, impressora, software, internet ou rede — marque como falso.
+
+Contexto importante: este sistema é usado em uma escola. Os usuários são alunos e professores, sem conhecimento técnico avançado. Existe uma equipe de T.I. responsável pelo suporte — eles cuidam de tudo que envolve configuração do sistema, instalação de programas, hardware e rede.
+
+Regras para SUGESTAO:
+- Se PRIORIDADE for emergencia ou falso: escreva exatamente "nenhuma"
+- Para qualquer outra prioridade: sugira apenas ações simples que um aluno ou professor pode fazer sem risco e sem conhecimento técnico (ex: reiniciar o PC, fechar e reabrir o programa, verificar se o cabo está encaixado, tentar outro navegador). Escreva 2 a 4 passos claros e detalhados.
+- NUNCA sugira: modo seguro, modo de recuperação, antivírus, varredura de malware, drivers, reinstalar programas, desinstalar, painel de controle, configurações avançadas, editor de registro, prompt de comando, abrir o gabinete, trocar peças, alterar qualquer configuração do sistema operacional, ou qualquer coisa que exija permissão de administrador ou conhecimento técnico.
+- NUNCA termine com frases como "se o problema persistir, contate o T.I." — o usuário já está abrindo um chamado para isso.
+- As sugestões devem ser apenas: reiniciar o PC normalmente, fechar e reabrir o programa, verificar se cabos estão conectados, tentar outro navegador, aguardar alguns minutos. Nada além disso.
+- Se o problema envolver vírus, malware, segurança ou qualquer coisa que exija diagnóstico técnico: escreva exatamente "nenhuma".
+- Se não houver nada simples que o usuário possa tentar: escreva exatamente "nenhuma".`
+          },
+          {
+            role: 'user',
+            content: `Descrição: ${descricao}`
+          }
+        ]
+      })
+    });
+    if (!resp.ok) return { prioridade: 'medio', tipo: null };
+    const data = await resp.json();
+    const txt = (data.choices?.[0]?.message?.content || '').toLowerCase();
+
+    const tipoMatch = txt.match(/tipo:\s*(hardware|software|rede|outro)/);
+    const priMatch  = txt.match(/prioridade:\s*(baixo|medio|alto|falso|emergencia)/);
+
+    const sugMatch = txt.match(/sugestao:\s*(.+)/);
+    const sugestao = sugMatch ? sugMatch[1].trim() : '';
+    return {
+      tipo:      tipoMatch ? tipoMatch[1] : null,
+      prioridade: priMatch ? priMatch[1]  : 'medio',
+      sugestao:  sugestao === 'nenhuma' ? '' : sugestao,
+    };
+  } catch {
+    return { prioridade: 'medio', tipo: null, sugestao: '' };
+  }
+}
+
+async function classificarPrioridade(descricao) {
+  return (await classificarChamado(descricao)).prioridade;
+}
+
+window._fecharSugestao = function() {
+  document.getElementById('ai-sugestao-card')?.classList.add('hidden');
+};
+
+function _exibirSugestaoAI(sugestao, prioridade) {
+  const card = document.getElementById('ai-sugestao-card');
+  if (!card) return;
+  if (!sugestao || ['falso', 'emergencia'].includes(prioridade)) {
+    card.classList.add('hidden');
+    return;
+  }
+  document.getElementById('ai-sugestao-txt').textContent = sugestao;
+  card.classList.add('hidden');
+  requestAnimationFrame(() => card.classList.remove('hidden'));
+}
+
+let _aiDebounceTimer = null;
+let _aiUltimaDesc = '';
+let _aiUltimoResultado = null;
+
+function _atualizarBadgeAI(descricao, tipo) {
+  const badge = document.getElementById('ai-prioridade-badge');
+  if (!badge) return;
+  clearTimeout(_aiDebounceTimer);
+  if (!descricao || descricao.length < 10) {
+    badge.className = 'ai-badge hidden';
+    _aiUltimaDesc = '';
+    _aiUltimoResultado = null;
+    document.getElementById('ai-sugestao-card')?.classList.add('hidden');
+    // reseta seletor de tipo
+    tipo = null;
+    document.querySelectorAll('.sel-opt').forEach(o => o.classList.remove('active'));
+    document.querySelectorAll('.sel-t-icon').forEach(i => i.style.display = 'none');
+    document.getElementById('sel-val').textContent = '';
+    document.getElementById('sel-trigger').classList.remove('valued');
+    return;
+  }
+  // Só reclassifica se mudou mais de 30% em relação à última classificação
+  if (_aiUltimoResultado && _similaridade(descricao, _aiUltimaDesc) >= 0.7) return;
+
+  clearTimeout(_aiDebounceTimer);
+  _aiDebounceTimer = setTimeout(async () => {
+    badge.className = 'ai-badge loading';
+    badge.textContent = '';
+    const { prioridade: p, tipo: tipoDetectado, sugestao } = await classificarChamado(descricao);
+    _aiUltimaDesc = descricao;
+    _aiUltimoResultado = p;
+    if (tipoDetectado) {
+      const opt = document.querySelector(`.sel-opt[data-v="${tipoDetectado}"]`);
+      if (opt) window.pickTipo(opt);
+    }
+    const labels = { alto: '🔴 Prioridade Alta', medio: '🟡 Prioridade Média', baixo: '🟢 Prioridade Baixa', falso: '⚠️ Possível falso alarme', emergencia: '🚨 EMERGÊNCIA DETECTADA' };
+    badge.className = `ai-badge pri-${p}`;
+    badge.textContent = labels[p] || '🟡 Prioridade Média';
+    _exibirSugestaoAI(sugestao, p);
+  }, 1500);
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 // ── RATE LIMITING DE TICKETS ───────────────────────────────────────────────
 // Verifica no banco se o solicitante atingiu 5 aberturas nos últimos 5 minutos.
@@ -92,8 +254,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('info-lado').textContent  = '—';
     document.getElementById('footer-lab').textContent = '—';
     document.getElementById('footer-lado').textContent= '—';
-    document.getElementById('prof-pc-field-rapido').classList.add('visible');
-    document.getElementById('rapido-title-txt').textContent = 'Selecione o tipo de problema e informe a tag do PC. O T.I. será notificado imediatamente.';
     window.toggleEmerg();
     await carregarChamados();
     setInterval(carregarChamados, 30000);
@@ -123,11 +283,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('pc-status-msg').textContent = 'Este PC está registrado como DESCARTADO. Não é possível abrir chamados. Entre em contato com o T.I.';
         b.classList.add('visible','descartado');
         document.getElementById('btn-submit').disabled = true;
-        document.getElementById('btn-rapido-send').disabled = true;
-        document.querySelectorAll('.modo-btn').forEach(btn => { btn.style.opacity='.4'; btn.style.pointerEvents='none'; });
       }
     }
   } catch(e) { /* silencioso */ }
+
+  // Atualiza badge de prioridade AI enquanto usuário digita
+  document.getElementById('descricao')?.addEventListener('input', function() {
+    _atualizarBadgeAI(this.value.trim(), tipo);
+  });
 
   await carregarChamados();
   setInterval(carregarChamados, 30000);
@@ -147,82 +310,6 @@ window.atualizarContadorChat = function(inp, contId) {
   document.getElementById(contId).textContent = inp.value.length;
 };
 
-window.trocarModo = function(modo) {
-  const rapido=document.getElementById('modo-rapido'),det=document.getElementById('modo-detalhado');
-  const btnR=document.getElementById('modo-rapido-btn'),btnD=document.getElementById('modo-detalhado-btn');
-  if (modo==='rapido'){rapido.style.display='flex';det.style.display='none';btnR.classList.add('active');btnD.classList.remove('active');}
-  else{rapido.style.display='none';det.style.display='flex';btnR.classList.remove('active');btnD.classList.add('active');}
-};
-
-window.pickRapido = function(el) {
-  document.querySelectorAll('.rapido-opt').forEach(o=>o.classList.remove('selected'));
-  el.classList.add('selected');tipoRapido=el.dataset.v;
-  document.getElementById('btn-rapido-send').disabled=false;
-};
-
-window.enviarRapido = async function() {
-  if (!tipoRapido) return;
-
-  // Resolve PC origem e problema antes de checar rate limit
-  let pcOrigemId, pcProblemaId, lab, lado;
-  if (session.tipo==='professor') {
-    const tag=document.getElementById('prof-pc-tag-rapido').value.trim().toUpperCase();
-    if (!tag){toast('Informe a tag do PC com problema.','err');return}
-    try{
-      const rpc=await fetch(`${SB_URL}/rest/v1/pc?tag=eq.${encodeURIComponent(tag)}&select=id,laboratorio,lado`,{headers:H});
-      const pcs=await rpc.json();
-      if(!Array.isArray(pcs)||!pcs.length){toast('Tag do PC não encontrada.','err');return}
-      pcOrigemId=pcs[0].id;pcProblemaId=pcs[0].id;lab=pcs[0].laboratorio;lado=pcs[0].lado;
-    }catch(e){toast('Erro ao buscar PC.','err');return}
-  } else {
-    pcOrigemId=session.id;pcProblemaId=session.id;lab=session.laboratorio;lado=session.lado;
-  }
-
-  // Chamados rápidos de professor são sempre emergência → pula rate limit
-  const ehEmergencia = session.tipo === 'professor';
-
-  if (!ehEmergencia) {
-    const rl = await _checkTicketRateLimit();
-    if (rl?.bloqueado) {
-      _exibirBloqueioTicket(rl.segundos_restantes || 300);
-      return;
-    }
-  }
-
-  const btn=document.getElementById('btn-rapido-send');btn.classList.add('loading');
-  try{
-    const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({
-      pc_origem:pcOrigemId,pc_problema:pcProblemaId,
-      tipo:tipoRapido,descricao:'(chamado rápido)',
-      laboratorio:lab,lado,status:'aberto',prioridade:'medio',
-      aberto_em:new Date().toISOString(),
-      nome_solicitante:session.nome,
-      chamado_emergencia:ehEmergencia
-    })});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    const data=await r.json();
-    const id=Array.isArray(data)?data[0]?.id:data?.id;
-    
-    // ━━ LOGGING (chamado rápido) ━━
-    _logEvent('rpc_log_abrir_chamado', {
-      p_ticket_id: id,
-      p_tipo_usuario: session.tipo,
-      p_usuario_id: session.tipo === 'pc' ? session.id : null,
-      p_professor_id: session.tipo === 'professor' ? session.id : null,
-      p_pc_problema_id: pcProblemaId,
-      p_tipo_chamado: tipoRapido,
-      p_é_emergencia: ehEmergencia
-    });
-
-    document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
-    document.getElementById('overlay').classList.add('open');
-    document.querySelectorAll('.rapido-opt').forEach(o=>o.classList.remove('selected'));
-    tipoRapido=null;document.getElementById('btn-rapido-send').disabled=true;
-    if(session.tipo==='professor')document.getElementById('prof-pc-tag-rapido').value='';
-    await carregarChamados();
-  }catch(e){toast('Erro ao abrir chamado: '+e.message,'err');}
-  finally{btn.classList.remove('loading')}
-};
 
 window.trocarAba = function(aba) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -466,6 +553,8 @@ window.pickTipo = function(opt) {
   document.getElementById('sel-val').textContent=nomes[tipo]||tipo;
   document.getElementById('sel-trigger').classList.add('valued');
   document.getElementById('sel-wrap').classList.remove('open');
+  _aiUltimaDesc = ''; _aiUltimoResultado = null;
+  // não reclassifica ao trocar tipo manualmente
 };
 document.addEventListener('click',e=>{ const w=document.getElementById('sel-wrap');if(!w.contains(e.target))w.classList.remove('open'); });
 window.toggleEmerg = function() {
@@ -503,15 +592,35 @@ window.abrirChamado = async function() {
     }catch(e){toast('Erro ao buscar PC.','err');return}
   }
   const btn=document.getElementById('btn-submit');btn.classList.add('loading');
+
+  const isDuplicata = await _verificarDuplicata(desc, pcProblemaId);
+  if (isDuplicata) {
+    btn.classList.remove('loading');
+    toast('Já existe um chamado aberto com descrição muito parecida para este PC.', 'err');
+    return;
+  }
+
+  const badge=document.getElementById('ai-prioridade-badge');
+  if(badge){badge.className='ai-badge loading';badge.textContent='⏳ Classificando...';}
+  const { prioridade: prioridadeIA, tipo: tipoDetectado } = await classificarChamado(desc);
+  if (tipoDetectado && !tipo) tipo = tipoDetectado;
+  const labelsIA={alto:'🔴 Prioridade Alta',medio:'🟡 Prioridade Média',baixo:'🟢 Prioridade Baixa',falso:'⚠️ Possível falso alarme',emergencia:'🚨 EMERGÊNCIA DETECTADA'};
+  if(badge){badge.className=`ai-badge pri-${prioridadeIA}`;badge.textContent=labelsIA[prioridadeIA];}
+  if(prioridadeIA==='falso'){
+    btn.classList.remove('loading');
+    toast('A IA identificou isso como possível falso alarme. Revise a descrição.','err');
+    return;
+  }
+  const ehEmergenciaIA = prioridadeIA === 'emergencia';
   try{
     const r=await fetch(`${SB_URL}/rest/v1/ticket`,{method:'POST',headers:H,body:JSON.stringify({
       pc_origem:pcOrigemId,pc_problema:pcProblemaId,
       tipo,descricao:desc,
       laboratorio:session.laboratorio,lado:session.lado,
-      status:'aberto',prioridade:'medio',
+      status:'aberto',prioridade: ehEmergenciaIA ? 'alto' : prioridadeIA,
       aberto_em:new Date().toISOString(),
       nome_solicitante:session.nome,
-      chamado_emergencia:ehEmergencia
+      chamado_emergencia: ehEmergencia || ehEmergenciaIA
     })});
     if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||'HTTP '+r.status)}
     const data=await r.json();
@@ -544,20 +653,26 @@ window.resetForm = function() {
   if(session.tipo==='professor'){if(!emergAtivo)window.toggleEmerg();}
   else{emergAtivo=false;document.getElementById('emerg').classList.remove('on');document.getElementById('epill').textContent='ATIVAR';}
   document.getElementById('emerg-pc').value='';
-  const profRapido=document.getElementById('prof-pc-tag-rapido');if(profRapido)profRapido.value='';
-  tipo=null;tipoRapido=null;
-  document.querySelectorAll('.rapido-opt').forEach(o=>o.classList.remove('selected'));
-  document.getElementById('btn-rapido-send').disabled=true;
+  document.getElementById('ai-prioridade-badge').className='ai-badge hidden';
+  _fecharSugestao();
+  _aiUltimaDesc='';_aiUltimoResultado=null;
+  tipo=null;
   trocarAba('chamados');
 };
 
 window.sair = async function() {
   try{
+    const _t=sessionStorage.getItem('dsos_login_time');
+    const _dur=_t?(()=>{const s=Math.floor((Date.now()-parseInt(_t))/1000);return`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`})():null;
+    sessionStorage.removeItem('dsos_login_time');
+    const _ua=navigator.userAgent;const _br=(_ua.match(/(Chrome|Firefox|Safari|Edge|Opera)[\/\s]([\d.]+)/)||[])[1];const _os=/Windows/.test(_ua)?'Windows':/Mac/.test(_ua)?'macOS':/Linux/.test(_ua)?'Linux':/Android/.test(_ua)?'Android':/iPhone|iPad/.test(_ua)?'iOS':'?';
     await _logEvent('rpc_log_logout',{
       p_usuario_id:   session?.id,
       p_usuario_tipo: session?.tipo||'pc',
       p_usuario_login:session?.login||session?.tag,
       p_usuario_nome: session?.nome,
+      p_ip_address:   `${_br||'?'} | ${_os} | ${screen.width}x${screen.height} | ${navigator.language||'N/A'} | ${Intl.DateTimeFormat().resolvedOptions().timeZone||'N/A'}`,
+      ...(_dur?{p_duracao_sessao:_dur}:{}),
     });
   }catch(e){}
   sessionStorage.removeItem('dsos_session');

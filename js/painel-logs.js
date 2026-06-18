@@ -20,7 +20,6 @@ const TAB_META = {
   'atividades': { table: 'atividades_log',            order: 'timestamp'    },
   'acessos':    { table: 'acesso_log',                order: 'timestamp'    },
   'criticas':   { table: 'alteracoes_criticas_log',   order: 'timestamp'    },
-  'operacoes':  { table: 'operacoes_massa_log',       order: 'timestamp'    },
 };
 
 // ── filtros disponíveis por aba ──
@@ -55,12 +54,6 @@ const TAB_FILTERS = {
     { id: 'criticas-tabela',    param: 'tabela',   op: 'ilike' },
     { id: 'criticas-aprovado',  param: 'aprovado', op: 'eq'   },
   ],
-  'operacoes': [
-    { id: 'operacoes-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
-    { id: 'operacoes-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
-    { id: 'operacoes-operacao',  param: 'operacao', op: 'ilike' },
-    { id: 'operacoes-status',    param: 'status',   op: 'eq'    },
-  ],
 };
 
 // ── campos de texto para highlight por aba ──
@@ -70,7 +63,6 @@ const TAB_SEARCH_FIELDS = {
   'atividades': [],
   'acessos':    ['acessos-usuario'],
   'criticas':   ['criticas-tabela'],
-  'operacoes':  ['operacoes-operacao'],
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -448,6 +440,9 @@ const RENDER = {
       const loginTag = r.usuario_tipo === 'pc'
         ? `<span class="cell-mono" style="color:var(--green)">${hl(r.usuario_login, term)}</span>`
         : `<span class="cell-mono">${hl(r.usuario_login, term)}</span>`;
+      const duracaoCell = (r.status_login === 'sucesso' && !r.duracao_sessao)
+        ? `<span class="cell-mono live-dur" data-start="${r.timestamp}" style="color:var(--green)">—</span>`
+        : `<span class="cell-mono">${fmtDuracao(r.duracao_sessao)}</span>`;
       return `
       <div class="table-row ${falha ? 'row-error' : logout ? 'row-warn' : ''}" style="grid-template-columns:150px 110px 110px 80px 1fr 100px"
            onclick='abrirModal("acessos",${esc(r)})'>
@@ -456,9 +451,10 @@ const RENDER = {
         <span>${loginTag}</span>
         <span>${statusBadge}</span>
         <span class="cell-trunc">${e(r.motivo_falha)}</span>
-        <span class="cell-mono">${fmtDuracao(r.duracao_sessao)}</span>
+        ${duracaoCell}
       </div>`;
     }).join('');
+    _iniciarTimerDuracao();
   },
 
   criticas(data, el) {
@@ -482,26 +478,24 @@ const RENDER = {
     }).join('');
   },
 
-  operacoes(data, el) {
-    if (!data.length) { el.innerHTML = empty(); return; }
-    const term = _getSearchTerm('operacoes', 'operacoes-operacao');
-    el.innerHTML = data.map(r => {
-      const tabelas = Array.isArray(r.tabelas_afetadas)
-        ? r.tabelas_afetadas.join(', ')
-        : (r.tabelas_afetadas || '—');
-      return `
-      <div class="table-row" style="grid-template-columns:150px 110px 150px 100px 1fr 80px"
-           onclick='abrirModal("operacoes",${esc(r)})'>
-        <span class="cell-date">${fmtData(r.timestamp)}</span>
-        <span class="cell-user">${e(r.usuario_login)}</span>
-        <span class="cell-trunc">${hl(r.operacao, term)}</span>
-        <span style="text-align:right">${e(r.quantidade_registros)}</span>
-        <span class="cell-trunc">${e(tabelas)}</span>
-        <span>${badgeStatus(r.status)}</span>
-      </div>`;
-    }).join('');
-  },
 };
+
+// ── Timer de duração em tempo real para sessões ativas ──
+let _durTimer = null;
+function _iniciarTimerDuracao() {
+  clearInterval(_durTimer);
+  _durTimer = setInterval(() => {
+    document.querySelectorAll('.live-dur[data-start]').forEach(el => {
+      const start = new Date(el.dataset.start).getTime();
+      if (isNaN(start)) return;
+      const s = Math.floor((Date.now() - start) / 1000);
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const sec = String(s % 60).padStart(2, '0');
+      el.textContent = `${h}:${m}:${sec}`;
+    });
+  }, 1000);
+}
 
 // ═══════════════════════════════════════════════════════════════
 // RENDER KPIs
@@ -597,24 +591,6 @@ const RENDER_KPI = {
       ${kpiCard('green', iconCheck(), aprovado, 'Aprovados')}`;
   },
 
-  operacoes(data) {
-    const el = document.getElementById('operacoes-kpis');
-    if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
-
-    const falhas   = data.filter(d => d.status === 'falha').length;
-    const parciais = data.filter(d => d.status === 'parcial').length;
-    const totalReg = data.reduce((s, d) => s + (parseInt(d.quantidade_registros)||0), 0);
-
-    const freq = {};
-    data.forEach(d => { if (d.operacao) freq[d.operacao] = (freq[d.operacao]||0)+1; });
-    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
-
-    el.innerHTML = `
-      ${kpiCard('red',    iconBar(),   data.length,          'Operações no período')}
-      ${kpiCard('yellow', iconBolt(),  totalReg.toLocaleString('pt-BR'), 'Registros afetados')}
-      ${kpiCard('red',    iconX(),     falhas,               'Com falha')}
-      ${top ? kpiCard('green', iconTarget(), top[1]+'x', top[0], true) : ''}`;
-  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -759,7 +735,7 @@ function abrirModal(aba, data) {
       html += mf('Data/Hora',     fmtData(data.timestamp))
              + mf('Usuário',      data.usuario_nome || data.usuario_login)
              + mf('Status login', data.status_login)
-             + mf('IP Address',   data.ip_address, '', 'mono')
+             + mf('Dispositivo',  data.ip_address, 'full', 'mono')
              + (data.motivo_falha ? mf('Motivo da falha', data.motivo_falha, 'full') : '')
              + mf('Duração sessão', fmtDuracao(data.duracao_sessao))
              + (data.user_agent ? mf('User Agent', data.user_agent, 'full', 'mono') : '');
@@ -776,18 +752,6 @@ function abrirModal(aba, data) {
              + (data.motivo ? mf('Motivo', data.motivo, 'full') : '');
       break;
 
-    case 'operacoes': {
-      const tabs = Array.isArray(data.tabelas_afetadas)
-        ? data.tabelas_afetadas.join(', ') : (data.tabelas_afetadas || '—');
-      html += mf('Data/Hora',      fmtData(data.timestamp))
-             + mf('Usuário',       data.usuario_login)
-             + mf('Operação',      data.operacao)
-             + mf('Qtd. registros', data.quantidade_registros)
-             + mf('Status',        data.status)
-             + mf('Tabelas',       tabs, 'full')
-             + (data.resultado_resumo ? mf('Resultado', data.resultado_resumo, 'full') : '');
-      break;
-    }
   }
 
   html += '</div>';
@@ -875,7 +839,6 @@ const GS_SEARCH_MAP = {
   'atividades': { table: 'atividades_log',          fields: ['usuario_login','descricao_amigavel'], order: 'timestamp', label: 'Atividades' },
   'acessos':    { table: 'acesso_log',             fields: ['usuario_login','usuario_nome'], order: 'timestamp',   label: 'Acessos' },
   'criticas':   { table: 'alteracoes_criticas_log', fields: ['usuario_login','tabela','valor_novo'], order: 'timestamp', label: 'Críticas' },
-  'operacoes':  { table: 'operacoes_massa_log',    fields: ['usuario_login','operacao'],    order: 'timestamp',   label: 'Operações' },
 };
 
 let _gsTimer = null;
@@ -1053,7 +1016,6 @@ const TABLE_TO_ABA = {
   'atividades_log':          'atividades',
   'acesso_log':              'acessos',
   'alteracoes_criticas_log': 'criticas',
-  'operacoes_massa_log':     'operacoes',
 };
 
 function iniciarRealtime() {
@@ -1134,8 +1096,217 @@ function _atualizarBadgeRT(aba) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MANUTENÇÃO — LIMPEZA POR PERÍODO
+// ═══════════════════════════════════════════════════════════════
+let _logsDias = 30, _logsPreviewOk = false;
+
+(function _initManutencao() {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.limpeza-prazo-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.limpeza-prazo-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _logsDias = parseInt(btn.dataset.dias);
+        _logsPreviewOk = false;
+        document.getElementById('btn-executar-limpeza-logs').disabled = true;
+        document.getElementById('logs-limpeza-preview').innerHTML =
+          `<div class="limpeza-preview-idle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Clique em "Ver impacto" para analisar</span></div>`;
+      });
+    });
+  });
+})();
+
+function _abasSelecionadas() {
+  return [...document.querySelectorAll('.logs-tabela-chk:checked')].map(el => el.value);
+}
+
+async function verImpactoLimpezaLogs() {
+  const btn = document.getElementById('btn-ver-impacto-logs');
+  const preview = document.getElementById('logs-limpeza-preview');
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analisando…`;
+  preview.innerHTML = '<div class="limpeza-preview-idle"><div class="spinner" style="width:16px;height:16px"></div> analisando…</div>';
+
+  const selecionadas = _abasSelecionadas();
+  if (selecionadas.length === 0) {
+    preview.innerHTML = `<div class="limpeza-preview-idle" style="color:var(--yellow)">Selecione ao menos uma tabela.</div>`;
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ver impacto`;
+    return;
+  }
+
+  const threshold = _logsDias >= 9999 ? null
+    : new Date(Date.now() - _logsDias * 86400000).toISOString();
+
+  const nomes = {
+    'auditoria': 'Auditoria',
+    'audit-log': 'Mudanças BD',
+    'atividades': 'Atividades',
+    'acessos': 'Acessos',
+    'criticas': 'Críticas',
+  };
+
+  try {
+    const results = await Promise.all(
+      Object.entries(TAB_META)
+        .filter(([aba]) => selecionadas.includes(aba))
+        .map(async ([aba, meta]) => {
+        let url = `${CFG.SB_URL}/rest/v1/${meta.table}?select=${meta.order}`;
+        if (threshold) url += `&${meta.order}=lt.${encodeURIComponent(threshold)}`;
+        const res = await fetch(url, { method: 'HEAD', headers: headers() });
+        const count = parseInt(res.headers.get('content-range')?.split('/')[1] || '0', 10);
+        return { aba, label: nomes[aba] || aba, count };
+      })
+    );
+
+    const total = results.reduce((s, r) => s + r.count, 0);
+
+    if (total === 0) {
+      preview.innerHTML = `<div class="limpeza-preview-idle" style="color:var(--green)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span>Nenhum registro nesse intervalo.</span></div>`;
+      _logsPreviewOk = false;
+      document.getElementById('btn-executar-limpeza-logs').disabled = true;
+    } else {
+      const dividers = (i) => i < results.length - 1 ? '<div class="limpeza-preview-div"></div>' : '';
+      preview.innerHTML = `<div class="limpeza-preview-stats">
+        ${results.map((r, i) => `
+          <div class="limpeza-stat">
+            <div class="limpeza-stat-n" style="color:${r.count > 0 ? 'var(--red)' : 'var(--muted)'}">${r.count.toLocaleString('pt-BR')}</div>
+            <div class="limpeza-stat-l">${r.label}</div>
+          </div>${dividers(i)}`).join('')}
+      </div>
+      <div style="width:100%;text-align:center;font-size:.6rem;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--glass-b)">
+        Total: <strong style="color:var(--red)">${total.toLocaleString('pt-BR')} registros</strong> serão removidos
+      </div>`;
+      _logsPreviewOk = true;
+      document.getElementById('btn-executar-limpeza-logs').disabled = false;
+    }
+  } catch (e) {
+    preview.innerHTML = `<div class="limpeza-preview-idle" style="color:var(--red)">Erro ao analisar: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ver impacto`;
+  }
+}
+
+async function executarLimpezaLogs() {
+  if (!_logsPreviewOk) return;
+  const prazoLabel = _logsDias >= 9999 ? 'todos os logs' : `logs com mais de ${_logsDias} dias`;
+  if (!confirm(`Confirmar limpeza de ${prazoLabel}?\nAção IRREVERSÍVEL.`)) return;
+
+  const btn = document.getElementById('btn-executar-limpeza-logs');
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpando…`;
+
+  const threshold = _logsDias >= 9999 ? null
+    : new Date(Date.now() - _logsDias * 86400000).toISOString();
+
+  const selecionadas = _abasSelecionadas();
+  const tabelas = selecionadas.map(aba => TAB_META[aba]?.table).filter(Boolean);
+
+  let erros = 0;
+  try {
+    const res = await fetch(`${CFG.SB_URL}/rest/v1/rpc/rpc_limpar_logs`, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_tabelas: tabelas, p_threshold: threshold }),
+    });
+    if (!res.ok) erros++;
+  } catch { erros++; }
+
+  _logsPreviewOk = false;
+  btn.disabled = true;
+
+  if (erros > 0) {
+    showNotif(`Limpeza concluída com ${erros} erro(s)`, 'warn');
+  } else {
+    showNotif('Logs apagados com sucesso', 'ok');
+  }
+
+  // Reset preview
+  document.getElementById('logs-limpeza-preview').innerHTML =
+    `<div class="limpeza-preview-idle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Clique em "Ver impacto" para analisar</span></div>`;
+
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpar agora`;
+
+  selecionadas.forEach(aba => { STATE.dados[aba] = null; });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APAGAR LOGS
+// ═══════════════════════════════════════════════════════════════
+async function apagarLogs(aba) {
+  const meta = TAB_META[aba];
+  if (!meta) return;
+
+  const filtros = TAB_FILTERS[aba] || [];
+  const temFiltroData = filtros.some(f => {
+    const el = document.getElementById(f.id);
+    return el && el.value.trim() && (f.op === 'gte' || f.op === 'lte');
+  });
+
+  const total = STATE.totais[aba] || 0;
+  const msg = temFiltroData
+    ? `Apagar ${total} registro(s) do período filtrado em "${aba}"?\n\nEssa ação é irreversível.`
+    : `Apagar TODOS os registros de "${aba}"?\n\nEssa ação é irreversível e não pode ser desfeita.`;
+
+  if (!confirm(msg)) return;
+  if (!temFiltroData && !confirm(`Confirmação final: apagar TODOS os logs de "${aba}"?`)) return;
+
+  try {
+    let url = `${CFG.SB_URL}/rest/v1/${meta.table}?`;
+
+    if (temFiltroData) {
+      const params = [];
+      filtros.forEach(f => {
+        if (f.op !== 'gte' && f.op !== 'lte') return;
+        const el = document.getElementById(f.id);
+        if (!el || !el.value.trim()) return;
+        params.push(`${f.param}=${f.op}.${el.value.trim()}${f.suffix || ''}`);
+      });
+      url += params.join('&');
+    } else {
+      // sem filtro — precisa de condição para o Supabase aceitar DELETE sem WHERE
+      url += `${meta.order}=not.is.null`;
+    }
+
+    const threshold = temFiltroData
+      ? (() => {
+          const endEl = document.getElementById(`${aba}-dataEnd`);
+          return endEl?.value ? new Date(endEl.value + 'T23:59:59').toISOString() : null;
+        })()
+      : null;
+
+    const res = await fetch(`${CFG.SB_URL}/rest/v1/rpc/rpc_limpar_logs`, {
+      method: 'POST',
+      headers: { ...headers(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_tabelas: [meta.table], p_threshold: threshold }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      console.error('[apagarLogs]', res.status, err);
+      showNotif('Erro ao apagar — verifique permissões', 'err');
+      return;
+    }
+
+    showNotif('Registros apagados com sucesso', 'ok');
+    STATE.dados[aba] = null;
+    STATE.pagina[aba] = 0;
+    carregarDados(aba);
+  } catch (e) {
+    console.error('[apagarLogs]', e);
+    showNotif('Erro de conexão ao apagar', 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // EXPO GLOBAL
 // ═══════════════════════════════════════════════════════════════
+window.verImpactoLimpezaLogs  = verImpactoLimpezaLogs;
+window.executarLimpezaLogs    = executarLimpezaLogs;
+window.apagarLogs             = apagarLogs;
 window.mudarAba          = mudarAba;
 window.toggleTema        = toggleTema;
 window.voltarPainel      = voltarPainel;

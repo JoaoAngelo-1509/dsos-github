@@ -65,60 +65,7 @@
         <span id="pc-status-msg"></span>
       </div>
 
-      <!-- Toggle Rápido / Detalhado -->
-      <div class="modo-toggle">
-        <button class="modo-btn active" id="modo-rapido-btn" onclick="trocarModo('rapido')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Chamado Rápido
-        </button>
-        <button class="modo-btn" id="modo-detalhado-btn" onclick="trocarModo('detalhado')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Chamado Detalhado
-        </button>
-      </div>
-
-      <!-- MODO RÁPIDO -->
-      <div id="modo-rapido" class="rapido-wrap">
-        <div class="rapido-inner">
-          <div class="rapido-title" id="rapido-title-txt">Selecione o tipo de problema e envie com um clique. O T.I. será notificado imediatamente.</div>
-
-          <!-- Campo de tag do PC — visível apenas para professor -->
-          <div class="prof-pc-field" id="prof-pc-field-rapido">
-            <div class="prof-pc-label">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              Tag do PC com problema
-            </div>
-            <input class="prof-pc-input" id="prof-pc-tag-rapido" type="text"
-              placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
-              oninput="this.value=this.value.toUpperCase()" />
-          </div>
-
-          <div class="rapido-tipos">
-            <div class="rapido-opt" data-v="hardware" onclick="pickRapido(this)">
-              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
-              <div class="rapido-opt-nome">Hardware</div>
-              <div class="rapido-opt-desc">Placa, memória, HD, fonte…</div>
-            </div>
-            <div class="rapido-opt" data-v="software" onclick="pickRapido(this)">
-              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-              <div class="rapido-opt-nome">Software</div>
-              <div class="rapido-opt-desc">Sistema, programas, travamento…</div>
-            </div>
-
-            <div class="rapido-opt" data-v="rede" onclick="pickRapido(this)">
-              <div class="rapido-opt-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
-              <div class="rapido-opt-nome">Rede</div>
-              <div class="rapido-opt-desc">Sem internet ou rede local…</div>
-            </div>
-          </div>
-          <button class="btn-rapido-send" id="btn-rapido-send" onclick="enviarRapido()" disabled>
-            <span style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Chamar T.I. agora</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- MODO DETALHADO (formulário original) -->
-      <div id="modo-detalhado" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+      <div id="modo-detalhado" style="display:flex;flex:1;flex-direction:column;overflow:hidden;min-height:0">
         <div class="form-wrap">
         <div class="form-inner">
 
@@ -175,6 +122,7 @@
               placeholder="Descreva o problema: o que aconteceu, quando começou, o que você tentou…"
               oninput="document.getElementById('dc').textContent=this.value.length"></textarea>
             <div class="desc-count"><span id="dc">0</span>/500</div>
+            <div class="ai-badge hidden" id="ai-prioridade-badge"></div>
           </div>
 
           <div class="divisor"><span>opcional</span></div>
@@ -331,6 +279,22 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CARD CENTRAL DE SUGESTÃO IA -->
+<div class="ai-sugestao-backdrop hidden" id="ai-sugestao-card" onclick="if(event.target===this)_fecharSugestao()">
+  <div class="ai-sugestao-overlay">
+    <div class="ai-sug-head">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <span class="ai-sug-title">Tente antes de abrir o chamado</span>
+      <button class="ai-sug-close" onclick="_fecharSugestao()">✕</button>
+    </div>
+    <div class="ai-sug-body" id="ai-sugestao-txt"></div>
+    <div class="ai-sug-footer">
+      <button class="ai-sug-btn secondary" onclick="_fecharSugestao()">Não resolveu</button>
+      <button class="ai-sug-btn primary" onclick="_fecharSugestao();trocarAba('chamados')">Resolveu!</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-pc.js"></script>

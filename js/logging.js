@@ -6,60 +6,23 @@ import { SUPABASE_URL, SUPABASE_HEADERS as H } from './supabase-config.js';
 class DSosLogger {
   constructor() {
     this.sessionId = this._generateSessionId();
-    this._debugLogs = [];
-    this._addDebugLog('✓ Instância criada');
-  }
-
-  _addDebugLog(msg) {
-    const timestamp = new Date().toISOString();
-    this._debugLogs.push(`[${timestamp}] ${msg}`);
-    console.log('[DSosLogger]', msg);
-    
-    // Salva em localStorage pra debugar depois
-    try {
-      localStorage.setItem('DSosLogger_debug', JSON.stringify(this._debugLogs));
-    } catch (e) {
-      // localStorage cheio, ignora
-    }
   }
 
   _generateSessionId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
-  async _fetchIP() {
-    return new Promise((resolve) => {
-      this._addDebugLog('▶ _fetchIP() iniciado');
-      
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      const ips = new Set();
-
-      pc.createDataChannel('');
-      pc.createOffer().then(offer => pc.setLocalDescription(offer));
-
-      pc.onicecandidate = (ice) => {
-        if (!ice || !ice.candidate) return;
-        
-        const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
-        const match = ipRegex.exec(ice.candidate.candidate);
-        
-        if (match) {
-          const ip = match[1];
-          if (!ip.startsWith('127.') && !ip.startsWith('0.')) {
-            ips.add(ip);
-            this._addDebugLog(`→ IP encontrado: ${ip}`);
-          }
-        }
-      };
-
-      setTimeout(() => {
-        pc.close();
-        const ipArray = Array.from(ips);
-        const ip = ipArray.length > 0 ? ipArray[0] : '0.0.0.0';
-        this._addDebugLog(`✓ IP final: ${ip}`);
-        resolve(ip);
-      }, 2000);
-    });
+  _getDeviceInfo() {
+    const ua = navigator.userAgent;
+    const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)[\/\s]([\d.]+)/);
+    const browser = browserMatch ? `${browserMatch[1]}/${browserMatch[2].split('.')[0]}` : 'Desconhecido';
+    const os = /Windows/.test(ua) ? 'Windows'
+              : /Mac/.test(ua)     ? 'macOS'
+              : /Linux/.test(ua)   ? 'Linux'
+              : /Android/.test(ua) ? 'Android'
+              : /iPhone|iPad/.test(ua) ? 'iOS'
+              : 'Desconhecido';
+    return `${browser} | ${os} | ${screen.width}x${screen.height} | ${navigator.language || 'N/A'} | ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'N/A'}`;
   }
 
   // RPCs que NÃO aceitam p_sessao_id — evita "unknown parameter" no Postgres
@@ -80,19 +43,9 @@ class DSosLogger {
     'rpc_log_limpeza_banco',
   ]);
 
-  // ─── FIX 2: busca IP sob demanda ─────────────────────────────────
   async _callRPC(rpcName, params) {
-    this._addDebugLog(`→ _callRPC: ${rpcName}`);
-    
-    const ip = await this._fetchIP();
-    this._addDebugLog(`✓ IP recebido: ${ip}`);
-
-    const body = { ...params, p_ip_address: ip };
-
-    // p_sessao_id só existe em rpc_log_login — não envia para os demais
-    if (!DSosLogger._SEM_SESSAO.has(rpcName)) {
-      body.p_sessao_id = this.sessionId;
-    }
+    const body = { ...params, p_ip_address: this._getDeviceInfo() };
+    if (!DSosLogger._SEM_SESSAO.has(rpcName)) body.p_sessao_id = this.sessionId;
 
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
@@ -100,23 +53,14 @@ class DSosLogger {
         headers: H,
         body: JSON.stringify(body),
       });
-
       if (!res.ok) {
-        const errBody = await res.text().catch(() => '(sem corpo)');
-        this._addDebugLog(`✗ RPC falhou: ${rpcName} HTTP ${res.status}`);
-        console.error(
-          `[DSosLogger] RPC "${rpcName}" falhou — HTTP ${res.status}\n` +
-          `  params enviados: ${JSON.stringify(body)}\n` +
-          `  resposta Supabase: ${errBody}`
-        );
+        const err = await res.text().catch(() => '');
+        console.error(`[DSosLogger] ${rpcName} HTTP ${res.status}`, err);
         return null;
       }
-
-      this._addDebugLog(`✓ RPC sucesso: ${rpcName}`);
       return await res.json().catch(() => null);
     } catch (e) {
-      this._addDebugLog(`✗ Erro rede: ${rpcName} - ${e.message}`);
-      console.error(`[DSosLogger] Erro de rede ao chamar "${rpcName}":`, e);
+      console.error(`[DSosLogger] ${rpcName}:`, e.message);
       return null;
     }
   }
@@ -126,17 +70,13 @@ class DSosLogger {
   // ═══════════════════════════════════════════════════════
 
   async logLogin(usuarioId, usuarioTipo, usuarioLogin, usuarioNome) {
-    // Parâmetros alinhados com rpc_log_login no banco:
-    // p_usuario_id, p_usuario_tipo, p_usuario_login, p_usuario_nome,
-    // p_status_login, p_ip_address (DEFAULT NULL), p_user_agent (DEFAULT NULL),
-    // p_sessao_id (DEFAULT NULL)
+    sessionStorage.setItem('dsos_login_time', Date.now().toString());
     return this._callRPC('rpc_log_login', {
       p_usuario_id:    usuarioId,
       p_usuario_tipo:  usuarioTipo,
       p_usuario_login: usuarioLogin,
       p_usuario_nome:  usuarioNome,
       p_status_login:  'sucesso',
-      // p_ip_address e p_sessao_id são injetados automaticamente em _callRPC
     });
   }
 
@@ -317,12 +257,25 @@ class DSosLogger {
   // LOGOUT
   // ═══════════════════════════════════════════════════════
 
+  static _calcDuracao() {
+    const t = sessionStorage.getItem('dsos_login_time');
+    if (!t) return null;
+    const secs = Math.floor((Date.now() - parseInt(t)) / 1000);
+    const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
   async logLogout(usuarioId, usuarioTipo, usuarioLogin, usuarioNome) {
+    const duracao = DSosLogger._calcDuracao();
+    sessionStorage.removeItem('dsos_login_time');
     return this._callRPC('rpc_log_logout', {
-      p_usuario_id:    usuarioId,
-      p_usuario_tipo:  usuarioTipo,
-      p_usuario_login: usuarioLogin,
-      p_usuario_nome:  usuarioNome,
+      p_usuario_id:      usuarioId,
+      p_usuario_tipo:    usuarioTipo,
+      p_usuario_login:   usuarioLogin,
+      p_usuario_nome:    usuarioNome,
+      ...(duracao ? { p_duracao_sessao: duracao } : {}),
     });
   }
 
