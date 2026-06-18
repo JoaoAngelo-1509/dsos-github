@@ -289,6 +289,29 @@
   </div><!-- /card -->
 </div><!-- /center -->
 
+<!-- DBD SKILL CHECK -->
+<div class="sc-overlay" id="sc-overlay">
+  <div class="sc-container">
+    <div class="sc-header">
+      <span class="sc-title">SKILL CHECK</span>
+      <div class="sc-dots">
+        <span class="sc-dot" id="sc-dot-0"></span>
+        <span class="sc-dot" id="sc-dot-1"></span>
+        <span class="sc-dot" id="sc-dot-2"></span>
+      </div>
+    </div>
+    <div class="sc-skillcheck" id="sc-skillcheck">
+      <div class="sc-glow-ring"></div>
+      <div class="sc-needle-wrap" id="sc-needle-wrap">
+        <div class="sc-needle-bar"></div>
+      </div>
+      <div class="sc-key-hint">ESPAÇO</div>
+      <canvas id="sc-canvas" width="260" height="260"></canvas>
+    </div>
+    <div class="sc-label" id="sc-label"></div>
+  </div>
+</div>
+
 <!-- EASTER EGG -->
 <div class="egg-bg" id="egg-bg" onclick="fecharEgg()">
   <div class="egg-card">
@@ -469,6 +492,20 @@
           </button>
         </div>
         <div class="mpc-hint" id="mprof-senha-hint" style="display:none">Deixe em branco para não alterar a senha atual.</div>
+      </div>
+
+      <!-- É técnico T.I. também? — só aparece no cadastro novo -->
+      <div class="mpc-field" id="mprof-ti-row" style="display:none">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--input-bg);border:1.5px solid var(--glass-b);border-radius:5px;transition:border-color .2s">
+          <input type="checkbox" id="mprof-is-ti"
+            style="width:15px;height:15px;accent-color:var(--green);cursor:pointer;flex-shrink:0" />
+          <div style="flex:1">
+            <div style="font-size:.74rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">
+              Este professor também é técnico T.I.
+            </div>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.4">Cria automaticamente um perfil de T.I. vinculado a este login. No login, o usuário poderá escolher entre Professor e T.I.</div>
+          </div>
+        </label>
       </div>
     </div>
     <div class="modal-pc-footer">

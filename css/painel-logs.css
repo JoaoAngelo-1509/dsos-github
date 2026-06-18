@@ -208,6 +208,7 @@ body{font-family:'Sora',sans-serif;display:flex;flex-direction:column;background
 }
 .table-row:hover{background:var(--row-hover);border-color:var(--muted2);transform:translateX(1px)}
 .table-row.row-error{border-color:rgba(192,23,26,.45);background:rgba(192,23,26,.08)}
+.table-row.row-warn{border-color:rgba(245,208,0,.25);background:rgba(245,208,0,.05)}
 .table-row.row-critical{border-color:var(--red);background:rgba(192,23,26,.12)}
 .table-row.row-error:hover,.table-row.row-critical:hover{transform:translateX(1px)}
 
@@ -431,6 +432,103 @@ body{font-family:'Sora',sans-serif;display:flex;flex-direction:column;background
   .kpi-n{font-size:1rem}
   .tab{padding:7px 9px;font-size:.6rem}
 }
+/* ══════════════════════════════════════
+   QUICK DATE BUTTONS
+══════════════════════════════════════ */
+.quick-dates{display:flex;gap:3px;align-items:center}
+.btn-qdate{
+  background:none;border:1px solid var(--glass-b);border-radius:3px;
+  padding:2px 8px;font-family:inherit;font-size:.58rem;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+  letter-spacing:.03em
+}
+.btn-qdate:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+
+/* ══════════════════════════════════════
+   ACTION COUNT
+══════════════════════════════════════ */
+.action-count{
+  font-size:.58rem;color:var(--muted2);margin-right:auto;
+  white-space:nowrap;padding:0 4px
+}
+
+/* ══════════════════════════════════════
+   HIGHLIGHT
+══════════════════════════════════════ */
+mark.hl{
+  background:rgba(245,208,0,.32);color:inherit;
+  border-radius:2px;padding:0 1px
+}
+[data-theme="light"] mark.hl{background:rgba(146,103,10,.2)}
+
+/* ══════════════════════════════════════
+   CELL ANTES (valor anterior críticas)
+══════════════════════════════════════ */
+.cell-antes{color:var(--muted2);text-decoration:line-through;font-size:.62rem}
+
+/* ══════════════════════════════════════
+   BUSCA GLOBAL
+══════════════════════════════════════ */
+.gs-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(10px);
+  z-index:200;align-items:flex-start;justify-content:center;
+  padding-top:10vh
+}
+.gs-overlay.open{display:flex;animation:fadeIn .15s ease}
+
+.gs-box{
+  background:var(--modal-bg);border:1px solid var(--modal-b);border-radius:10px;
+  width:min(640px,94vw);max-height:72vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.7);
+  animation:modalIn .22s cubic-bezier(.22,1,.36,1) both
+}
+
+.gs-head{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-bottom:1px solid var(--glass-b);flex-shrink:0
+}
+.gs-input{
+  flex:1;background:none;border:none;outline:none;
+  font-family:inherit;font-size:.85rem;color:var(--text);
+}
+.gs-input::placeholder{color:var(--muted2)}
+.gs-esc{
+  flex-shrink:0;background:var(--input-bg);border:1px solid var(--glass-b);
+  border-radius:4px;padding:2px 6px;font-size:.58rem;color:var(--muted2);
+  cursor:pointer;font-family:inherit;transition:all .15s
+}
+.gs-esc:hover{border-color:var(--red);color:var(--red)}
+
+.gs-status{
+  padding:8px 16px;font-size:.62rem;color:var(--muted2);
+  border-bottom:1px solid var(--glass-b2);flex-shrink:0
+}
+.gs-results{overflow-y:auto;flex:1;padding:8px}
+
+.gs-group{margin-bottom:10px}
+.gs-group-label{
+  font-size:.52rem;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted2);padding:4px 8px;display:flex;align-items:center;gap:6px
+}
+.gs-count{
+  background:var(--red-dim);color:var(--red);border:1px solid rgba(192,23,26,.3);
+  border-radius:10px;padding:0 5px;font-size:.5rem;font-weight:700
+}
+.gs-row{
+  display:grid;grid-template-columns:130px 120px 1fr;
+  align-items:center;gap:8px;
+  padding:7px 10px;border-radius:4px;cursor:pointer;
+  background:var(--row-bg);border:1px solid var(--row-b);
+  margin-bottom:3px;font-size:.66rem;color:var(--text);
+  transition:all .15s
+}
+.gs-row:hover{background:var(--row-hover);border-color:var(--red);transform:translateX(2px)}
+.gs-row-time{color:var(--muted);font-size:.6rem;white-space:nowrap}
+.gs-row-user{color:var(--text2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-row-desc{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* ═══════════════════════════════════════════════════════════════
    BADGES DE TIPO DE USUÁRIO — painel-logs.css
    Seguindo o padrão visual do .spill existente

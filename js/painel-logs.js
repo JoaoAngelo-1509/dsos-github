@@ -23,7 +23,7 @@ const TAB_META = {
   'operacoes':  { table: 'operacoes_massa_log',       order: 'timestamp'    },
 };
 
-// ── filtros disponíveis por aba (id-do-input → parâmetro da query) ──
+// ── filtros disponíveis por aba ──
 const TAB_FILTERS = {
   'auditoria': [
     { id: 'auditoria-dataStart', param: 'executado_em', op: 'gte', suffix: '' },
@@ -31,26 +31,46 @@ const TAB_FILTERS = {
     { id: 'auditoria-login',     param: 'login',        op: 'ilike' },
   ],
   'audit-log': [
-    { id: 'audit-log-tipo',   param: 'tipo_acao',       op: 'eq'    },
-    { id: 'audit-log-tabela', param: 'tabela_afetada',  op: 'ilike' },
-    { id: 'audit-log-status', param: 'status',          op: 'eq'    },
+    { id: 'audit-log-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
+    { id: 'audit-log-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'audit-log-tipo',      param: 'tipo_acao',      op: 'eq'    },
+    { id: 'audit-log-tabela',    param: 'tabela_afetada', op: 'ilike' },
+    { id: 'audit-log-status',    param: 'status',         op: 'eq'    },
   ],
   'atividades': [
-    { id: 'atividades-modulo',  param: 'modulo',  op: 'eq'  },
-    { id: 'atividades-impacto', param: 'impacto', op: 'eq'  },
+    { id: 'atividades-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
+    { id: 'atividades-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'atividades-modulo',    param: 'modulo',  op: 'eq'  },
+    { id: 'atividades-impacto',   param: 'impacto', op: 'eq'  },
   ],
   'acessos': [
-    { id: 'acessos-status',  param: 'status_login',  op: 'eq'    },
-    { id: 'acessos-usuario', param: 'usuario_login', op: 'ilike' },
+    { id: 'acessos-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
+    { id: 'acessos-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'acessos-status',    param: 'status_login',  op: 'eq'    },
+    { id: 'acessos-usuario',   param: 'usuario_login', op: 'ilike' },
   ],
   'criticas': [
-    { id: 'criticas-tabela',   param: 'tabela',  op: 'ilike' },
-    { id: 'criticas-aprovado', param: 'aprovado', op: 'eq'   },
+    { id: 'criticas-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
+    { id: 'criticas-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'criticas-tabela',    param: 'tabela',   op: 'ilike' },
+    { id: 'criticas-aprovado',  param: 'aprovado', op: 'eq'   },
   ],
   'operacoes': [
-    { id: 'operacoes-operacao', param: 'operacao', op: 'ilike' },
-    { id: 'operacoes-status',   param: 'status',   op: 'eq'    },
+    { id: 'operacoes-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
+    { id: 'operacoes-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'operacoes-operacao',  param: 'operacao', op: 'ilike' },
+    { id: 'operacoes-status',    param: 'status',   op: 'eq'    },
   ],
+};
+
+// ── campos de texto para highlight por aba ──
+const TAB_SEARCH_FIELDS = {
+  'auditoria':  ['login'],
+  'audit-log':  ['audit-log-tabela'],
+  'atividades': [],
+  'acessos':    ['acessos-usuario'],
+  'criticas':   ['criticas-tabela'],
+  'operacoes':  ['operacoes-operacao'],
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -58,10 +78,11 @@ const TAB_FILTERS = {
 // ═══════════════════════════════════════════════════════════════
 const STATE = {
   abaAtiva: 'auditoria',
-  pagina: {},       // { aba: número }
-  totais: {},       // { aba: número }
-  dados: {},        // { aba: array }
-  arTimers: {},     // { aba: intervalId }
+  pagina:    {},
+  totais:    {},
+  dados:     {},
+  arTimers:  {},
+  newCounts: {},
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -72,7 +93,25 @@ document.addEventListener('DOMContentLoaded', () => {
   iniciarRelogio();
   registrarFiltros();
   registrarAutoRefresh();
-  carregarDados('auditoria');
+
+  // restaurar aba da URL
+  const abaUrl = new URLSearchParams(location.search).get('aba');
+  const abaInicial = TAB_META[abaUrl] ? abaUrl : 'auditoria';
+  if (abaInicial !== 'auditoria') {
+    mudarAba(abaInicial);
+  } else {
+    carregarDados('auditoria');
+  }
+
+  iniciarRealtime();
+
+  // Ctrl+K abre busca global
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      abrirBuscaGlobal();
+    }
+  });
 });
 
 function carregarUsuario() {
@@ -113,7 +152,6 @@ function toggleTema() {
   }
 }
 
-// Restaurar tema salvo
 (function restaurarTema() {
   const t = localStorage.getItem('dsos-tema');
   if (t) {
@@ -133,13 +171,11 @@ function voltarPainel() {
 // ABAS
 // ═══════════════════════════════════════════════════════════════
 function mudarAba(aba) {
-  // desativar aba antiga
   const tabAtiva = document.getElementById(`tab-${STATE.abaAtiva}`);
   const panelAtivo = document.getElementById(`panel-${STATE.abaAtiva}`);
   if (tabAtiva) tabAtiva.classList.remove('active');
   if (panelAtivo) panelAtivo.classList.remove('active');
 
-  // ativar nova
   const tabNova = document.getElementById(`tab-${aba}`);
   const panelNovo = document.getElementById(`panel-${aba}`);
   if (tabNova) tabNova.classList.add('active');
@@ -148,7 +184,14 @@ function mudarAba(aba) {
   STATE.abaAtiva = aba;
   STATE.pagina[aba] = 0;
 
-  // carregar somente se não tiver dados ainda
+  STATE.newCounts[aba] = 0;
+  _atualizarBadgeRT(aba);
+
+  // persistir aba na URL
+  const url = new URL(location.href);
+  url.searchParams.set('aba', aba);
+  history.replaceState(null, '', url);
+
   if (!STATE.dados[aba]) {
     carregarDados(aba);
   }
@@ -162,12 +205,17 @@ function registrarFiltros() {
     filtros.forEach(f => {
       const el = document.getElementById(f.id);
       if (!el) return;
-      const evento = el.tagName === 'SELECT' ? 'change' : 'input';
-      el.addEventListener(evento, () => {
+      const isText = el.tagName === 'INPUT' && el.type !== 'date';
+      const handler = () => {
         STATE.pagina[aba] = 0;
-        STATE.dados[aba] = null; // forçar reload
+        STATE.dados[aba] = null;
         carregarDados(aba);
-      });
+      };
+      if (isText) {
+        el.addEventListener('input', debounce(handler, 350));
+      } else {
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'change', handler);
+      }
     });
   });
 }
@@ -180,6 +228,33 @@ function limparFiltros(aba) {
   });
   STATE.pagina[aba] = 0;
   STATE.dados[aba] = null;
+  carregarDados(aba);
+}
+
+// ── atalhos de data rápida ──
+function setDateRange(aba, range) {
+  const hoje = new Date();
+  const fmt = d => d.toISOString().split('T')[0];
+
+  let start, end = fmt(hoje);
+
+  if (range === 'today') {
+    start = fmt(hoje);
+  } else if (range === '24h') {
+    const d = new Date(hoje); d.setDate(d.getDate() - 1);
+    start = fmt(d);
+  } else if (range === 'week') {
+    const d = new Date(hoje); d.setDate(d.getDate() - 7);
+    start = fmt(d);
+  }
+
+  const startEl = document.getElementById(`${aba}-dataStart`);
+  const endEl   = document.getElementById(`${aba}-dataEnd`);
+  if (startEl) startEl.value = start;
+  if (endEl)   endEl.value   = end;
+
+  STATE.pagina[aba] = 0;
+  STATE.dados[aba]  = null;
   carregarDados(aba);
 }
 
@@ -215,12 +290,15 @@ function headers() {
   return { 'apikey': CFG.SB_KEY, 'Authorization': `Bearer ${CFG.SB_KEY}`, 'Prefer': 'count=exact' };
 }
 
-function buildUrl(aba) {
+function buildUrl(aba, opts = {}) {
   const meta = TAB_META[aba];
   if (!meta) return null;
-  const page = STATE.pagina[aba] || 0;
-  const offset = page * CFG.PER_PAGE;
-  let url = `${CFG.SB_URL}/rest/v1/${meta.table}?select=*&order=${meta.order}.desc&limit=${CFG.PER_PAGE}&offset=${offset}`;
+
+  const page   = opts.allPages ? null : (STATE.pagina[aba] || 0);
+  const offset = page !== null ? page * CFG.PER_PAGE : 0;
+  const limit  = opts.allPages ? 10000 : CFG.PER_PAGE;
+
+  let url = `${CFG.SB_URL}/rest/v1/${meta.table}?select=*&order=${meta.order}.desc&limit=${limit}&offset=${offset}`;
 
   const filtros = TAB_FILTERS[aba] || [];
   filtros.forEach(f => {
@@ -229,7 +307,6 @@ function buildUrl(aba) {
     let val = el.value.trim();
     if (!val) return;
 
-    // casos especiais
     if (f.param === 'aprovado') {
       url += `&aprovado=eq.${val === 'true'}`;
       return;
@@ -266,20 +343,14 @@ async function carregarDados(aba) {
 
     const [data, total] = await fetchAPI(url);
 
-    STATE.dados[aba] = data;
+    STATE.dados[aba]  = data;
     STATE.totais[aba] = total;
 
-    // render de linhas
     RENDER[aba]?.(data, container);
-
-    // render de KPIs (se existir)
     RENDER_KPI[aba]?.(data);
-
-    // paginação
     renderPaginacao(aba, total);
-
-    // timestamp
     atualizarLastUpdate(aba);
+    atualizarContador(aba, total);
 
   } catch (err) {
     console.error(`[painel-logs] Erro ao carregar ${aba}:`, err);
@@ -290,6 +361,30 @@ async function carregarDados(aba) {
   }
 }
 
+function atualizarContador(aba, total) {
+  const el = document.getElementById(`ac-${aba}`);
+  if (!el) return;
+  const page    = STATE.pagina[aba] || 0;
+  const inicio  = page * CFG.PER_PAGE + 1;
+  const fim     = Math.min((page + 1) * CFG.PER_PAGE, total);
+  el.textContent = total > 0 ? `${inicio}–${fim} de ${total} registros` : '0 registros';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HIGHLIGHT
+// ═══════════════════════════════════════════════════════════════
+function hl(text, term) {
+  if (!term || !text) return e(text);
+  const escaped = e(text);
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp(`(${escapedTerm})`, 'gi'), '<mark class="hl">$1</mark>');
+}
+
+function _getSearchTerm(aba, fieldSuffix) {
+  const el = document.getElementById(fieldSuffix) || document.getElementById(`${aba}-${fieldSuffix}`);
+  return el?.value?.trim() || '';
+}
+
 // ═══════════════════════════════════════════════════════════════
 // RENDER ROWS
 // ═══════════════════════════════════════════════════════════════
@@ -297,11 +392,12 @@ const RENDER = {
 
   auditoria(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
+    const term = _getSearchTerm('auditoria', 'auditoria-login');
     el.innerHTML = data.map(r => `
       <div class="table-row" style="grid-template-columns:150px 120px 1fr 200px"
            onclick='abrirModal("auditoria",${esc(r)})'>
         <span class="cell-date">${fmtData(r.executado_em)}</span>
-        <span class="cell-user">${e(r.login)}</span>
+        <span class="cell-user">${hl(r.login, term)}</span>
         <span>${e(r.acao)}</span>
         <span class="cell-trunc">${e(r.detalhes)}</span>
       </div>`).join('');
@@ -309,6 +405,7 @@ const RENDER = {
 
   'audit-log'(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
+    const term = _getSearchTerm('audit-log', 'audit-log-tabela');
     el.innerHTML = data.map(r => {
       const erro = r.status === 'erro';
       return `
@@ -317,7 +414,7 @@ const RENDER = {
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_login || r.usuario_nome)}</span>
         <span>${badgeTipo(r.tipo_acao)}</span>
-        <span class="cell-trunc">${e(r.tabela_afetada)}</span>
+        <span class="cell-trunc">${hl(r.tabela_afetada, term)}</span>
         <span>${badgeStatus(r.status)}</span>
       </div>`;
     }).join('');
@@ -339,21 +436,25 @@ const RENDER = {
 
   acessos(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
+    const term = _getSearchTerm('acessos', 'acessos-usuario');
     el.innerHTML = data.map(r => {
-      const falha = r.status_login === 'falha';
+      const falha   = r.status_login === 'falha';
+      const logout  = r.status_login === 'logout';
       const statusBadge = badgeStatus(r.status_login, { sucesso:'ok', falha:'erro', logout:'warn' });
-      const userTypeBadge = r.usuario_tipo === 'ti' || r.usuario_tipo === 'TI' 
-        ? '<span class="spill sp-ti">usuario ti</span>'
-        : r.usuario_tipo === 'admin' || r.usuario_tipo === 'ADMIN'
-        ? '<span class="spill sp-admin">admin</span>'
+      const tipoLabel = { ti:'T.I.', pc:'PC', professor:'Prof.' }[r.usuario_tipo] || (r.usuario_tipo || '—');
+      const tipoTag = r.usuario_tipo
+        ? `<span class="spill" style="font-size:.5rem;padding:1px 5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)">${tipoLabel}</span>`
         : '';
+      const loginTag = r.usuario_tipo === 'pc'
+        ? `<span class="cell-mono" style="color:var(--green)">${hl(r.usuario_login, term)}</span>`
+        : `<span class="cell-mono">${hl(r.usuario_login, term)}</span>`;
       return `
-      <div class="table-row ${falha ? 'row-error' : ''}" style="grid-template-columns:150px 110px 80px 80px 1fr 120px"
+      <div class="table-row ${falha ? 'row-error' : logout ? 'row-warn' : ''}" style="grid-template-columns:150px 110px 110px 80px 1fr 100px"
            onclick='abrirModal("acessos",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
-        <span class="cell-user">${e(r.usuario_nome || r.usuario_login)}</span>
+        <span class="cell-user">${e(r.usuario_nome || '—')} ${tipoTag}</span>
+        <span>${loginTag}</span>
         <span>${statusBadge}</span>
-        <span>${userTypeBadge}</span>
         <span class="cell-trunc">${e(r.motivo_falha)}</span>
         <span class="cell-mono">${fmtDuracao(r.duracao_sessao)}</span>
       </div>`;
@@ -362,15 +463,17 @@ const RENDER = {
 
   criticas(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
+    const term = _getSearchTerm('criticas', 'criticas-tabela');
     el.innerHTML = data.map(r => {
       const pendente = !r.aprovado;
       return `
-      <div class="table-row ${pendente ? 'row-critical' : ''}" style="grid-template-columns:150px 110px 100px 110px 160px 90px"
+      <div class="table-row ${pendente ? 'row-critical' : ''}" style="grid-template-columns:150px 110px 90px 100px 130px 130px 80px"
            onclick='abrirModal("criticas",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_login)}</span>
-        <span class="cell-mono">${e(r.tabela)}</span>
+        <span class="cell-mono">${hl(r.tabela, term)}</span>
         <span class="cell-trunc">${e(r.campo_alterado)}</span>
+        <span class="cell-trunc cell-antes">${e(r.valor_anterior)}</span>
         <span class="cell-trunc">${e(r.valor_novo)}</span>
         <span>${pendente
           ? '<span class="spill sp-pendente">⚠ Pendente</span>'
@@ -381,6 +484,7 @@ const RENDER = {
 
   operacoes(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
+    const term = _getSearchTerm('operacoes', 'operacoes-operacao');
     el.innerHTML = data.map(r => {
       const tabelas = Array.isArray(r.tabelas_afetadas)
         ? r.tabelas_afetadas.join(', ')
@@ -390,7 +494,7 @@ const RENDER = {
            onclick='abrirModal("operacoes",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_login)}</span>
-        <span class="cell-trunc">${e(r.operacao)}</span>
+        <span class="cell-trunc">${hl(r.operacao, term)}</span>
         <span style="text-align:right">${e(r.quantidade_registros)}</span>
         <span class="cell-trunc">${e(tabelas)}</span>
         <span>${badgeStatus(r.status)}</span>
@@ -409,11 +513,11 @@ const RENDER_KPI = {
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
     const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const h24 = new Date(); h24.setHours(h24.getHours() - 24);
+    const h24  = new Date(); h24.setHours(h24.getHours() - 24);
 
     const totalP = data.length;
-    const hojeQ = data.filter(d => new Date(d.executado_em) >= hoje).length;
-    const h24Q  = data.filter(d => new Date(d.executado_em) >= h24).length;
+    const hojeQ  = data.filter(d => new Date(d.executado_em) >= hoje).length;
+    const h24Q   = data.filter(d => new Date(d.executado_em) >= h24).length;
 
     const freq = {};
     data.forEach(d => { if (d.acao) freq[d.acao] = (freq[d.acao]||0)+1; });
@@ -426,22 +530,40 @@ const RENDER_KPI = {
       ${top ? kpiCard('red', iconTop(), top[1]+'x', top[0], true) : ''}`;
   },
 
+  'audit-log'(data) {
+    const el = document.getElementById('audit-log-kpis');
+    if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
+
+    const erros   = data.filter(d => d.status === 'erro').length;
+    const deletes = data.filter(d => d.tipo_acao === 'DELETE').length;
+
+    const freq = {};
+    data.forEach(d => { if (d.tabela_afetada) freq[d.tabela_afetada] = (freq[d.tabela_afetada]||0)+1; });
+    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+
+    el.innerHTML = `
+      ${kpiCard('red',    iconBar(),  data.length, 'Mudanças no período')}
+      ${kpiCard('red',    iconX(),    erros,       'Com erro')}
+      ${kpiCard('yellow', iconWarn(), deletes,     'DELETEs')}
+      ${top ? kpiCard('green', iconTarget(), top[1], `Top tabela: ${top[0]}`, true) : ''}`;
+  },
+
   atividades(data) {
     const el = document.getElementById('atividades-kpis');
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
     const byMod = {}; const byImp = {};
     data.forEach(d => {
-      if (d.modulo) byMod[d.modulo] = (byMod[d.modulo]||0)+1;
+      if (d.modulo)  byMod[d.modulo]  = (byMod[d.modulo]||0)+1;
       if (d.impacto) byImp[d.impacto] = (byImp[d.impacto]||0)+1;
     });
-    const top = Object.entries(byMod).sort((a,b)=>b[1]-a[1])[0];
+    const top  = Object.entries(byMod).sort((a,b)=>b[1]-a[1])[0];
     const alto = byImp['alto'] || 0;
 
     el.innerHTML = `
-      ${kpiCard('red',    iconBar(),   data.length, 'Total atividades')}
+      ${kpiCard('red',    iconBar(),    data.length, 'Total atividades')}
       ${top ? kpiCard('green', iconTarget(), top[1], top[0]) : ''}
-      ${kpiCard('yellow', iconWarn(),  alto,        'Alto impacto')}`;
+      ${kpiCard('yellow', iconWarn(),   alto,        'Alto impacto')}`;
   },
 
   acessos(data) {
@@ -449,9 +571,9 @@ const RENDER_KPI = {
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
     const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const td = data.filter(d => new Date(d.timestamp) >= hoje);
-    const ok  = td.filter(d => d.status_login === 'sucesso').length;
-    const err = td.filter(d => d.status_login === 'falha').length;
+    const td   = data.filter(d => new Date(d.timestamp) >= hoje);
+    const ok   = td.filter(d => d.status_login === 'sucesso').length;
+    const err  = td.filter(d => d.status_login === 'falha').length;
 
     const byU = {};
     data.forEach(d => { const k = d.usuario_login||'?'; byU[k]=(byU[k]||0)+1; });
@@ -467,12 +589,31 @@ const RENDER_KPI = {
     const el = document.getElementById('criticas-kpis');
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
-    const pendente  = data.filter(d => !d.aprovado).length;
-    const aprovado  = data.filter(d =>  d.aprovado).length;
+    const pendente = data.filter(d => !d.aprovado).length;
+    const aprovado = data.filter(d =>  d.aprovado).length;
 
     el.innerHTML = `
       ${kpiCard('red',   iconWarn(),  pendente, 'Pendentes')}
       ${kpiCard('green', iconCheck(), aprovado, 'Aprovados')}`;
+  },
+
+  operacoes(data) {
+    const el = document.getElementById('operacoes-kpis');
+    if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
+
+    const falhas   = data.filter(d => d.status === 'falha').length;
+    const parciais = data.filter(d => d.status === 'parcial').length;
+    const totalReg = data.reduce((s, d) => s + (parseInt(d.quantidade_registros)||0), 0);
+
+    const freq = {};
+    data.forEach(d => { if (d.operacao) freq[d.operacao] = (freq[d.operacao]||0)+1; });
+    const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+
+    el.innerHTML = `
+      ${kpiCard('red',    iconBar(),   data.length,          'Operações no período')}
+      ${kpiCard('yellow', iconBolt(),  totalReg.toLocaleString('pt-BR'), 'Registros afetados')}
+      ${kpiCard('red',    iconX(),     falhas,               'Com falha')}
+      ${top ? kpiCard('green', iconTarget(), top[1]+'x', top[0], true) : ''}`;
   },
 };
 
@@ -518,10 +659,10 @@ function renderPaginacao(aba, total) {
   const el = document.getElementById(`pg-${aba}`);
   if (!el) return;
 
-  const page = STATE.pagina[aba] || 0;
+  const page       = STATE.pagina[aba] || 0;
   const totalPages = Math.max(1, Math.ceil(total / CFG.PER_PAGE));
-  const inicio = page * CFG.PER_PAGE + 1;
-  const fim = Math.min((page + 1) * CFG.PER_PAGE, total);
+  const inicio     = page * CFG.PER_PAGE + 1;
+  const fim        = Math.min((page + 1) * CFG.PER_PAGE, total);
 
   let html = `<span class="pg-info">Mostrando ${inicio}–${fim} de ${total} registros</span>`;
   html += '<div class="pg-controls">';
@@ -550,7 +691,6 @@ function irPagina(aba, pg) {
   STATE.pagina[aba] = pg;
   STATE.dados[aba] = null;
   carregarDados(aba);
-  // scroll suave ao topo da tabela
   document.getElementById(`rows-${aba}`)?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -558,9 +698,9 @@ function irPagina(aba, pg) {
 // MODAL
 // ═══════════════════════════════════════════════════════════════
 function abrirModal(aba, data) {
-  const bg    = document.getElementById('modal-bg');
+  const bg     = document.getElementById('modal-bg');
   const titulo = document.getElementById('modal-titulo');
-  const corpo = document.getElementById('modal-corpo');
+  const corpo  = document.getElementById('modal-corpo');
 
   const titulos = {
     'auditoria':  'Auditoria TI — Detalhes',
@@ -659,17 +799,18 @@ function fecharModal() {
   document.getElementById('modal-bg').classList.remove('open');
 }
 
-// fechar no overlay
 document.getElementById('modal-bg')?.addEventListener('click', e => {
   if (e.target === e.currentTarget) fecharModal();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') fecharModal();
+  if (e.key === 'Escape') {
+    fecharModal();
+    fecharBuscaGlobal();
+  }
 });
 
-// ── campo helper para o modal ──
 function mf(label, value, extra = '', monoClass = '') {
-  const cls = extra ? ` class="${extra}"` : '';
+  const cls  = extra ? ` class="${extra}"` : '';
   const mono = monoClass ? ` ${monoClass}` : '';
   return `<div class="modal-field${extra === 'full' ? ' full' : ''}"${cls}>
     <div class="modal-label">${label}</div>
@@ -686,10 +827,28 @@ function exportarCSV(aba, filename) {
     showNotif('Nenhum dado para exportar', 'warn');
     return;
   }
+  _gerarCSV(data, filename);
+  showNotif('CSV exportado com sucesso', 'ok');
+}
 
-  const headers = Object.keys(data[0]);
+async function exportarTudo(aba, filename) {
+  showNotif('Buscando todos os registros…', 'info');
+  try {
+    const url = buildUrl(aba, { allPages: true });
+    const [data] = await fetchAPI(url);
+    if (!data.length) { showNotif('Nenhum dado para exportar', 'warn'); return; }
+    _gerarCSV(data, filename + '_completo');
+    showNotif(`${data.length} registros exportados`, 'ok');
+  } catch (err) {
+    console.error('[exportarTudo]', err);
+    showNotif('Erro ao exportar — verifique a conexão', 'err');
+  }
+}
+
+function _gerarCSV(data, filename) {
+  const hdrs = Object.keys(data[0]);
   const rows = data.map(row =>
-    headers.map(h => {
+    hdrs.map(h => {
       const val = row[h];
       if (val === null || val === undefined) return '""';
       if (typeof val === 'object') return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
@@ -697,15 +856,108 @@ function exportarCSV(aba, filename) {
     }).join(',')
   );
 
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const csv  = [hdrs.join(','), ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
   a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
-  showNotif('CSV exportado com sucesso', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUSCA GLOBAL
+// ═══════════════════════════════════════════════════════════════
+const GS_SEARCH_MAP = {
+  'auditoria':  { table: 'auditoria_ti',           fields: ['login','acao'],               order: 'executado_em', label: 'Auditoria TI' },
+  'audit-log':  { table: 'audit_log',              fields: ['usuario_login','tabela_afetada'], order: 'timestamp', label: 'Mudanças BD' },
+  'atividades': { table: 'atividades_log',          fields: ['usuario_login','descricao_amigavel'], order: 'timestamp', label: 'Atividades' },
+  'acessos':    { table: 'acesso_log',             fields: ['usuario_login','usuario_nome'], order: 'timestamp',   label: 'Acessos' },
+  'criticas':   { table: 'alteracoes_criticas_log', fields: ['usuario_login','tabela','valor_novo'], order: 'timestamp', label: 'Críticas' },
+  'operacoes':  { table: 'operacoes_massa_log',    fields: ['usuario_login','operacao'],    order: 'timestamp',   label: 'Operações' },
+};
+
+let _gsTimer = null;
+
+function abrirBuscaGlobal() {
+  document.getElementById('gs-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('gs-input')?.focus(), 50);
+}
+
+function fecharBuscaGlobal(ev) {
+  if (ev && ev.target !== ev.currentTarget) return;
+  document.getElementById('gs-overlay').classList.remove('open');
+  document.getElementById('gs-input').value = '';
+  document.getElementById('gs-results').innerHTML = '';
+  document.getElementById('gs-status').textContent = 'Digite para buscar em todas as abas';
+}
+
+function onGsInput() {
+  clearTimeout(_gsTimer);
+  const term = document.getElementById('gs-input').value.trim();
+  if (term.length < 2) {
+    document.getElementById('gs-results').innerHTML = '';
+    document.getElementById('gs-status').textContent = 'Digite ao menos 2 caracteres';
+    return;
+  }
+  document.getElementById('gs-status').textContent = 'Buscando…';
+  _gsTimer = setTimeout(() => _executarBuscaGlobal(term), 380);
+}
+
+async function _executarBuscaGlobal(term) {
+  const statusEl  = document.getElementById('gs-status');
+  const resultsEl = document.getElementById('gs-results');
+  resultsEl.innerHTML = '';
+
+  const enc = encodeURIComponent(term);
+  const promises = Object.entries(GS_SEARCH_MAP).map(async ([aba, meta]) => {
+    const orClauses = meta.fields.map(f => `${f}.ilike.%25${enc}%25`).join(',');
+    const url = `${CFG.SB_URL}/rest/v1/${meta.table}?select=*&or=(${orClauses})&order=${meta.order}.desc&limit=5`;
+    try {
+      const [data] = await fetchAPI(url);
+      return { aba, label: meta.label, data };
+    } catch {
+      return { aba, label: meta.label, data: [] };
+    }
+  });
+
+  const groups = await Promise.all(promises);
+  const total  = groups.reduce((s, g) => s + g.data.length, 0);
+
+  if (total === 0) {
+    statusEl.textContent = 'Nenhum resultado encontrado';
+    return;
+  }
+
+  statusEl.textContent = `${total} resultado${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
+
+  groups.forEach(({ aba, label, data }) => {
+    if (!data.length) return;
+    const section = document.createElement('div');
+    section.className = 'gs-group';
+    section.innerHTML = `<div class="gs-group-label">${label} <span class="gs-count">${data.length}</span></div>`;
+
+    data.forEach(r => {
+      const row  = document.createElement('div');
+      row.className = 'gs-row';
+      const ts   = r.executado_em || r.timestamp || '';
+      const user = r.login || r.usuario_login || r.usuario_nome || '—';
+      const desc = r.acao || r.tabela_afetada || r.descricao_amigavel || r.operacao || r.tabela || r.motivo_falha || '—';
+      row.innerHTML = `
+        <span class="gs-row-time">${fmtData(ts)}</span>
+        <span class="gs-row-user">${hl(user, term)}</span>
+        <span class="gs-row-desc">${hl(desc, term)}</span>`;
+      row.addEventListener('click', () => {
+        fecharBuscaGlobal();
+        mudarAba(aba);
+        setTimeout(() => abrirModal(aba, r), 120);
+      });
+      section.appendChild(row);
+    });
+
+    resultsEl.appendChild(section);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -729,6 +981,11 @@ function showNotif(msg, tipo = 'ok') {
 // ═══════════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════════
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 function e(v) {
   if (v === null || v === undefined) return '';
   return String(v)
@@ -788,14 +1045,109 @@ const svgWarn  = () => `<svg width="11" height="11" viewBox="0 0 24 24" fill="no
 const svgInfo  = () => `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
 
 // ═══════════════════════════════════════════════════════════════
-// EXPO GLOBAL (para uso em onclick do HTML)
+// REALTIME
 // ═══════════════════════════════════════════════════════════════
-window.mudarAba = mudarAba;
-window.toggleTema = toggleTema;
-window.voltarPainel = voltarPainel;
-window.limparFiltros = limparFiltros;
-window.irPagina = irPagina;
-window.abrirModal = abrirModal;
-window.fecharModal = fecharModal;
-window.exportarCSV = exportarCSV;
-window.showNotif = showNotif;
+const TABLE_TO_ABA = {
+  'auditoria_ti':            'auditoria',
+  'audit_log':               'audit-log',
+  'atividades_log':          'atividades',
+  'acesso_log':              'acessos',
+  'alteracoes_criticas_log': 'criticas',
+  'operacoes_massa_log':     'operacoes',
+};
+
+function iniciarRealtime() {
+  const _sb = window.supabase;
+  if (!_sb) { console.warn('[realtime] SDK não carregado'); return; }
+
+  const sbClient = _sb.createClient(CFG.SB_URL, CFG.SB_KEY);
+  const channel  = sbClient.channel('logs-realtime-all');
+
+  Object.keys(TABLE_TO_ABA).forEach(table => {
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table }, () => {
+      const aba      = TABLE_TO_ABA[table];
+      const naAba    = STATE.abaAtiva === aba;
+      const pag0     = (STATE.pagina[aba] || 0) === 0;
+      const semFiltro = _semFiltros(aba);
+
+      if (naAba && pag0 && semFiltro) {
+        _recarregarSilencioso(aba);
+      } else {
+        STATE.newCounts[aba] = (STATE.newCounts[aba] || 0) + 1;
+        _atualizarBadgeRT(aba);
+      }
+    });
+  });
+
+  channel.subscribe(status => {
+    const dot = document.getElementById('rt-dot');
+    if (!dot) return;
+    if (status === 'SUBSCRIBED') {
+      dot.style.background = '#22c55e';
+      dot.style.boxShadow  = '0 0 6px #22c55e88';
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      dot.style.background = '#ef4444';
+      dot.style.boxShadow  = 'none';
+    } else {
+      dot.style.background = '#eab308';
+      dot.style.boxShadow  = 'none';
+    }
+  });
+}
+
+function _semFiltros(aba) {
+  return (TAB_FILTERS[aba] || []).every(f => {
+    const el = document.getElementById(f.id);
+    return !el || !el.value.trim();
+  });
+}
+
+async function _recarregarSilencioso(aba) {
+  const container = document.getElementById(`rows-${aba}`);
+  if (!container) return;
+  try {
+    const [data, total] = await fetchAPI(buildUrl(aba));
+    STATE.dados[aba]   = data;
+    STATE.totais[aba]  = total;
+    RENDER[aba]?.(data, container);
+    RENDER_KPI[aba]?.(data);
+    renderPaginacao(aba, total);
+    atualizarLastUpdate(aba);
+    atualizarContador(aba, total);
+    const primeira = container.querySelector('.table-row');
+    if (primeira) {
+      primeira.style.transition = 'background .1s';
+      primeira.style.background = 'rgba(34,197,94,.15)';
+      setTimeout(() => { primeira.style.background = ''; }, 1200);
+    }
+  } catch(err) {
+    console.error('[realtime silent reload]', err);
+  }
+}
+
+function _atualizarBadgeRT(aba) {
+  const el = document.getElementById(`rtc-${aba}`);
+  if (!el) return;
+  const n = STATE.newCounts[aba] || 0;
+  el.textContent = n > 99 ? '99+' : String(n);
+  el.style.display = n > 0 ? 'inline-flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPO GLOBAL
+// ═══════════════════════════════════════════════════════════════
+window.mudarAba          = mudarAba;
+window.toggleTema        = toggleTema;
+window.voltarPainel      = voltarPainel;
+window.limparFiltros     = limparFiltros;
+window.setDateRange      = setDateRange;
+window.irPagina          = irPagina;
+window.abrirModal        = abrirModal;
+window.fecharModal       = fecharModal;
+window.exportarCSV       = exportarCSV;
+window.exportarTudo      = exportarTudo;
+window.showNotif         = showNotif;
+window.abrirBuscaGlobal  = abrirBuscaGlobal;
+window.fecharBuscaGlobal = fecharBuscaGlobal;
+window.onGsInput         = onGsInput;
+window.carregarDados     = carregarDados;

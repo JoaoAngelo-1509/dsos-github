@@ -901,18 +901,19 @@ function renderProfs(){
   if(!todosOsProfs.length){list.innerHTML=`<div class="empty"><div class="eicon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg></div><p>Nenhum professor cadastrado.</p></div>`;return}
   list.innerHTML=todosOsProfs.map(u=>{const i=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');return`<div class="ti-user-row"><div class="ti-avatar" style="background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.3);color:var(--kpi-green)">${i}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}</div><div class="ti-user-login">@${u.login||'—'}${u.disciplina?' · '+u.disciplina:''}</div></div><button class="btn-ti-edit" onclick="abrirModalProf(${u.id})">Editar</button><button class="btn-ti-del-u" onclick="deletarProf(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;}).join('');
 }
-window.abrirModalProf=function(id){profEditandoId=id;const ed=id!==null;document.getElementById('mprof-title').textContent=ed?'Editar Professor':'Cadastrar Professor';document.getElementById('mprof-senha-hint').style.display=ed?'block':'none';document.getElementById('mprof-login').disabled=ed;document.getElementById('mprof-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';if(ed){const u=todosOsProfs.find(x=>x.id===id);if(!u)return;document.getElementById('mprof-nome').value=u.nome||'';document.getElementById('mprof-login').value=u.login||'';document.getElementById('mprof-disciplina').value=u.disciplina||'';document.getElementById('mprof-senha').value='';}else{['mprof-nome','mprof-login','mprof-disciplina','mprof-senha'].forEach(i=>document.getElementById(i).value='');document.getElementById('mprof-login').disabled=false;}document.getElementById('modal-professor').classList.add('open');setTimeout(()=>document.getElementById('mprof-nome').focus(),120);};
+window.abrirModalProf=function(id){profEditandoId=id;const ed=id!==null;document.getElementById('mprof-title').textContent=ed?'Editar Professor':'Cadastrar Professor';document.getElementById('mprof-senha-hint').style.display=ed?'block':'none';document.getElementById('mprof-login').disabled=ed;document.getElementById('mprof-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';const tiRow=document.getElementById('mprof-ti-row');if(tiRow)tiRow.style.display=ed?'none':'flex';const cb=document.getElementById('mprof-is-ti');if(cb){cb.checked=false;cb.disabled=ed;}if(ed){const u=todosOsProfs.find(x=>x.id===id);if(!u)return;document.getElementById('mprof-nome').value=u.nome||'';document.getElementById('mprof-login').value=u.login||'';document.getElementById('mprof-disciplina').value=u.disciplina||'';document.getElementById('mprof-senha').value='';}else{['mprof-nome','mprof-login','mprof-disciplina','mprof-senha'].forEach(i=>document.getElementById(i).value='');document.getElementById('mprof-login').disabled=false;}document.getElementById('modal-professor').classList.add('open');setTimeout(()=>document.getElementById('mprof-nome').focus(),120);};
 window.fecharModalProf=function(){document.getElementById('modal-professor').classList.remove('open');profEditandoId=null;};
 document.getElementById('modal-professor').addEventListener('click',e=>{if(e.target===document.getElementById('modal-professor'))window.fecharModalProf()});
 window.salvarProf=async function(){
   const nome=document.getElementById('mprof-nome').value.trim(),login=document.getElementById('mprof-login').value.trim(),disciplina=document.getElementById('mprof-disciplina').value.trim(),senha=document.getElementById('mprof-senha').value;
+  const isTI=document.getElementById('mprof-is-ti')?.checked||false;
   if(!nome){notif('Informe o nome.');return}
   if(profEditandoId===null){
     if(!login){notif('Informe o login.');return}if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
     try{
-      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null})});
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_disciplina:disciplina||null,p_is_ti:isTI})});
       if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
-      
+
       // ━━ LOGGING (cadastrar professor) ━━
       _logEvent('rpc_log_cadastrar_professor', {
         p_login: login,
@@ -921,9 +922,9 @@ window.salvarProf=async function(){
         p_usuario_ti_criador_id: session.id
       });
 
-      notif(`Prof. ${nome} cadastrado!`);window.fecharModalProf();await carregarProfs();
+      notif(`Prof. ${nome} cadastrado${isTI?' (também como T.I.)':''}!`);window.fecharModalProf();await carregarProfs();if(isTI)await carregarTIs();
     }
-    catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
+    catch(e){console.error('[salvarProf]',e);notif('Erro: '+(e.message?.includes('duplicate')?'login já existe.':e.message||'Erro desconhecido'))}
   }else{
     try{
       await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});
@@ -956,7 +957,18 @@ window.abrirPainelLogs = function() {
 };
 
 /* SAIR */
-window.sair=function(){sessionStorage.removeItem('dsos_session');window.location.href='login.html'};
+window.sair=async function(){
+  try{
+    await _logEvent('rpc_log_logout',{
+      p_usuario_id:   session?.id,
+      p_usuario_tipo: 'ti',
+      p_usuario_login:session?.login,
+      p_usuario_nome: session?.nome,
+    });
+  }catch(e){}
+  sessionStorage.removeItem('dsos_session');
+  window.location.href='login.html';
+};
 
 /* EASTER EGGS */
 const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
@@ -1010,3 +1022,176 @@ function _konamiMode(){
   body.style.filter='grayscale(1) contrast(1.2)';
   setTimeout(()=>{body.style.filter='';},3000);
 }
+
+/* ================================================================
+   DBD SKILL CHECK — Dead by Daylight (fiel ao dbd.lucaservers.com)
+   Canvas: raio=116px, u=7, l=4, success=50°, great=10°, cor #fff
+   Agulha: CSS div rotacionado, radial-gradient, bottom:60%
+   Velocidade: 750ms/rotação (original usa 1100ms)
+   Trigger: 30% ao resolver como "consertado" | Shift+G→K sempre
+   3 checks consecutivos; falha = gen explosion + reset
+   ================================================================ */
+(function(){
+  /* Valores extraídos do dbd.lucaservers.com/js/app.*.js:
+     canvas 145x145 -> escala 1.79x -> 260x260
+     d=65 -> R=116, u=3.6 -> U=7, l=2 -> L=4
+     success=50, great=10 graus, color="#ffffff", circleColor="#ffffff"
+     agulha: CSS div bottom:60%, height:179px, radial-gradient(red,...)
+     velocidade original: 1100ms/rot -> aqui: 750ms/rot              */
+
+  const SZ=260,CX=130,CY=130,R=116,U=7,L=4;
+  const SUCCESS=50,GREAT=10;
+  const SPEED_MS=1050; // ms por rotacao completa (original=1100)
+
+  let needleAngle=0,zoneStart=0;
+  let running=false,pressed=false,raf=null,lastTs=0;
+  let done=0,onSuccessCb=null,dbdMode=false;
+  let _needleWrap=null; // referência cacheada — evita getElementById todo frame
+
+  /* Audio — arquivos reais da pasta sounds/ */
+  let _lastSuccess=null;
+  function sndPlay(path){
+    try{const a=new Audio('../sounds/'+path);a.volume=.8;a.play().catch(()=>{});return a;}catch(e){return null;}
+  }
+  function sndSpawn(){
+    if(_lastSuccess){try{_lastSuccess.pause();_lastSuccess.currentTime=0;}catch(e){}}_lastSuccess=null;
+    sndPlay('pré-skillcheck.mp3');
+  }
+  function sndSuccess()    {_lastSuccess=sndPlay('dbd_good_skill_check.mp3');}
+  function sndGenExplosion(){sndPlay('dbd-generator-explosion.mp3');}
+
+  /* Canvas - fiel ao codigo do simulator (d=65,u=3.6,l=2 escalados) */
+  function toRad(deg){return(deg-90)*Math.PI/180;}
+
+  function drawCanvas(){
+    const canvas=document.getElementById('sc-canvas');
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,SZ,SZ);
+    const gs=zoneStart,ge=zoneStart+GREAT,gde=zoneStart+GREAT+SUCCESS;
+
+    /* 1. Anel vazio (fina linha branca - mesmo que original lineWidth=l, circleColor="#fff") */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R,toRad(gde),toRad(gs));
+    ctx.lineWidth=L;ctx.strokeStyle='#ffffff';ctx.stroke();
+
+    /* 2. Borda interna da zona (r-u, lineWidth=l) */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R-U,toRad(gs),toRad(gde));
+    ctx.lineWidth=L;ctx.strokeStyle='#ffffff';ctx.stroke();
+
+    /* 3. Borda externa da zona (r+u, lineWidth=l) */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R+U,toRad(gs),toRad(gde));
+    ctx.lineWidth=L;ctx.strokeStyle='#ffffff';ctx.stroke();
+
+    /* 4. Great zone preenchida (lineWidth=2*u+1) */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R,toRad(gs),toRad(ge));
+    ctx.lineWidth=2*U+1;ctx.strokeStyle='#ffffff';ctx.stroke();
+
+    /* 5. Tick do fim da zona */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R,toRad(gde)-.035,toRad(gde));
+    ctx.lineWidth=2*U+1;ctx.strokeStyle='#ffffff';ctx.stroke();
+
+    /* 6. Tick do inicio da zona */
+    ctx.beginPath();
+    ctx.arc(CX,CY,R,toRad(gs),toRad(gs)+.035);
+    ctx.lineWidth=2*U+1;ctx.strokeStyle='#ffffff';ctx.stroke();
+  }
+
+  function inArc(a,start,width){
+    a=((a%360)+360)%360;start=((start%360)+360)%360;
+    const end=((start+width)%360+360)%360;
+    if(start<=end)return a>=start&&a<=end;
+    return a>=start||a<=end;
+  }
+
+  function loop(ts){
+    if(!lastTs)lastTs=ts;
+    const dt=ts-lastTs;lastTs=ts;
+    if(running&&!pressed){
+      needleAngle=(needleAngle+360*dt/SPEED_MS)%360;
+      if(_needleWrap)_needleWrap.style.transform='rotate('+needleAngle+'deg)';
+    }
+    raf=requestAnimationFrame(loop);
+  }
+
+  function checkPress(){
+    if(!running||pressed)return;
+    pressed=true;running=false;
+    const a=((needleAngle%360)+360)%360;
+    if(inArc(a,zoneStart,GREAT+SUCCESS)){
+      sndSuccess();done++;updateDots();setLabel('');
+      if(done>=3){closeSkillCheck();if(onSuccessCb)setTimeout(onSuccessCb,300);}
+      else setTimeout(nextCheck,700+Math.random()*600); // 700–1300ms
+    } else {
+      sndGenExplosion();done=0;updateDots();
+      setLabel('FALHA — tente novamente');
+      setTimeout(nextCheck,900);
+    }
+  }
+
+  function nextCheck(){
+    zoneStart=Math.random()*360;
+    needleAngle=Math.random()*360;
+    pressed=false;running=true;lastTs=0;
+    drawCanvas();sndSpawn();
+  }
+
+  function updateDots(){
+    for(let i=0;i<3;i++){
+      const d=document.getElementById('sc-dot-'+i);
+      if(d)d.classList.toggle('done',i<done);
+    }
+  }
+  function setLabel(txt){const el=document.getElementById('sc-label');if(el)el.textContent=txt;}
+
+  function openSkillCheck(cb){
+    const ov=document.getElementById('sc-overlay');if(!ov)return;
+    _needleWrap=document.getElementById('sc-needle-wrap'); // cacheia uma vez
+    done=0;onSuccessCb=cb;updateDots();setLabel('');
+    ov.classList.add('open');
+    document.addEventListener('keydown',onKey);
+    if(raf)cancelAnimationFrame(raf);
+    nextCheck();raf=requestAnimationFrame(loop);
+  }
+
+  function closeSkillCheck(){
+    const ov=document.getElementById('sc-overlay');if(ov)ov.classList.remove('open');
+    running=false;
+    if(raf){cancelAnimationFrame(raf);raf=null;}
+    document.removeEventListener('keydown',onKey);
+    if(_needleWrap)_needleWrap.style.transform='rotate(0deg)';
+    _needleWrap=null;
+  }
+
+  function onKey(e){
+    if(e.code==='Space'){e.preventDefault();checkPress();}
+    if(e.key==='Escape')closeSkillCheck();
+  }
+
+  /* Shift+G -> K: toggle modo DBD */
+  let _sgp=false;
+  document.addEventListener('keydown',e=>{
+    if(e.key==='G'&&e.shiftKey){_sgp=true;setTimeout(()=>{_sgp=false;},1500);}
+    else if(e.key==='k'&&_sgp){
+      _sgp=false;dbdMode=!dbdMode;
+      notif(dbdMode?'💀 Modo DBD ativado — skill check em toda resolução!':'💀 Modo DBD desativado.');
+    }
+  });
+
+  /* Intercepta confirmarResolucao */
+  const _orig=window.confirmarResolucao;
+  window.confirmarResolucao=async function(){
+    const tipo=document.getElementById('res-tipo')?.value;
+    const intercept=tipo==='consertado'&&(dbdMode||Math.random()<0.30);
+    if(!intercept)return _orig.apply(this,arguments);
+    openSkillCheck(()=>{
+      notif('💀 Skill check passou! Resolvendo chamado...');
+      setTimeout(()=>_orig.apply(window,[]),300);
+    });
+  };
+
+})();

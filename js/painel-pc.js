@@ -551,7 +551,18 @@ window.resetForm = function() {
   trocarAba('chamados');
 };
 
-window.sair = function() { sessionStorage.removeItem('dsos_session');window.location.href='login.html'; };
+window.sair = async function() {
+  try{
+    await _logEvent('rpc_log_logout',{
+      p_usuario_id:   session?.id,
+      p_usuario_tipo: session?.tipo||'pc',
+      p_usuario_login:session?.login||session?.tag,
+      p_usuario_nome: session?.nome,
+    });
+  }catch(e){}
+  sessionStorage.removeItem('dsos_session');
+  window.location.href='login.html';
+};
 
 function toast(msg,t){
   const el=document.getElementById('toast');el.textContent=msg;el.className=`toast ${t} show`;

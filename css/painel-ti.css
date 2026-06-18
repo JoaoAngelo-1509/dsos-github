@@ -670,6 +670,25 @@ body{font-family:'Sora',sans-serif;display:flex;flex-direction:column;background
 .dsos-confirm-ok.info    { background: var(--green);   color: #000; }
 .dsos-confirm-ok.info:hover    { filter: brightness(1.1); }
 
+/* DBD SKILL CHECK */
+.sc-overlay{display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(10,4,4,.82) 0%,rgba(0,0,0,.96) 100%)}
+.sc-overlay.open{display:flex;animation:scFadeIn .25s ease}
+@keyframes scFadeIn{from{opacity:0}to{opacity:1}}
+.sc-container{display:flex;flex-direction:column;align-items:center;gap:20px}
+.sc-header{display:flex;flex-direction:column;align-items:center;gap:10px}
+.sc-title{font-size:.62rem;font-weight:700;letter-spacing:.35em;color:rgba(255,255,255,.35);text-transform:uppercase}
+.sc-dots{display:flex;gap:14px}
+.sc-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);transition:background .15s,box-shadow .15s,transform .15s}
+.sc-dot.done{background:#d4ff00;border-color:#d4ff00;box-shadow:0 0 12px 2px rgba(212,255,0,.5);transform:scale(1.2)}
+.sc-skillcheck{position:relative;width:260px;height:260px}
+.sc-glow-ring{position:absolute;inset:-18px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(180,0,0,.08) 0%,transparent 70%);pointer-events:none;z-index:0;animation:scPulse 2.4s ease-in-out infinite}
+@keyframes scPulse{0%,100%{opacity:.6}50%{opacity:1}}
+.sc-needle-wrap{position:absolute;top:0;left:0;width:260px;height:260px;z-index:2;transform-origin:50% 50%;will-change:transform;transform:translateZ(0)}
+.sc-needle-bar{position:absolute;width:25px;height:179px;background:radial-gradient(red,rgba(22,4,4,0),transparent);bottom:60%;left:calc(50% - 12.5px)}
+.sc-key-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25);border-radius:3px;padding:1px 7px;font-size:11px;background:rgba(20,20,20,.9);z-index:3;pointer-events:none;white-space:nowrap;font-family:inherit;letter-spacing:.05em}
+#sc-canvas{position:absolute;top:0;left:0;z-index:1}
+.sc-label{font-size:.6rem;font-weight:600;color:rgba(255,60,60,.85);letter-spacing:.18em;text-transform:uppercase;text-align:center;min-height:1em;font-family:inherit;text-shadow:0 0 12px rgba(255,60,60,.4)}
+
 /* EASTER EGG */
 .egg-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);backdrop-filter:blur(14px);z-index:9999;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:18px}
 .egg-bg.open{display:flex;animation:eggIn .35s cubic-bezier(.22,1,.36,1)}

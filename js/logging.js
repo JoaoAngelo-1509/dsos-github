@@ -314,6 +314,19 @@ class DSosLogger {
   }
 
   // ═══════════════════════════════════════════════════════
+  // LOGOUT
+  // ═══════════════════════════════════════════════════════
+
+  async logLogout(usuarioId, usuarioTipo, usuarioLogin, usuarioNome) {
+    return this._callRPC('rpc_log_logout', {
+      p_usuario_id:    usuarioId,
+      p_usuario_tipo:  usuarioTipo,
+      p_usuario_login: usuarioLogin,
+      p_usuario_nome:  usuarioNome,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
   // LIMPEZA DO BANCO
   // ═══════════════════════════════════════════════════════
 

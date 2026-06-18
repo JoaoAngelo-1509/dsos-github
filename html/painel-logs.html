@@ -29,6 +29,13 @@
       <div class="online-dot"></div>
       <span id="nome-usuario">T.I.</span>
     </div>
+    <div id="rt-indicator" title="Realtime" style="display:flex;align-items:center;gap:5px;font-size:.6rem;font-weight:600;letter-spacing:.06em;color:var(--muted,#888);padding:0 4px">
+      <span id="rt-dot" style="width:7px;height:7px;border-radius:50%;background:var(--yellow,#eab308);flex-shrink:0;transition:background .4s"></span>
+      AO VIVO
+    </div>
+    <button class="btn-icon" id="btn-search" onclick="abrirBuscaGlobal()" title="Busca global (Ctrl+K)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
     <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
       <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -47,27 +54,27 @@
       <div class="tabs" id="tabs-scroll">
         <button class="tab active" id="tab-auditoria" onclick="mudarAba('auditoria')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          Auditoria TI
+          Auditoria TI <span class="tab-badge rt-count" id="rtc-auditoria" style="display:none">0</span>
         </button>
         <button class="tab" id="tab-audit-log" onclick="mudarAba('audit-log')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          Mudanças BD
+          Mudanças BD <span class="tab-badge rt-count" id="rtc-audit-log" style="display:none">0</span>
         </button>
         <button class="tab" id="tab-atividades" onclick="mudarAba('atividades')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Atividades
+          Atividades <span class="tab-badge rt-count" id="rtc-atividades" style="display:none">0</span>
         </button>
         <button class="tab" id="tab-acessos" onclick="mudarAba('acessos')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Acessos
+          Acessos <span class="tab-badge rt-count" id="rtc-acessos" style="display:none">0</span>
         </button>
         <button class="tab" id="tab-criticas" onclick="mudarAba('criticas')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
-          Críticas
+          Críticas <span class="tab-badge rt-count" id="rtc-criticas" style="display:none">0</span>
         </button>
         <button class="tab" id="tab-operacoes" onclick="mudarAba('operacoes')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          Operações
+          Operações <span class="tab-badge rt-count" id="rtc-operacoes" style="display:none">0</span>
         </button>
       </div>
     </div>
@@ -83,6 +90,11 @@
         <div class="filter-group">
           <label class="filter-label">Até:</label>
           <input type="date" class="filter-input" id="auditoria-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('auditoria','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('auditoria','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('auditoria','week')">Semana</button>
         </div>
         <div class="filter-group">
           <label class="filter-label">Login:</label>
@@ -107,9 +119,14 @@
       </div>
       <div class="pagination" id="pg-auditoria"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-auditoria"></span>
         <button class="btn-action" onclick="exportarCSV('auditoria','logs_auditoria')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('auditoria','logs_auditoria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('auditoria')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -120,7 +137,21 @@
 
     <!-- ─── ABA: MUDANÇAS BD ─── -->
     <div class="tab-panel" id="panel-audit-log">
+      <div class="kpi-section" id="audit-log-kpis"></div>
       <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">De:</label>
+          <input type="date" class="filter-input" id="audit-log-dataStart"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Até:</label>
+          <input type="date" class="filter-input" id="audit-log-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('audit-log','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('audit-log','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('audit-log','week')">Semana</button>
+        </div>
         <div class="filter-group">
           <label class="filter-label">Tipo:</label>
           <select class="filter-select" id="audit-log-tipo">
@@ -162,9 +193,14 @@
       </div>
       <div class="pagination" id="pg-audit-log"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-audit-log"></span>
         <button class="btn-action" onclick="exportarCSV('audit-log','logs_mudancas_bd')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('audit-log','logs_mudancas_bd')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('audit-log')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -177,6 +213,19 @@
     <div class="tab-panel" id="panel-atividades">
       <div class="kpi-section" id="atividades-kpis"></div>
       <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">De:</label>
+          <input type="date" class="filter-input" id="atividades-dataStart"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Até:</label>
+          <input type="date" class="filter-input" id="atividades-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('atividades','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('atividades','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('atividades','week')">Semana</button>
+        </div>
         <div class="filter-group">
           <label class="filter-label">Módulo:</label>
           <select class="filter-select" id="atividades-modulo">
@@ -208,9 +257,14 @@
       </div>
       <div class="pagination" id="pg-atividades"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-atividades"></span>
         <button class="btn-action" onclick="exportarCSV('atividades','logs_atividades')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('atividades','logs_atividades')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('atividades')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -223,6 +277,19 @@
     <div class="tab-panel" id="panel-acessos">
       <div class="kpi-section" id="acessos-kpis"></div>
       <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">De:</label>
+          <input type="date" class="filter-input" id="acessos-dataStart"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Até:</label>
+          <input type="date" class="filter-input" id="acessos-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('acessos','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('acessos','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('acessos','week')">Semana</button>
+        </div>
         <div class="filter-group">
           <label class="filter-label">Status:</label>
           <select class="filter-select" id="acessos-status">
@@ -240,8 +307,8 @@
         <span class="last-update" id="lu-acessos" style="margin-left:auto"></span>
       </div>
       <div class="logs-table">
-        <div class="table-header" style="grid-template-columns:150px 110px 80px 1fr 120px">
-          <span>Data/Hora</span><span>Usuário</span><span>Status</span><span>Motivo</span><span>Duração</span>
+        <div class="table-header" style="grid-template-columns:150px 110px 110px 80px 1fr 100px">
+          <span>Data/Hora</span><span>Nome</span><span>Login / Tag</span><span>Status</span><span>Motivo</span><span>Duração</span>
         </div>
         <div class="table-rows" id="rows-acessos">
           <div class="loading"><div class="spinner"></div> Carregando…</div>
@@ -249,9 +316,14 @@
       </div>
       <div class="pagination" id="pg-acessos"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-acessos"></span>
         <button class="btn-action" onclick="exportarCSV('acessos','logs_acessos')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('acessos','logs_acessos')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('acessos')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -264,6 +336,19 @@
     <div class="tab-panel" id="panel-criticas">
       <div class="kpi-section" id="criticas-kpis"></div>
       <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">De:</label>
+          <input type="date" class="filter-input" id="criticas-dataStart"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Até:</label>
+          <input type="date" class="filter-input" id="criticas-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('criticas','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('criticas','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('criticas','week')">Semana</button>
+        </div>
         <div class="filter-group">
           <label class="filter-label">Tabela:</label>
           <input type="text" class="filter-input" id="criticas-tabela" placeholder="Filtrar…" autocomplete="off"/>
@@ -280,8 +365,8 @@
         <span class="last-update" id="lu-criticas" style="margin-left:auto"></span>
       </div>
       <div class="logs-table">
-        <div class="table-header" style="grid-template-columns:150px 110px 100px 110px 160px 90px">
-          <span>Data/Hora</span><span>Usuário</span><span>Tabela</span><span>Campo</span><span>Novo Valor</span><span>Aprovado</span>
+        <div class="table-header" style="grid-template-columns:150px 110px 90px 100px 130px 130px 80px">
+          <span>Data/Hora</span><span>Usuário</span><span>Tabela</span><span>Campo</span><span>Valor Anterior</span><span>Novo Valor</span><span>Aprovado</span>
         </div>
         <div class="table-rows" id="rows-criticas">
           <div class="loading"><div class="spinner"></div> Carregando…</div>
@@ -289,9 +374,14 @@
       </div>
       <div class="pagination" id="pg-criticas"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-criticas"></span>
         <button class="btn-action" onclick="exportarCSV('criticas','logs_criticas')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('criticas','logs_criticas')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('criticas')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -302,7 +392,21 @@
 
     <!-- ─── ABA: OPERAÇÕES ─── -->
     <div class="tab-panel" id="panel-operacoes">
+      <div class="kpi-section" id="operacoes-kpis"></div>
       <div class="filters-bar">
+        <div class="filter-group">
+          <label class="filter-label">De:</label>
+          <input type="date" class="filter-input" id="operacoes-dataStart"/>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Até:</label>
+          <input type="date" class="filter-input" id="operacoes-dataEnd"/>
+        </div>
+        <div class="quick-dates">
+          <button class="btn-qdate" onclick="setDateRange('operacoes','today')">Hoje</button>
+          <button class="btn-qdate" onclick="setDateRange('operacoes','24h')">24h</button>
+          <button class="btn-qdate" onclick="setDateRange('operacoes','week')">Semana</button>
+        </div>
         <div class="filter-group">
           <label class="filter-label">Operação:</label>
           <input type="text" class="filter-input" id="operacoes-operacao" placeholder="Filtrar…" autocomplete="off"/>
@@ -329,9 +433,14 @@
       </div>
       <div class="pagination" id="pg-operacoes"></div>
       <div class="action-bar">
+        <span class="action-count" id="ac-operacoes"></span>
         <button class="btn-action" onclick="exportarCSV('operacoes','logs_operacoes')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exportar CSV
+          Exportar página
+        </button>
+        <button class="btn-action" onclick="exportarTudo('operacoes','logs_operacoes')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar tudo
         </button>
         <button class="btn-action" onclick="carregarDados('operacoes')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
@@ -356,22 +465,27 @@
   </div>
 </div>
 
+<!-- MODAL BUSCA GLOBAL -->
+<div class="gs-overlay" id="gs-overlay" onclick="fecharBuscaGlobal(event)">
+  <div class="gs-box">
+    <div class="gs-head">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="gs-input" id="gs-input" placeholder="Buscar em todos os logs…" autocomplete="off" oninput="onGsInput()"/>
+      <kbd class="gs-esc" onclick="fecharBuscaGlobal()">ESC</kbd>
+    </div>
+    <div class="gs-status" id="gs-status">Digite para buscar em todas as abas</div>
+    <div class="gs-results" id="gs-results"></div>
+  </div>
+</div>
+
 <!-- TOAST NOTIF -->
 <div class="notif" id="notif">
   <div class="notif-icon"></div>
   <span id="notif-text"></span>
 </div>
 
-<!-- EASTER EGG -->
-<div class="egg-bg" id="egg-bg" onclick="fecharEgg()">
-  <div class="egg-card">
-    <img class="egg-img" id="egg-img" src="" alt="easter egg" onerror="this.src='https://placehold.co/320x400/1a1a1a/c0171a?text=📸+Foto+aqui'" />
-    <div class="egg-nome" id="egg-nome">👀 Quem será?</div>
-    <div class="egg-frase" id="egg-frase">"Não foi eu que deletei o banco."</div>
-  </div>
-  <div class="egg-close-hint">clique em qualquer lugar para fechar</div>
-</div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="/js/painel-logs.js"></script>
 <script>
 (function(){

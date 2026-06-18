@@ -76,13 +76,20 @@ window.entrar = async function () {
 
     if (Array.isArray(tiList) && tiList.length > 0) {
       const ti = tiList[0];
+      if (ti.is_professor && ti.professor_id) {
+        btn.classList.remove('loading');
+        _pendingTI = { ti, nome };
+        document.getElementById('escolha-nome-label').textContent = ti.nome || nome;
+        const modal = document.getElementById('modal-escolha-bg');
+        modal.style.display = 'flex';
+        return;
+      }
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'ti',
         id: ti.id,
         login: ti.login,
         nome
       }));
-      // Log de login bem-sucedido
       await logger.logLogin(ti.id, 'ti', ti.login, nome);
       window.location.href = 'painel-ti.html';
       return;
@@ -147,6 +154,34 @@ window.entrar = async function () {
   } finally {
     btn.classList.remove('loading');
   }
+};
+
+// ── ESCOLHA TI / PROFESSOR ──
+let _pendingTI = null;
+window.escolherTipo = async function (tipo) {
+  if (!_pendingTI) return;
+  const { ti, nome } = _pendingTI;
+  document.getElementById('modal-escolha-bg').style.display = 'none';
+  if (tipo === 'ti') {
+    sessionStorage.setItem('dsos_session', JSON.stringify({
+      tipo: 'ti',
+      id: ti.id,
+      login: ti.login,
+      nome
+    }));
+    await logger.logLogin(ti.id, 'ti', ti.login, nome);
+    window.location.href = 'painel-ti.html';
+  } else {
+    sessionStorage.setItem('dsos_session', JSON.stringify({
+      tipo: 'professor',
+      id: ti.professor_id,
+      login: ti.login,
+      nome: ti.nome || nome
+    }));
+    await logger.logLogin(ti.professor_id, 'professor', ti.login, ti.nome || nome);
+    window.location.href = 'painel-pc.html';
+  }
+  _pendingTI = null;
 };
 
 // ── AJUDA ──
