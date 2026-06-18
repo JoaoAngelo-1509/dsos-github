@@ -341,12 +341,19 @@ const RENDER = {
     if (!data.length) { el.innerHTML = empty(); return; }
     el.innerHTML = data.map(r => {
       const falha = r.status_login === 'falha';
+      const statusBadge = badgeStatus(r.status_login, { sucesso:'ok', falha:'erro', logout:'warn' });
+      const userTypeBadge = r.usuario_tipo === 'ti' || r.usuario_tipo === 'TI' 
+        ? '<span class="spill sp-ti">usuario ti</span>'
+        : r.usuario_tipo === 'admin' || r.usuario_tipo === 'ADMIN'
+        ? '<span class="spill sp-admin">admin</span>'
+        : '';
       return `
-      <div class="table-row ${falha ? 'row-error' : ''}" style="grid-template-columns:150px 110px 80px 1fr 120px"
+      <div class="table-row ${falha ? 'row-error' : ''}" style="grid-template-columns:150px 110px 80px 80px 1fr 120px"
            onclick='abrirModal("acessos",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_nome || r.usuario_login)}</span>
-        <span>${badgeStatus(r.status_login, { sucesso:'ok', falha:'erro', logout:'warn' })}</span>
+        <span>${statusBadge}</span>
+        <span>${userTypeBadge}</span>
         <span class="cell-trunc">${e(r.motivo_falha)}</span>
         <span class="cell-mono">${fmtDuracao(r.duracao_sessao)}</span>
       </div>`;

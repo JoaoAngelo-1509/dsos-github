@@ -6,12 +6,21 @@ import { SUPABASE_URL, SUPABASE_HEADERS as H } from './supabase-config.js';
 class DSosLogger {
   constructor() {
     this.sessionId = this._generateSessionId();
+    this._debugLogs = [];
+    this._addDebugLog('✓ Instância criada');
+  }
 
-    // ─── FIX 1: clientIP começa como Promise, não null ───────────────────────
-    // Antes: _getClientIP() era async void → clientIP ficava null quando
-    // logLogin() era chamado milissegundos depois (race condition).
-    // Agora: guardamos a Promise e aguardamos ela dentro de _callRPC().
-    this._ipPromise = this._fetchIP();
+  _addDebugLog(msg) {
+    const timestamp = new Date().toISOString();
+    this._debugLogs.push(`[${timestamp}] ${msg}`);
+    console.log('[DSosLogger]', msg);
+    
+    // Salva em localStorage pra debugar depois
+    try {
+      localStorage.setItem('DSosLogger_debug', JSON.stringify(this._debugLogs));
+    } catch (e) {
+      // localStorage cheio, ignora
+    }
   }
 
   _generateSessionId() {
@@ -19,15 +28,38 @@ class DSosLogger {
   }
 
   async _fetchIP() {
-    try {
-      const res = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`ipify ${res.status}`);
-      const data = await res.json();
-      return data.ip || '0.0.0.0';
-    } catch (e) {
-      console.warn('[DSosLogger] Não foi possível obter IP:', e.message);
-      return '0.0.0.0';
-    }
+    return new Promise((resolve) => {
+      this._addDebugLog('▶ _fetchIP() iniciado');
+      
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      const ips = new Set();
+
+      pc.createDataChannel('');
+      pc.createOffer().then(offer => pc.setLocalDescription(offer));
+
+      pc.onicecandidate = (ice) => {
+        if (!ice || !ice.candidate) return;
+        
+        const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+        const match = ipRegex.exec(ice.candidate.candidate);
+        
+        if (match) {
+          const ip = match[1];
+          if (!ip.startsWith('127.') && !ip.startsWith('0.')) {
+            ips.add(ip);
+            this._addDebugLog(`→ IP encontrado: ${ip}`);
+          }
+        }
+      };
+
+      setTimeout(() => {
+        pc.close();
+        const ipArray = Array.from(ips);
+        const ip = ipArray.length > 0 ? ipArray[0] : '0.0.0.0';
+        this._addDebugLog(`✓ IP final: ${ip}`);
+        resolve(ip);
+      }, 2000);
+    });
   }
 
   // RPCs que NÃO aceitam p_sessao_id — evita "unknown parameter" no Postgres
@@ -48,9 +80,12 @@ class DSosLogger {
     'rpc_log_limpeza_banco',
   ]);
 
-  // ─── FIX 2: aguarda o IP antes de enviar ─────────────────────────────────
+  // ─── FIX 2: busca IP sob demanda ─────────────────────────────────
   async _callRPC(rpcName, params) {
-    const ip = await this._ipPromise;
+    this._addDebugLog(`→ _callRPC: ${rpcName}`);
+    
+    const ip = await this._fetchIP();
+    this._addDebugLog(`✓ IP recebido: ${ip}`);
 
     const body = { ...params, p_ip_address: ip };
 
@@ -66,12 +101,9 @@ class DSosLogger {
         body: JSON.stringify(body),
       });
 
-      // ─── FIX 3: erros HTTP eram silenciados ──────────────────────────────
-      // Antes: res.ok era ignorado, então um 404 (RPC não existe) ou 422
-      // (parâmetro errado) passava em silêncio sem nenhum aviso útil.
-      // Agora: lemos o corpo do erro e logamos no console com contexto.
       if (!res.ok) {
         const errBody = await res.text().catch(() => '(sem corpo)');
+        this._addDebugLog(`✗ RPC falhou: ${rpcName} HTTP ${res.status}`);
         console.error(
           `[DSosLogger] RPC "${rpcName}" falhou — HTTP ${res.status}\n` +
           `  params enviados: ${JSON.stringify(body)}\n` +
@@ -80,8 +112,10 @@ class DSosLogger {
         return null;
       }
 
+      this._addDebugLog(`✓ RPC sucesso: ${rpcName}`);
       return await res.json().catch(() => null);
     } catch (e) {
+      this._addDebugLog(`✗ Erro rede: ${rpcName} - ${e.message}`);
       console.error(`[DSosLogger] Erro de rede ao chamar "${rpcName}":`, e);
       return null;
     }
