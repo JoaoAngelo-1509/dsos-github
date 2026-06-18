@@ -1011,10 +1011,10 @@ function _scRun(current,total,onHit,onFail){
 
   const ctx=canvas.getContext('2d');
   const cx=110,cy=110,R=95,rIn=72;
-  const speed=1.8+Math.random()*.9; /* deg/frame at 60fps ≈ 108-162 deg/s */
-  /* zone: green arc ~22% (79°), white inner arc ~8% (29°) centered inside green */
-  const zoneSize=79*(Math.PI/180);
-  const whiteSize=29*(Math.PI/180);
+  const speed=3.2+Math.random()*1.2; /* deg/frame at 60fps ≈ 192-264 deg/s — difícil */
+  /* zone: green arc ~16% (58°), white inner arc ~6% (22°) centered inside green */
+  const zoneSize=58*(Math.PI/180);
+  const whiteSize=22*(Math.PI/180);
   /* random position: avoid top 60° (near start) */
   const zoneStart=(80+Math.random()*200)*(Math.PI/180)-Math.PI/2;
   const zoneEnd=zoneStart+zoneSize;
@@ -1027,35 +1027,32 @@ function _scRun(current,total,onHit,onFail){
 
   function drawRing(){
     ctx.clearRect(0,0,220,220);
-    /* outer glow ring */
-    ctx.save();
-    ctx.shadowBlur=18;ctx.shadowColor='rgba(255,255,255,.18)';
-    ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
-    ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=16;ctx.stroke();
-    ctx.restore();
+    /* fundo escuro do círculo */
+    ctx.beginPath();ctx.arc(cx,cy,R+10,0,Math.PI*2);
+    ctx.fillStyle='rgba(8,4,4,.92)';ctx.fill();
     /* base ring */
     ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);
-    ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=14;ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=14;ctx.stroke();
     /* green zone */
-    ctx.save();ctx.shadowBlur=14;ctx.shadowColor='rgba(0,255,120,.8)';
+    ctx.save();ctx.shadowBlur=18;ctx.shadowColor='#00ff78';
     ctx.beginPath();ctx.arc(cx,cy,R,zoneStart,zoneEnd);
-    ctx.strokeStyle='#00ff78';ctx.lineWidth=14;ctx.stroke();
+    ctx.strokeStyle='#00e676';ctx.lineWidth=14;ctx.stroke();
     ctx.restore();
-    /* white zone (perfeito) */
-    ctx.save();ctx.shadowBlur=20;ctx.shadowColor='rgba(255,255,255,.9)';
+    /* white zone (perfeito) — amarelo pra diferenciar do branco da agulha */
+    ctx.save();ctx.shadowBlur=22;ctx.shadowColor='rgba(255,220,0,.9)';
     ctx.beginPath();ctx.arc(cx,cy,R,whiteStart,whiteEnd);
-    ctx.strokeStyle='#ffffff';ctx.lineWidth=14;ctx.stroke();
+    ctx.strokeStyle='#ffe600';ctx.lineWidth=14;ctx.stroke();
     ctx.restore();
     /* needle */
     const nx=cx+R*Math.cos(angle),ny=cy+R*Math.sin(angle);
-    ctx.save();ctx.shadowBlur=16;ctx.shadowColor='rgba(255,255,255,.9)';
+    ctx.save();ctx.shadowBlur=14;ctx.shadowColor='rgba(255,80,80,.9)';
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(nx,ny);
-    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+    ctx.strokeStyle='#ff4444';ctx.lineWidth=3;ctx.stroke();
     ctx.beginPath();ctx.arc(nx,ny,5,0,Math.PI*2);
-    ctx.fillStyle='#fff';ctx.fill();
+    ctx.fillStyle='#ff4444';ctx.fill();
     ctx.restore();
     /* center dot */
-    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.5)';ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.6)';ctx.fill();
   }
 
   function normalizeAngle(a){let n=((a+Math.PI/2)%(Math.PI*2));if(n<0)n+=Math.PI*2;return n;}
