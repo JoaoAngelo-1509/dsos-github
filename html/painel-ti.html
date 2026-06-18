@@ -678,6 +678,23 @@
   </div>
 </div>
 
+<!-- SKILL CHECK OVERLAY -->
+<div id="skillcheck-overlay" class="sc-overlay" style="display:none" aria-hidden="true">
+  <div class="sc-container">
+    <div class="sc-header">
+      <span class="sc-label" id="sc-label">VERIFICAÇÃO DE HABILIDADE</span>
+      <span class="sc-counter" id="sc-counter">1 / 3</span>
+    </div>
+    <div class="sc-ring-wrap">
+      <canvas id="sc-canvas" width="220" height="220"></canvas>
+      <div class="sc-flash" id="sc-flash"></div>
+    </div>
+    <div class="sc-hint">Pressione <kbd>ESPAÇO</kbd> ou clique quando o ponteiro estiver na zona verde</div>
+    <div class="sc-skip">ESC para pular</div>
+  </div>
+  <div class="sc-particles" id="sc-particles"></div>
+</div>
+
 <div class="notif" id="notif"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="../js/painel-ti.js"></script>
