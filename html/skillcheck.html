@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dead by Daylight - Skill Check Minigame</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* Canvas do Skill Check */
+        .skillcheck-wrapper {
+            position: relative;
+            width: 500px;
+            height: 500px;
+        }
+
+        #skillcheckCanvas {
+            display: block;
+            filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.2));
+        }
+
+        /* Painel de Controles */
+        .control-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #444;
+            padding: 30px;
+            border-radius: 10px;
+            width: 300px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .control-panel h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #999;
+            margin-bottom: 8px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .difficulty-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #444;
+            background: rgba(50, 50, 50, 0.8);
+            color: #999;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .difficulty-btn:hover {
+            border-color: #666;
+            color: #ccc;
+        }
+
+        .difficulty-btn.active {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b1528 100%);
+            border-color: #ff1744;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .slider-value {
+            color: #ff1744;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #333, #555);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1744 0%, #c41e3a 100%);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.8);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff1744 0%, #c41e3a 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.8);
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: rgba(50, 50, 50, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 3px solid #ff1744;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .stat-item.perfect .stat-label {
+            color: #ff1744;
+        }
+
+        .stat-item.perfect {
+            border-left-color: #ff1744;
+        }
+
+        .stat-item.success {
+            border-left-color: #4CAF50;
+        }
+
+        .stat-item.success .stat-label {
+            color: #4CAF50;
+        }
+
+        .stat-item.fail {
+            border-left-color: #f44336;
+        }
+
+        .stat-item.fail .stat-label {
+            color: #f44336;
+        }
+
+        /* Status */
+        .status-display {
+            background: rgba(50, 50, 50, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            color: #999;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .status-text.success {
+            color: #4CAF50;
+            animation: pulse 0.6s ease-out;
+        }
+
+        .status-text.perfect {
+            color: #ff1744;
+            animation: pulse 0.6s ease-out;
+        }
+
+        .status-text.fail {
+            color: #f44336;
+            animation: shake 0.4s ease-out;
+        }
+
+        /* Reset Button */
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #444 0%, #222 100%);
+            color: #fff;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .reset-btn:hover {
+            background: linear-gradient(135deg, #555 0%, #333 100%);
+            border-color: #999;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .reset-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+            width: 90%;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .skillcheck-wrapper {
+                width: 400px;
+                height: 400px;
+            }
+
+            .control-panel {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .skillcheck-wrapper {
+                width: 300px;
+                height: 300px;
+            }
+
+            .control-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="skillcheck-wrapper">
+            <canvas id="skillcheckCanvas"></canvas>
+            <div class="instructions">
+                Pressione <strong>ESPAÇO</strong> para fazer o teste
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h2>⚙️ Controles</h2>
+
+            <div class="control-group">
+                <label>Dificuldade:</label>
+                <div class="difficulty-buttons">
+                    <button class="difficulty-btn active" data-difficulty="easy">Fácil</button>
+                    <button class="difficulty-btn" data-difficulty="normal">Normal</button>
+                    <button class="difficulty-btn" data-difficulty="hard">Difícil</button>
+                </div>
+            </div>
+
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Velocidade da Agulha:</span>
+                    <span class="slider-value" id="speedValue">1.0x</span>
+                </div>
+                <input type="range" id="speedSlider" min="0.5" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="status-display">
+                <div class="status-text" id="statusText">Pronto</div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item perfect">
+                    <div class="stat-label">Perfeitos</div>
+                    <div class="stat-value" id="perfectCount">0</div>
+                </div>
+                <div class="stat-item success">
+                    <div class="stat-label">Sucessos</div>
+                    <div class="stat-value" id="successCount">0</div>
+                </div>
+                <div class="stat-item fail">
+                    <div class="stat-label">Falhas</div>
+                    <div class="stat-value" id="failCount">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+            </div>
+
+            <button class="reset-btn" id="resetBtn">Resetar Stats</button>
+        </div>
+    </div>
+
+    <!-- Audio Context para sons -->
+    <script>
+        // Classe de Audio Sintético (sem dependências externas)
+        class SimpleAudioPlayer {
+            constructor() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            // Som de sucesso
+            playSuccess() {
+                const ctx = this.audioContext;
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+
+            // Som de sucesso perfeito
+            playPerfect() {
+                const ctx = this.audioContext;
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.frequency.setValueAtTime(659.25, now);
+                osc.frequency.setValueAtTime(783.99, now + 0.05);
+                osc.frequency.setValueAtTime(987.77, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+
+            // Som de falha
+            playFail() {
+                const ctx = this.audioContext;
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.setValueAtTime(150, now + 0.1);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+
+            // Som de spawn
+            playSpawn() {
+                const ctx = this.audioContext;
+                const now = ctx.currentTime;
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.setValueAtTime(440, now + 0.15);
+                
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+        }
+
+        // Classe Principal do Skill Check
+        class DeadByDaylightSkillCheck {
+            constructor() {
+                this.canvas = document.getElementById('skillcheckCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.audio = new SimpleAudioPlayer();
+
+                // Dimensões
+                this.canvas.width = 500;
+                this.canvas.height = 500;
+                this.centerX = this.canvas.width / 2;
+                this.centerY = this.canvas.height / 2;
+                this.radius = 180;
+
+                // Estado do jogo
+                this.difficulty = 'normal';
+                this.speedMultiplier = 1;
+                this.isActive = true;
+                this.hasPressed = false;
+
+                // Agulha
+                this.needleAngle = 0;
+                this.needleSpeed = 2; // graus por frame
+
+                // Zonas de sucesso
+                this.successZoneWidth = 40; // graus
+                this.perfectZoneWidth = 15; // graus
+                this.successZoneStart = Math.random() * 360;
+
+                // Estatísticas
+                this.stats = {
+                    perfect: 0,
+                    success: 0,
+                    fail: 0,
+                    total: 0
+                };
+
+                this.setupEventListeners();
+                this.loadStats();
+                this.animate();
+                this.audio.playSpawn();
+            }
+
+            setupEventListeners() {
+                // Tecla Espaço
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.checkSkill();
+                    }
+                });
+
+                // Dificuldade
+                document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.setDifficulty(e.target.dataset.difficulty);
+                    });
+                });
+
+                // Velocidade
+                document.getElementById('speedSlider').addEventListener('input', (e) => {
+                    this.speedMultiplier = parseFloat(e.target.value);
+                    document.getElementById('speedValue').textContent = this.speedMultiplier.toFixed(1) + 'x';
+                });
+
+                // Reset
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.stats = { perfect: 0, success: 0, fail: 0, total: 0 };
+                    this.updateStats();
+                    this.saveStats();
+                });
+            }
+
+            setDifficulty(level) {
+                this.difficulty = level;
+
+                const difficultySettings = {
+                    easy: {
+                        successZoneWidth: 60,
+                        perfectZoneWidth: 25,
+                        needleSpeed: 1.5
+                    },
+                    normal: {
+                        successZoneWidth: 40,
+                        perfectZoneWidth: 15,
+                        needleSpeed: 2
+                    },
+                    hard: {
+                        successZoneWidth: 25,
+                        perfectZoneWidth: 10,
+                        needleSpeed: 3
+                    }
+                };
+
+                const settings = difficultySettings[level];
+                this.successZoneWidth = settings.successZoneWidth;
+                this.perfectZoneWidth = settings.perfectZoneWidth;
+                this.needleSpeed = settings.needleSpeed;
+            }
+
+            checkSkill() {
+                if (!this.isActive || this.hasPressed) return;
+
+                this.hasPressed = true;
+                this.isActive = false;
+
+                const normalizedAngle = ((this.needleAngle % 360) + 360) % 360;
+                const zoneStart = this.successZoneStart;
+                const zoneEnd = (zoneStart + this.successZoneWidth) % 360;
+                const perfectStart = zoneStart + (this.successZoneWidth - this.perfectZoneWidth) / 2;
+                const perfectEnd = perfectStart + this.perfectZoneWidth;
+
+                // Verificar se está na zona
+                let inZone = false;
+                let isPerfect = false;
+
+                if (zoneEnd > zoneStart) {
+                    inZone = normalizedAngle >= zoneStart && normalizedAngle <= zoneEnd;
+                    isPerfect = normalizedAngle >= perfectStart && normalizedAngle <= perfectEnd;
+                } else {
+                    inZone = normalizedAngle >= zoneStart || normalizedAngle <= zoneEnd;
+                    isPerfect = (normalizedAngle >= perfectStart && normalizedAngle <= 360) ||
+                               (normalizedAngle >= 0 && normalizedAngle <= (perfectEnd % 360));
+                }
+
+                // Registrar resultado
+                this.stats.total++;
+
+                if (isPerfect) {
+                    this.stats.perfect++;
+                    this.showStatus('SUCESSO PERFEITO! 🎯', 'perfect');
+                    this.audio.playPerfect();
+                } else if (inZone) {
+                    this.stats.success++;
+                    this.showStatus('SUCESSO! ✓', 'success');
+                    this.audio.playSuccess();
+                } else {
+                    this.stats.fail++;
+                    this.showStatus('FALHA! ✗', 'fail');
+                    this.audio.playFail();
+                }
+
+                this.updateStats();
+                this.saveStats();
+
+                // Novo skill check após 1 segundo
+                setTimeout(() => {
+                    this.resetSkillCheck();
+                }, 1000);
+            }
+
+            resetSkillCheck() {
+                this.successZoneStart = Math.random() * 360;
+                this.needleAngle = 0;
+                this.hasPressed = false;
+                this.isActive = true;
+                this.showStatus('Pronto', 'ready');
+                this.audio.playSpawn();
+            }
+
+            showStatus(text, type) {
+                const statusEl = document.getElementById('statusText');
+                statusEl.textContent = text;
+                statusEl.className = 'status-text ' + type;
+            }
+
+            updateStats() {
+                document.getElementById('perfectCount').textContent = this.stats.perfect;
+                document.getElementById('successCount').textContent = this.stats.success;
+                document.getElementById('failCount').textContent = this.stats.fail;
+                document.getElementById('totalCount').textContent = this.stats.total;
+            }
+
+            saveStats() {
+                localStorage.setItem('dbd-skillcheck-stats', JSON.stringify(this.stats));
+            }
+
+            loadStats() {
+                const saved = localStorage.getItem('dbd-skillcheck-stats');
+                if (saved) {
+                    this.stats = JSON.parse(saved);
+                    this.updateStats();
+                }
+            }
+
+            animate() {
+                // Limpar canvas
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Atualizar ângulo da agulha
+                if (this.isActive && !this.hasPressed) {
+                    this.needleAngle += this.needleSpeed * this.speedMultiplier;
+                }
+
+                // Desenhar círculo externo (sombra)
+                this.drawCircleShadow();
+
+                // Desenhar círculo principal
+                this.drawCircle();
+
+                // Desenhar zonas de sucesso
+                this.drawSuccessZones();
+
+                // Desenhar agulha
+                this.drawNeedle();
+
+                // Desenhar indicador central
+                this.drawCenter();
+
+                requestAnimationFrame(() => this.animate());
+            }
+
+            drawCircleShadow() {
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, this.radius + 5, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.lineWidth = 10;
+                this.ctx.stroke();
+            }
+
+            drawCircle() {
+                // Círculo principal
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, this.radius, 0, Math.PI * 2);
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 8;
+                this.ctx.stroke();
+
+                // Glow effect
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, this.radius, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 20;
+                this.ctx.stroke();
+            }
+
+            drawSuccessZones() {
+                // Zona de sucesso (branco)
+                this.drawZone(
+                    this.successZoneStart,
+                    this.successZoneStart + this.successZoneWidth,
+                    '#ffffff',
+                    0.4
+                );
+
+                // Zona de sucesso perfeito (vermelho)
+                const perfectStart = this.successZoneStart + (this.successZoneWidth - this.perfectZoneWidth) / 2;
+                this.drawZone(
+                    perfectStart,
+                    perfectStart + this.perfectZoneWidth,
+                    '#ff1744',
+                    0.6
+                );
+
+                // Marcadores nas pontas da zona de sucesso
+                this.drawZoneMarker(this.successZoneStart);
+                this.drawZoneMarker(this.successZoneStart + this.successZoneWidth);
+            }
+
+            drawZone(startAngle, endAngle, color, alpha) {
+                const startRad = (startAngle * Math.PI) / 180;
+                const endRad = (endAngle * Math.PI) / 180;
+
+                // Arco preenchido
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.centerX, this.centerY);
+                this.ctx.arc(this.centerX, this.centerY, this.radius, startRad, endRad);
+                this.ctx.closePath();
+                this.ctx.fillStyle = color;
+                this.ctx.globalAlpha = alpha;
+                this.ctx.fill();
+                this.ctx.globalAlpha = 1;
+
+                // Borda do arco
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, this.radius, startRad, endRad);
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+            }
+
+            drawZoneMarker(angle) {
+                const rad = (angle * Math.PI) / 180;
+                const x1 = this.centerX + Math.cos(rad) * this.radius;
+                const y1 = this.centerY + Math.sin(rad) * this.radius;
+                const x2 = this.centerX + Math.cos(rad) * (this.radius + 15);
+                const y2 = this.centerY + Math.sin(rad) * (this.radius + 15);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(x1, y1);
+                this.ctx.lineTo(x2, y2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+            }
+
+            drawNeedle() {
+                const angle = (this.needleAngle * Math.PI) / 180;
+                const needleLength = this.radius - 15;
+
+                // Sombra da agulha
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.centerX, this.centerY);
+                this.ctx.lineTo(
+                    this.centerX + Math.cos(angle + 0.02) * needleLength,
+                    this.centerY + Math.sin(angle + 0.02) * needleLength
+                );
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                this.ctx.lineWidth = 4;
+                this.ctx.stroke();
+
+                // Agulha principal
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.centerX, this.centerY);
+                this.ctx.lineTo(
+                    this.centerX + Math.cos(angle) * needleLength,
+                    this.centerY + Math.sin(angle) * needleLength
+                );
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+
+                // Glow da agulha
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.centerX, this.centerY);
+                this.ctx.lineTo(
+                    this.centerX + Math.cos(angle) * needleLength,
+                    this.centerY + Math.sin(angle) * needleLength
+                );
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 8;
+                this.ctx.stroke();
+            }
+
+            drawCenter() {
+                // Círculo central
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, 12, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fill();
+
+                // Brilho central
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, 12, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+
+                // Aura
+                this.ctx.beginPath();
+                this.ctx.arc(this.centerX, this.centerY, 18, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            }
+        }
+
+        // Inicializar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            new DeadByDaylightSkillCheck();
+        });
+    </script>
+</body>
+</html>

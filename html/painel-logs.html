@@ -17,7 +17,7 @@
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS" onerror="this.style.display='none'"/>
   <div class="topbar-sep"></div>
   <div>
-    <span class="topbar-title">DSos</span>
+    <span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span>
     <span class="topbar-sub">— Auditoria de Logs <span style="color:cyan;font-size:.72rem;font-weight:700">v2.0</span></span>
   </div>
   <div class="topbar-right">
@@ -362,6 +362,38 @@
   <span id="notif-text"></span>
 </div>
 
+<!-- EASTER EGG -->
+<div class="egg-bg" id="egg-bg" onclick="fecharEgg()">
+  <div class="egg-card">
+    <img class="egg-img" id="egg-img" src="" alt="easter egg" onerror="this.src='https://placehold.co/320x400/1a1a1a/c0171a?text=📸+Foto+aqui'" />
+    <div class="egg-nome" id="egg-nome">👀 Quem será?</div>
+    <div class="egg-frase" id="egg-frase">"Não foi eu que deletei o banco."</div>
+  </div>
+  <div class="egg-close-hint">clique em qualquer lugar para fechar</div>
+</div>
+
 <script type="module" src="/js/painel-logs.js"></script>
+<script>
+(function(){
+  const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
+  const EGG_NOME='Rickelme';
+  const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
+  let _clicks=0,_timer=null;
+  document.getElementById('egg-trigger')?.addEventListener('click',()=>{
+    _clicks++;clearTimeout(_timer);
+    _timer=setTimeout(()=>{_clicks=0},1500);
+    if(_clicks>=5){_clicks=0;_abrir();}
+  });
+  function _abrir(){
+    document.getElementById('egg-img').src=EGG_FOTO||'';
+    document.getElementById('egg-nome').textContent=EGG_NOME;
+    document.getElementById('egg-frase').textContent=EGG_FRASE;
+    document.getElementById('egg-bg').classList.add('open');
+    document.addEventListener('keydown',_esc);
+  }
+  window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_esc);};
+  function _esc(e){if(e.key==='Escape')window.fecharEgg();}
+})();
+</script>
 </body>
 </html>
