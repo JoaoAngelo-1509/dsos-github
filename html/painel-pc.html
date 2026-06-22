@@ -35,6 +35,9 @@
     <button class="btn-tema" id="btn-tema" onclick="toggleTema()" title="Alternar modo claro/escuro">
       <svg id="ico-tema" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
+    <button class="btn-tema" onclick="abrirConfigPc()" title="Configurações" style="padding:4px 7px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
     <button class="btn-sair" onclick="sair()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
   </div>
 </div>
@@ -253,10 +256,45 @@
       <button class="btn-img-attach" id="btn-img-attach" title="Enviar print/imagem" onclick="document.getElementById('file-input-chat').click()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </button>
+      <button class="btn-img-attach" id="btn-camera" title="Tirar foto com câmera" onclick="abrirCamera()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
       <input class="chat-input" id="chat-input" placeholder="Escreva sua mensagem..." maxlength="500" oninput="atualizarContadorChat(this,'chat-char-count')" onkeydown="enviarMsg(event)" />
       <button class="btn-send" id="btn-send" onclick="enviarMsg({key:'Enter'})">Enviar</button>
     </div>
     <div style="text-align:right;font-size:.58rem;color:var(--text-muted);padding:2px 17px 6px;"><span id="chat-char-count">0</span>/500</div>
+  </div>
+</div>
+
+<!-- MODAL CÂMERA -->
+<!-- MODAL DE AVALIAÇÃO -->
+<div class="lightbox" id="avaliacao-modal" onclick="event.stopPropagation()" style="flex-direction:column;gap:0;align-items:center;justify-content:center">
+  <div class="avaliacao-card" onclick="event.stopPropagation()">
+    <div class="avaliacao-icon">✅</div>
+    <div class="avaliacao-titulo">Chamado resolvido!</div>
+    <div class="avaliacao-sub">Como foi o atendimento?</div>
+    <div class="avaliacao-estrelas" id="avaliacao-estrelas">
+      <span class="estrela" data-v="1" onclick="selecionarEstrela(1)">★</span>
+      <span class="estrela" data-v="2" onclick="selecionarEstrela(2)">★</span>
+      <span class="estrela" data-v="3" onclick="selecionarEstrela(3)">★</span>
+      <span class="estrela" data-v="4" onclick="selecionarEstrela(4)">★</span>
+      <span class="estrela" data-v="5" onclick="selecionarEstrela(5)">★</span>
+    </div>
+    <div class="avaliacao-label" id="avaliacao-label"></div>
+    <textarea id="avaliacao-comentario" class="avaliacao-textarea" placeholder="Comentário opcional…" maxlength="300"></textarea>
+    <div style="display:flex;gap:8px;width:100%">
+      <button class="avaliacao-skip" onclick="fecharAvaliacao()">Pular</button>
+      <button class="avaliacao-enviar" id="avaliacao-enviar" onclick="enviarAvaliacao()" disabled>Enviar avaliação</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="camera-modal" style="flex-direction:column;gap:16px;align-items:center;justify-content:center" onclick="fecharCamera()">
+  <video id="camera-video" autoplay playsinline style="max-width:min(480px,92vw);border-radius:8px;border:2px solid rgba(255,255,255,.15)" onclick="event.stopPropagation()"></video>
+  <canvas id="camera-canvas" style="display:none"></canvas>
+  <div style="display:flex;gap:12px" onclick="event.stopPropagation()">
+    <button onclick="capturarFoto()" style="padding:10px 22px;border-radius:8px;background:var(--accent,#c0171a);color:#fff;border:none;font-size:.78rem;font-weight:700;cursor:pointer;font-family:Sora,sans-serif">📸 Capturar</button>
+    <button onclick="fecharCamera()" style="padding:10px 22px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);font-size:.78rem;cursor:pointer;font-family:Sora,sans-serif">Cancelar</button>
   </div>
 </div>
 
@@ -279,6 +317,26 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- MODAL CONFIG -->
+<div class="modal-bg" id="modal-config-pc" onclick="if(event.target===this)fecharConfigPc()" style="z-index:200">
+  <div class="modal modal-config-pc" style="max-width:320px;min-height:unset;padding:0">
+    <div class="modal-head" style="padding:12px 16px">
+      <h3 style="font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--text);flex:1">CONFIGURAÇÕES</h3>
+      <button class="modal-close" onclick="fecharConfigPc()">✕</button>
+    </div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:.55rem;font-weight:700;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase">Aparência</div>
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer">
+        <span style="font-size:.72rem;color:var(--text)">Modo hacker</span>
+        <input type="checkbox" id="cfg-hacker-pc" onchange="toggleHacker()" style="width:15px;height:15px;accent-color:#e5000a;cursor:pointer" />
+      </label>
+      <div style="font-size:.6rem;color:var(--text-muted);line-height:1.5;margin-top:-6px">
+        Ativa estética SUPERHOT em todo o sistema: scanlines, fonte terminal e cores vermelhas.
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- CARD CENTRAL DE SUGESTÃO IA -->
 <div class="ai-sugestao-backdrop hidden" id="ai-sugestao-card" onclick="if(event.target===this)_fecharSugestao()">
