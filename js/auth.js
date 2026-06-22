@@ -1,7 +1,8 @@
 // DSos v1.3 alpha alpha — auth.js
 // ── auth.js — Lógica de autenticação da página de login ──
-import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
+import { SUPABASE_URL, SUPABASE_HEADERS as headers, GROQ_KEY } from './supabase-config.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
+import { dsosAlert } from './dsos-ui.js';
 import { logger } from './logging.js';
 
 // Expõe toggleTema globalmente para o onclick no HTML
@@ -43,6 +44,34 @@ function limparErro() {
   document.getElementById('erro').classList.remove('visivel');
 }
 
+// ── VALIDAÇÃO DE NOME VIA GROQ ──
+async function validarNome(nome) {
+  try {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0,
+        max_tokens: 64,
+        messages: [
+          {
+            role: 'system',
+            content: 'Você verifica se um texto é um nome de pessoa real em português. Responda apenas VALIDO ou INVALIDO. Considere INVALIDO: palavrões, xingamentos, nomes ofensivos, textos aleatórios, números, emojis, "teste", "admin", frases, caracteres repetidos (ex: "aaaa"), qualquer coisa que claramente não seja um nome de pessoa.'
+          },
+          { role: 'user', content: `Nome: ${nome}` }
+        ]
+      })
+    });
+    if (!resp.ok) return true; // falha silenciosa: deixa passar
+    const data = await resp.json();
+    const raw = (data.choices?.[0]?.message?.content || '').trim().toUpperCase();
+    return raw.startsWith('VALIDO');
+  } catch {
+    return true; // sem conexão com Groq: não bloqueia o login
+  }
+}
+
 // ── LOGIN PRINCIPAL ──
 window.entrar = async function () {
   const nome    = document.getElementById('nome').value.trim();
@@ -64,6 +93,18 @@ window.entrar = async function () {
   }
 
   btn.classList.add('loading');
+  btn.querySelector('span').textContent = 'Verificando nome…';
+
+  const nomeValido = await validarNome(nome);
+  if (!nomeValido) {
+    btn.classList.remove('loading');
+    btn.querySelector('span').textContent = 'Entrar';
+    mostrarErro('Informe seu nome real para continuar.');
+    document.getElementById('nome').focus();
+    return;
+  }
+
+  btn.querySelector('span').textContent = 'Entrando…';
 
   try {
     // 1. Tenta login como T.I via RPC segura
@@ -88,9 +129,9 @@ window.entrar = async function () {
         tipo: 'ti',
         id: ti.id,
         login: ti.login,
-        nome
+        nome: ti.nome || nome
       }));
-      await logger.logLogin(ti.id, 'ti', ti.login, nome);
+      await logger.logLogin(ti.id, 'ti', ti.login, ti.nome || nome);
       window.location.href = 'painel-ti.html';
       return;
     }
@@ -153,6 +194,7 @@ window.entrar = async function () {
     console.error(e);
   } finally {
     btn.classList.remove('loading');
+    btn.querySelector('span').textContent = 'Entrar';
   }
 };
 
@@ -167,7 +209,8 @@ window.escolherTipo = async function (tipo) {
       tipo: 'ti',
       id: ti.id,
       login: ti.login,
-      nome
+      nome: ti.nome || nome,
+      professor_id: ti.professor_id || null
     }));
     await logger.logLogin(ti.id, 'ti', ti.login, nome);
     window.location.href = 'painel-ti.html';
@@ -185,14 +228,19 @@ window.escolherTipo = async function (tipo) {
 };
 
 // ── AJUDA ──
-window.ajuda = function (e) {
+window.ajuda = async function (e) {
   e.preventDefault();
-  alert(
-    'Informe seu nome completo e as credenciais do seu PC.\n' +
-    'O login e a senha do PC são cadastrados pelo T.I.\n' +
-    'Professores também podem fazer login com suas credenciais para abrir chamados de emergência.\n' +
-    'Em caso de dúvidas, entre em contato com o suporte.'
-  );
+  await dsosAlert({
+    msg:
+      'Como fazer login:\n' +
+      '• Informe seu nome completo no primeiro campo.\n' +
+      '• Digite o usuário e a senha do seu PC (cadastrados pelo T.I.).\n' +
+      '• Professores usam suas credenciais próprias para abrir chamados de emergência.\n\n' +
+      'Esqueceu a senha?\n' +
+      'As senhas são gerenciadas pelo T.I. — procure um técnico pessoalmente ou abra um chamado de emergência de outro PC.',
+    tipo: 'info',
+    titulo: 'Como fazer login',
+  });
 };
 
 // ── ENTER NOS CAMPOS ──
