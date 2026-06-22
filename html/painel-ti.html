@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="../css/painel-ti.css" />
 </head>
 <body>
+<canvas id="op-canvas"></canvas>
 <div class="bg"></div>
 
 <!-- TOPBAR -->
@@ -24,10 +25,25 @@
       <span id="info-data">—</span>
       <span>Turno: <strong id="info-turno">—</strong></span>
     </div>
-    <div class="topbar-user"><div class="online-dot"></div><span id="nome-ti">T.I.</span></div>
-    <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span class="notif-bell-count" id="bell-count">0</span>
+    <div class="topbar-user" onclick="ciclarPresenca()" style="cursor:pointer" title="Clique para mudar status de presença"><div class="online-dot" id="presenca-dot"></div><span id="nome-ti">T.I.</span></div>
+    <button class="btn-icon" id="btn-trocar-papel" onclick="trocarParaProfessor()" title="Trocar para modo Professor" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+    </button>
+    <div class="bell-wrap" id="bell-wrap">
+      <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas" onclick="toggleBellPanel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-bell-count" id="bell-count">0</span>
+      </button>
+      <div class="bell-panel" id="bell-panel">
+        <div class="bell-panel-header">
+          <span>Mensagens não lidas</span>
+          <button class="bell-panel-close" onclick="fecharBellPanel()">✕</button>
+        </div>
+        <div id="bell-panel-list"></div>
+      </div>
+    </div>
+    <button class="btn-icon" onclick="abrirConfig()" title="Configurações do painel">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
     <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
       <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -47,12 +63,13 @@
     </div>
     <div class="kpi">
       <div class="kpi-icon green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-      <div class="kpi-info"><div class="kpi-n green" id="kpi-resolvidos">—</div><div class="kpi-l">Resolvidos hoje</div></div>
+      <div class="kpi-info"><div class="kpi-n green" id="kpi-resolvidos">—</div><div class="kpi-l">Resolvidos hoje</div><div class="kpi-trend" id="kpi-trend-resolvidos"></div></div>
     </div>
     <div class="kpi">
       <div class="kpi-icon yellow"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-      <div class="kpi-info"><div class="kpi-n yellow" id="kpi-hoje">—</div><div class="kpi-l">Abertos hoje</div></div>
+      <div class="kpi-info"><div class="kpi-n yellow" id="kpi-hoje">—</div><div class="kpi-l">Abertos hoje</div><div class="kpi-trend" id="kpi-trend-hoje"></div></div>
     </div>
+    <div class="kpi-clock" id="kpi-clock"></div>
   </div>
 
   <div class="card">
@@ -112,13 +129,23 @@
       <div class="crud-search-row">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="unresp-search" placeholder="Buscar por PC, tipo ou laboratório…" oninput="buscarTicketsAbertos(this.value)" autocomplete="off" />
+        <button class="btn-icon" id="btn-agrupar-lab" onclick="toggleAgruparLab()" title="Agrupar por laboratório" style="flex-shrink:0;margin-left:4px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h16M4 18h7"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-compacto" onclick="toggleModoCompacto()" title="Modo compacto" style="flex-shrink:0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button class="btn-icon" onclick="exportarChamadosCSV()" title="Exportar chamados em CSV" style="flex-shrink:0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
       </div>
-      <div class="tbl-head" style="grid-template-columns:32px 1fr 90px 50px 82px">
-        <span></span><span>PC / Tipo</span><span>Laboratório</span><span>Hora</span><span style="text-align:right">Status</span>
+      <div id="filtro-chips" class="filtro-chips"></div>
+      <div class="tbl-head" style="grid-template-columns:32px 1fr 68px 82px">
+        <span></span><span>PC / Tipo</span><span>Hora</span><span style="text-align:right">Status</span>
       </div>
       <div class="ticket-list" id="unresp-list"><div class="loading-spinner"><div class="spin"></div> carregando...</div></div>
       <div class="action-bar">
-        <div class="action-hint">Clique para selecionar · clique duplo para detalhes</div>
+        <div id="kb-dicas" class="kb-dicas"></div>
         <button class="act-btn act-progresso" id="btn-progresso" onclick="setStatus('em_andamento')" disabled>EM ANDAMENTO</button>
         <button class="act-btn act-resolvido"  id="btn-resolvido"  onclick="abrirResolucao()"         disabled>RESOLVIDO</button>
         <button class="act-btn act-descartado" id="btn-descartado" onclick="setStatus('descartado')"   disabled>DESCARTADO</button>
@@ -371,6 +398,7 @@
         </select>
       </div>
     </div>
+    <div id="mpc-historico" style="padding:0 16px 2px;border-top:1px solid var(--glass-b)"></div>
     <div class="modal-pc-footer">
       <button class="btn-mpc-cancel" onclick="fecharModalPC()">Cancelar</button>
       <button class="btn-mpc-save" onclick="salvarPC()">Salvar</button>
@@ -520,7 +548,12 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-head-info">
-        <div class="modal-htitle" id="m-title">—</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="modal-htitle" id="m-title">—</div>
+          <button class="btn-copy-id" id="btn-copy-id" onclick="copiarIdModal()" title="Copiar ID do chamado">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
         <div class="modal-hmeta">
           <span id="m-time"></span><span id="m-turno">—</span>
           <span id="m-origem-label">—</span><span id="m-solicitante"></span>
@@ -551,6 +584,15 @@
           <div class="res-desc-view" id="m-res-desc">—</div>
         </div>
       </div>
+      <!-- RESUMO IA -->
+      <div id="ai-resumo" style="display:none;margin:0 4px 10px;padding:10px 12px;border-radius:8px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.22);font-size:.62rem;line-height:1.55;color:var(--text)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:.52rem;letter-spacing:.07em;color:rgba(99,102,241,.9)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>RESUMO IA</span>
+          <span id="ai-resumo-spin" style="font-size:.52rem;color:var(--muted);display:none">analisando…</span>
+        </div>
+        <div id="ai-resumo-texto" style="color:var(--text2)">—</div>
+      </div>
+
       <div class="resolve-bar" id="resolve-bar">
         <div class="resolve-row">
           <span class="rlabel">Resolução:</span>
@@ -566,11 +608,28 @@
         <textarea class="res-desc-area" id="res-desc" placeholder="Descreva o que foi feito… (opcional)"></textarea>
       </div>
 
+      <!-- NOTAS INTERNAS -->
+      <div class="nota-interna-section">
+        <div class="nota-interna-header">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Nota interna <span style="color:var(--muted);font-weight:400">(visível só para TI)</span>
+        </div>
+        <textarea id="m-nota-interna" class="nota-interna-textarea" placeholder="Anotações, contexto entre turnos, observações técnicas…" maxlength="800"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:5px">
+          <span id="m-nota-salva" style="font-size:.58rem;color:var(--muted);align-self:center;display:none">✓ Salvo</span>
+          <button class="btn-nota-salvar" onclick="salvarNotaInterna()">Salvar nota</button>
+        </div>
+      </div>
+
       <!-- SEÇÃO DE CHAT -->
       <div class="chat-section" id="chat-section">
         <div class="chat-section-bar">
           <span style="display:flex;align-items:center;gap:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o PC</span>
           <span id="chat-status-label" style="color:var(--muted)"></span>
+          <button class="btn-ia-chat" id="btn-sugerir-resp" onclick="aiSugerirResposta()" title="IA sugere resposta baseada no contexto do chamado" disabled>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Sugerir resposta
+          </button>
         </div>
         <div class="chat-msgs-ti" id="chat-msgs-ti">
           <div class="chat-empty-ti">Carregando mensagens…</div>
@@ -580,6 +639,7 @@
           <span class="img-prev-nome" id="img-prev-nome"></span>
           <button class="img-prev-rm" onclick="removerImgTi()" title="Remover">✕</button>
         </div>
+        <div id="quick-replies-wrap" style="display:none;flex-wrap:wrap;gap:5px;padding:4px 0 2px"></div>
         <div class="chat-input-row-ti">
           <input type="file" id="file-input-ti" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="selecionarImagemTi(event)" />
           <button class="btn-img-ti" title="Enviar print/imagem" onclick="document.getElementById('file-input-ti').click()">
@@ -590,6 +650,169 @@
         </div>
         <div style="text-align:right;font-size:.54rem;color:var(--muted2);padding:2px 16px 4px;flex-shrink:0"><span id="ti-chat-char">0</span>/500</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div class="modal-pc-bg" id="modal-config">
+  <div class="modal-pc" style="max-width:420px">
+    <div class="modal-pc-head">
+      <div class="modal-pc-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Configurações
+      </div>
+      <button class="modal-pc-close" onclick="fecharConfig()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cfg-body">
+
+      <!-- ── APARÊNCIA ── -->
+      <div class="cfg-section-title">APARÊNCIA</div>
+
+      <div class="cfg-row">
+        <span class="cfg-label">Cor de destaque</span>
+        <div class="cfg-swatches" id="cfg-swatches">
+          <button class="cfg-swatch" data-color="#6366f1" style="background:#6366f1" title="Índigo" onclick="aplicarAccent('#6366f1')"></button>
+          <button class="cfg-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Azul" onclick="aplicarAccent('#3b82f6')"></button>
+          <button class="cfg-swatch" data-color="#10b981" style="background:#10b981" title="Verde" onclick="aplicarAccent('#10b981')"></button>
+          <button class="cfg-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Âmbar" onclick="aplicarAccent('#f59e0b')"></button>
+          <button class="cfg-swatch" data-color="#ef4444" style="background:#ef4444" title="Vermelho" onclick="aplicarAccent('#ef4444')"></button>
+          <button class="cfg-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Ciano" onclick="aplicarAccent('#06b6d4')"></button>
+        </div>
+      </div>
+
+      <div class="cfg-row">
+        <span class="cfg-label">Tamanho da fonte</span>
+        <div class="cfg-segmented" id="cfg-font-seg">
+          <button class="cfg-seg-btn" data-val="small"  onclick="aplicarFontSize('small')">A-</button>
+          <button class="cfg-seg-btn" data-val="normal" onclick="aplicarFontSize('normal')">A</button>
+          <button class="cfg-seg-btn" data-val="large"  onclick="aplicarFontSize('large')">A+</button>
+        </div>
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Modo hacker</span>
+          <span class="cfg-hint">Scanlines, monospace e estética de terminal</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-hacker" onchange="toggleHacker()">
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Animações reduzidas</span>
+          <span class="cfg-hint">Remove transições para uma interface mais rápida</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-no-anim" onchange="salvarConfig()">
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Ocultar painel de KPIs</span>
+          <span class="cfg-hint">Esconde os números do topo para mais espaço</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-ocultar-kpis" onchange="salvarConfig()">
+      </div>
+
+      <!-- ── INTERFACE ── -->
+      <div class="cfg-section-title" style="margin-top:6px">INTERFACE</div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Mostrar dicas de atalho</span>
+          <span class="cfg-hint">Exibe ↑↓ P R abaixo dos botões de ação</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-dicas-atalho" onchange="salvarConfig()">
+      </div>
+
+      <div class="cfg-row">
+        <span class="cfg-label">Ordenação padrão</span>
+        <select class="cfg-select" id="cfg-ordem" onchange="salvarConfig()">
+          <option value="asc">Mais antigo primeiro</option>
+          <option value="desc">Mais novo primeiro</option>
+          <option value="prioridade">Por prioridade</option>
+        </select>
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Agrupar por laboratório ao iniciar</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-agrupar-lab" onchange="salvarConfig()">
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Confirmar antes de resolver chamado</span>
+          <span class="cfg-hint">Pede confirmação extra antes de fechar o chamado</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-confirmar-resolver" onchange="salvarConfig()">
+      </div>
+
+      <!-- ── NOTIFICAÇÕES ── -->
+      <div class="cfg-section-title" style="margin-top:6px">NOTIFICAÇÕES</div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Sons de notificação</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-sons" onchange="salvarConfig()">
+      </div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Notificações do browser</span>
+          <span class="cfg-hint">Alertas mesmo com o painel em segundo plano</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-browser-notif" onchange="salvarConfig()">
+      </div>
+
+      <!-- ── INTELIGÊNCIA ARTIFICIAL ── -->
+      <div class="cfg-section-title" style="margin-top:6px">INTELIGÊNCIA ARTIFICIAL</div>
+
+      <div class="cfg-row">
+        <div>
+          <span class="cfg-label">Resumo automático ao abrir chamado</span>
+        </div>
+        <input type="checkbox" class="cfg-toggle" id="cfg-ai-resumo" onchange="salvarConfig()">
+      </div>
+
+      <!-- ── PERSONALIZAÇÃO ── -->
+      <div class="cfg-section-title" style="margin-top:6px">PERSONALIZAÇÃO</div>
+
+      <div class="cfg-row cfg-col">
+        <span class="cfg-label">Apelido no painel</span>
+        <input type="text" class="cfg-text-input" id="cfg-apelido" placeholder="Deixe em branco para usar o nome cadastrado" maxlength="20" oninput="salvarConfig()">
+      </div>
+
+      <div class="cfg-row cfg-col">
+        <span class="cfg-label">Respostas rápidas no chat</span>
+        <input type="text" class="cfg-text-input" id="cfg-reply1" placeholder="Resposta rápida 1" maxlength="80" oninput="salvarConfig()">
+        <input type="text" class="cfg-text-input" id="cfg-reply2" placeholder="Resposta rápida 2" maxlength="80" oninput="salvarConfig()">
+        <input type="text" class="cfg-text-input" id="cfg-reply3" placeholder="Resposta rápida 3" maxlength="80" oninput="salvarConfig()">
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ORDEM PARANORMAL -->
+<div class="modal-pc-bg" id="modal-op" onclick="if(event.target===this)fecharModalOP()">
+  <div class="modal-pc op-modal">
+    <div class="modal-pc-head">
+      <div class="modal-pc-title" style="gap:8px;display:flex;align-items:center">
+        <span style="font-size:1rem">🎲</span> Ordem Paranormal RPG
+      </div>
+      <button class="modal-pc-close" onclick="fecharModalOP()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="op-modal-body">
+      <p class="op-modal-sub">Escolha sua Ordem. Cada uma transforma o painel com a essência do seu elemento.</p>
+      <div class="op-grid" id="op-grid"></div>
+      <button class="op-reset-btn" onclick="selecionarOrdem(null)">✕ Remover Ordem</button>
     </div>
   </div>
 </div>
