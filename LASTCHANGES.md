@@ -1,1 +1,40 @@
+# Últimas alterações — DSos v2.0
 
+## v2.0 (Junho 2026)
+
+### Novas funcionalidades
+- **SLA em chamados abertos**: cada ticket no painel TI mostra há quanto tempo está aberto (verde < 30min, amarelo 30min–2h, laranja 2–24h, vermelho > 24h)
+- **Dashboard com gráficos**: aba "Dashboard" no Painel de Logs com charts Chart.js — chamados por dia, por tipo, por status, e acessos diários
+- **Exportar PDF**: botão de impressão no Painel de Logs para gerar relatórios em PDF diretamente pelo navegador
+- **Troca de papel**: técnicos TI que também são professores podem trocar para o modo Professor sem precisar fazer logout
+- **Proxy Groq via Edge Function**: esqueleto criado em `supabase/functions/groq-proxy/` para mover a chave Groq para o servidor
+
+### Melhorias de UX
+- "Esqueceu a senha? Contate o T.I." exibido na tela de login
+- Mensagem de ajuda atualizada com instrução sobre recuperação de senha
+- Tooltips nos botões destrutivos (remover PC, remover usuário, apagar logs)
+- Mensagens de erro padronizadas em todas as telas
+
+### Segurança
+- `professor_id` agora armazenado na sessão para usuários com conta dupla TI+Professor
+- Documentação sobre remoção da chave Groq do código-fonte adicionada ao `SETUP.md`
+
+## v1.2.0 (Março 2026)
+
+- Confirmação antes de ações destrutivas (deletar PC, usuário, professor)
+- Botão de cancelar fila de descarte
+- Correção: logout duplo em sessões inativas
+
+## v1.1 (Fevereiro 2026)
+
+- Easter egg: logo do CPS + Konami code
+- Modo escuro persistido por `localStorage`
+- Minijogo Dead by Daylight ao resolver chamados
+
+## v1.0 (Janeiro 2026)
+
+- Lançamento inicial do sistema
+- Ticketing com chat em tempo real
+- Classificação de prioridade via Groq AI (LLaMA 3.1)
+- Painel de auditoria de logs
+- Gerenciamento de PCs e usuários TI
