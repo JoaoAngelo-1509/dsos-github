@@ -3,7 +3,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body { font-family: 'Sora', sans-serif; }
+body { font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: var(--gray-border, rgba(255,255,255,.12)); border-radius: 2px; }
@@ -77,4 +77,142 @@ body { font-family: 'Sora', sans-serif; }
 .egg-img{width:min(320px,75vw);border-radius:12px;border:3px solid var(--red,#c0171a);box-shadow:0 0 80px rgba(192,23,26,.6),0 0 0 1px rgba(192,23,26,.2)}
 .egg-nome{font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:.04em;text-align:center}
 .egg-frase{font-size:.75rem;color:rgba(255,255,255,.55);text-align:center;font-style:italic;max-width:300px;line-height:1.6}
-.egg-close-hint{font-size:.58rem;color:rgba(255,255,255,.2);letter-spacing:.06em}
+.egg-close-hint{font-size:.68rem;color:rgba(255,255,255,.2);letter-spacing:.06em}
+
+/* ── Acessibilidade: respeita preferência do usuário por menos movimento ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ── Foco visível para navegação por teclado ── */
+:focus-visible {
+  outline: 2px solid var(--red, #c0171a);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MODO HACKER — Estética SUPERHOT
+   Preto absoluto · Branco puro · Vermelho #e5000a
+   Sem arredondamento · Monospace · Glitch
+═══════════════════════════════════════════════════════ */
+
+/* ── Paleta SUPERHOT ── */
+[data-hacker="1"] {
+  --red:#e5000a;--red-dim:rgba(229,0,10,.12);--red-glow:rgba(229,0,10,.55);
+  --glass:rgba(4,0,0,.97);--glass-top:#000000;
+  --glass-b:rgba(229,0,10,.22);--glass-b2:rgba(229,0,10,.1);
+  --row-bg:rgba(229,0,10,.03);--row-hover:rgba(229,0,10,.1);--row-b:rgba(229,0,10,.18);
+  --input-bg:rgba(229,0,10,.05);
+  --modal-bg:#050000;--modal-b:rgba(229,0,10,.45);
+  --text:#ffffff;--text2:rgba(255,255,255,.75);
+  --muted:rgba(255,255,255,.35);--muted2:rgba(255,255,255,.5);
+  --kpi-red:#ff3535;--kpi-green:#00ffcc;--kpi-yellow:#ffee00;
+  --kpi-red-sh:rgba(255,53,53,.55);--kpi-green-sh:rgba(0,255,204,.35);--kpi-yellow-sh:rgba(255,238,0,.4);
+  --accent:#e5000a;--header-bg:#000;--badge-unread:#e5000a
+}
+
+/* ── Scanlines na página inteira ── */
+[data-hacker="1"] body::after{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.09) 2px,rgba(0,0,0,.09) 3px)
+}
+
+/* ── Background animado SUPERHOT ── */
+[data-hacker="1"] .bg{
+  background:#000 !important;
+  overflow:hidden
+}
+/* grade vermelha em movimento */
+[data-hacker="1"] .bg::before{
+  content:'';position:absolute;inset:-80px;
+  background-image:
+    linear-gradient(rgba(229,0,10,.22) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(229,0,10,.22) 1px,transparent 1px),
+    linear-gradient(rgba(229,0,10,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(229,0,10,.07) 1px,transparent 1px);
+  background-size:60px 60px,60px 60px,12px 12px,12px 12px;
+  animation:hk-grid-drift 14s linear infinite
+}
+/* glow vermelho pulsante */
+[data-hacker="1"] .bg::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 120%,rgba(229,0,10,.35) 0%,transparent 65%),
+    radial-gradient(ellipse 70% 40% at 50% -10%,rgba(229,0,10,.18) 0%,transparent 65%),
+    radial-gradient(ellipse 40% 40% at 20% 50%,rgba(229,0,10,.06) 0%,transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 50%,rgba(229,0,10,.06) 0%,transparent 70%);
+  animation:hk-glow-pulse 4s ease-in-out infinite
+}
+@keyframes hk-grid-drift{
+  0%{transform:translate(0,0)}
+  100%{transform:translate(60px,60px)}
+}
+@keyframes hk-glow-pulse{
+  0%,100%{opacity:.6}
+  50%{opacity:1}
+}
+
+/* ── Body preto no hacker (para páginas sem .bg) ── */
+[data-hacker="1"] body{background:#000 !important;background-image:none !important}
+
+/* ── Esconder botão de tema no modo hacker ── */
+[data-hacker="1"] #btn-tema{display:none !important}
+
+/* ── Fonte monospace global ── */
+[data-hacker="1"] body{font-family:'Courier New',Courier,monospace}
+
+/* ── Topbar ── */
+[data-hacker="1"] .topbar{
+  background:#000 !important;
+  border-bottom:1px solid rgba(229,0,10,.5) !important;
+  backdrop-filter:none !important
+}
+[data-hacker="1"] .topbar-title{
+  letter-spacing:.15em;text-transform:uppercase;color:#fff
+}
+[data-hacker="1"] .topbar-sub{color:rgba(229,0,10,.75);letter-spacing:.06em}
+[data-hacker="1"] .topbar-sep{background:rgba(229,0,10,.35)}
+[data-hacker="1"] .topbar-user{
+  border-radius:0;border-color:rgba(229,0,10,.25);
+  background:rgba(229,0,10,.06)
+}
+
+/* ── Botões de ícone ── */
+[data-hacker="1"] .btn-icon{
+  border-radius:0;border-color:rgba(229,0,10,.2)
+}
+[data-hacker="1"] .btn-icon:hover{
+  background:rgba(229,0,10,.12);border-color:#e5000a;color:#e5000a
+}
+
+/* ── Inputs ── */
+[data-hacker="1"] input,[data-hacker="1"] select,[data-hacker="1"] textarea{
+  border-radius:0 !important
+}
+
+/* ── Scrollbar vermelha ── */
+[data-hacker="1"] ::-webkit-scrollbar-thumb{
+  background:rgba(229,0,10,.4);border-radius:0
+}
+
+/* ── Focus ring ── */
+[data-hacker="1"] :focus-visible{border-radius:0;outline-color:#e5000a}
+
+/* ── Animação de glitch ── */
+@keyframes hk-glitch{
+  0%,90%,100%{transform:translate(0);filter:none;clip-path:none}
+  91%{transform:translate(-3px,0);filter:brightness(1.6) hue-rotate(180deg)}
+  92%{transform:translate(3px,0);clip-path:inset(40% 0 45% 0)}
+  93%{transform:translate(-2px,1px);clip-path:none;filter:none}
+  94%{transform:translate(2px,-1px);color:#e5000a}
+  95%{transform:translate(0)}
+}
+
+/* ── Easter egg no hacker mode ── */
+[data-hacker="1"] .egg-img{border-color:#e5000a;box-shadow:0 0 80px rgba(229,0,10,.7)}
+[data-hacker="1"] .egg-card *{font-family:'Courier New',Courier,monospace}
