@@ -1,6 +1,7 @@
 // DSos v1.6 — painel-ti.js com Logging Completo (PARTE 1/2)
-import { SB, H, SB_KEY, GROQ_KEY } from './supabase-config.js';
+import { SB, H, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
+import { escapeHtml } from './ui.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -61,7 +62,7 @@ function statusPcPill(s){
   return`<span class="pc-pill ${m[s]||'pc-ativo'}">${l[s]||s||'—'}</span>`;
 }
 function tecNome(id){ const u=tiMap[id]; return u?(u.nome||u.login):'—' }
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+// escapeHtml é importado de ./ui.js (fonte única, previne XSS)
 
 /* TEMA */
 window.toggleTema=function(){
@@ -396,15 +397,15 @@ window._setFiltro=function(dim,val){
       const sla=_sla(t.aberto_em);
       const hora=t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
       prev.innerHTML=`
-        <div class="hp-title">${t.pc_info?.tag||'PC #'+t.pc_problema} — ${tipoLabel(t.tipo)}</div>
+        <div class="hp-title">${escapeHtml(t.pc_info?.tag||'PC #'+t.pc_problema)} — ${tipoLabel(t.tipo)}</div>
         <div class="hp-meta">
-          <span>${t.laboratorio||'—'} · Lado ${t.lado||'—'}</span>
-          ${t.nome_solicitante?`<span>👤 ${t.nome_solicitante}</span>`:''}
+          <span>${escapeHtml(t.laboratorio||'—')} · Lado ${escapeHtml(t.lado||'—')}</span>
+          ${t.nome_solicitante?`<span>👤 ${escapeHtml(t.nome_solicitante)}</span>`:''}
           <span>🕐 ${hora}</span>
         </div>
         ${sla?`<span class="hp-sla">${sla}</span>`:''}
-        <div class="hp-desc">${t.descricao||'(sem descrição)'}</div>
-        ${t.nota_interna?`<div style="margin-top:4px;padding:5px 7px;background:rgba(192,23,26,.08);border-left:2px solid var(--red);border-radius:0 4px 4px 0;font-size:.6rem;color:var(--text2)">📝 ${t.nota_interna}</div>`:''}
+        <div class="hp-desc">${escapeHtml(t.descricao||'(sem descrição)')}</div>
+        ${t.nota_interna?`<div style="margin-top:4px;padding:5px 7px;background:rgba(192,23,26,.08);border-left:2px solid var(--red);border-radius:0 4px 4px 0;font-size:.6rem;color:var(--text2)">📝 ${escapeHtml(t.nota_interna)}</div>`:''}
       `;
       const r=row.getBoundingClientRect();
       prev.style.display='flex';
@@ -448,7 +449,7 @@ function renderUnresp(){
     const emerg=t.chamado_emergencia||(t.pc_origem!==t.pc_problema);
     const hora=t.aberto_em?new Date(t.aberto_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'—';
     const sla=_sla(t.aberto_em);
-    const nome=t.nome_solicitante||'(sem nome)';
+    const nome=escapeHtml(t.nome_solicitante||'(sem nome)');
     const tec=t.tecnico_responsavel?`<span style="color:var(--green);display:inline-flex;align-items:center;gap:2px;margin-left:4px">${SVG.wrench} ${tecNome(t.tecnico_responsavel)}</span>`:'';
     const nl=naoLidasMap[t.id]?.ti||0;
     const nlHtml=nl>0?`<span class="ticket-unread-badge visible">${SVG.chat} ${nl}</span>`:'';
@@ -457,8 +458,8 @@ function renderUnresp(){
     return`<div class="ticket-row${emerg?' emergency':''}${selectedId===t.id?' selected':''}" onclick="selecionarTicket(${t.id})" style="position:relative">
       <div class="tr-icon">${tipoIcon(t.tipo)}</div>
       <div class="tr-main">
-        <div class="tr-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}${emerg?`<span class="emerg-tag">${SVG.zap} EMERG.</span>`:''} ${recBadge}</div>
-        <div class="tr-sub">#${t.id}${t.lado?' · lado '+t.lado:''}${t.laboratorio?' · '+t.laboratorio:''}</div>
+        <div class="tr-id">${escapeHtml(t.pc_info?.tag||'PC #'+(t.pc_problema||'—'))} / ${tipoLabel(t.tipo)}${emerg?`<span class="emerg-tag">${SVG.zap} EMERG.</span>`:''} ${recBadge}</div>
+        <div class="tr-sub">#${t.id}${t.lado?' · lado '+escapeHtml(t.lado):''}${t.laboratorio?' · '+escapeHtml(t.laboratorio):''}</div>
         <div class="tr-nome">${SVG.user} ${nome}${tec}</div>
       </div>
       <div class="tr-hora" data-ts="${t.aberto_em||''}" title="Aberto às ${hora}">${sla||hora}</div>
@@ -471,7 +472,7 @@ function renderUnresp(){
     const grupos={};
     abertos.forEach(t=>{const k=t.laboratorio||'—';if(!grupos[k])grupos[k]=[];grupos[k].push(t);});
     list.innerHTML=Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b,'pt')).map(([lab,ts])=>
-      `<div style="font-size:.57rem;font-weight:700;letter-spacing:.07em;color:var(--muted);padding:7px 10px 3px;border-bottom:1px solid var(--glass-b);margin-bottom:3px;margin-top:4px">${lab} <span style="font-weight:400;opacity:.65">(${ts.length})</span></div>`
+      `<div style="font-size:.57rem;font-weight:700;letter-spacing:.07em;color:var(--muted);padding:7px 10px 3px;border-bottom:1px solid var(--glass-b);margin-bottom:3px;margin-top:4px">${escapeHtml(lab)} <span style="font-weight:400;opacity:.65">(${ts.length})</span></div>`
       +ts.map(rowHtml).join('')
     ).join('');
   } else {
@@ -630,7 +631,7 @@ window.confirmarEnvioFila=async function(){
   const t=_descarteTicket;window.fecharMiniModalDescarte();
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'descartado',resolucao:'descarte',resolvido_em:new Date().toISOString(),tecnico_responsavel:session.id,item_descartado:item})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'em_manutencao'})});
+    await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'em_manutencao'})});
     
     // ━━ LOGGING (envio fila) ━━
     _logEvent('rpc_log_descarte_equipment', {
@@ -661,7 +662,7 @@ function abrirModal(t,comResolucao){
   document.getElementById('m-turno').textContent=dt?`Turno: ${calcTurno(dt)}`:'—';
   document.getElementById('m-origem-label').textContent=`Origem: PC #${t.pc_origem||'—'}`;
   const solEl=document.getElementById('m-solicitante');
-  if(t.nome_solicitante){solEl.innerHTML=`${SVG.user} ${t.nome_solicitante}`;solEl.style.cssText='display:inline-flex;align-items:center;gap:4px'}
+  if(t.nome_solicitante){solEl.innerHTML=`${SVG.user} ${escapeHtml(t.nome_solicitante)}`;solEl.style.cssText='display:inline-flex;align-items:center;gap:4px'}
   else{solEl.textContent='';solEl.style.display='none'}
   const tecWrap=document.getElementById('m-tecnico-wrap');
   if(t.tecnico_responsavel){document.getElementById('m-tecnico').innerHTML=`${SVG.wrench} ${tecNome(t.tecnico_responsavel)}`;tecWrap.style.display='block'}
@@ -752,7 +753,7 @@ window.confirmarResolucao=async function(){
     const updated=await r.json();
     const pcId=Array.isArray(updated)&&updated[0]?updated[0].pc_problema:null;
     if(pcId&&pcStatusMap[tipo])
-      await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
+      await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
     
     // ━━ LOGGING (confirmar resolução) ━━
     _logEvent('rpc_log_alterar_status_chamado', {
@@ -802,7 +803,7 @@ window.confirmarDescarteFisico=async function(){
     if(pcCompleto)linhas.push(`PC marcado como descartado.`);
     linhas.push(`Registrado em: ${new Date().toLocaleString('pt-BR')}`,`Técnico: ${session.nome||session.login}`);
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({descricao_resolucao:linhas.join('\n'),tecnico_responsavel:session.id})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:pcCompleto?'descartado':'ativo'})});
+    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:pcCompleto?'descartado':'ativo'})});
     
     // ━━ LOGGING (descarte físico) ━━
     _logEvent('rpc_log_descarte_equipment', {
@@ -832,7 +833,7 @@ window.reabrirTicket=async function(id,e){
     const tr=await fetch(`${SB}/rest/v1/ticket?id=eq.${id}&select=pc_problema`,{headers:H});
     const td=await tr.json();const pcId=Array.isArray(td)&&td[0]?td[0].pc_problema:null;
     await fetch(`${SB}/rest/v1/ticket?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,tecnico_responsavel:null,descricao_resolucao:null})});
-    if(pcId)await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'ativo'})});
+    if(pcId)await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
     notif('Chamado #'+id+' reaberto');
     ocultados.add(id);respondidos=respondidos.filter(r=>r.id!==id);
     await Promise.all([carregarTickets(),carregarKPIs()]);mudarAba('abertos');
@@ -848,7 +849,7 @@ window.cancelarItemDescarte=async function(ticketId,pcId,e){
   if(!await dsosConfirm({msg:'Cancelar descarte?\nChamado volta para ABERTO e PC para ATIVO.',tipo:'warning',titulo:'Cancelar descarte'}))return;
   try{
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,item_descartado:null,tecnico_responsavel:null,descricao_resolucao:null})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:H,body:JSON.stringify({status_pc:'ativo'})});
+    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
     notif('Descarte cancelado — chamado reaberto');
     await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
   }catch(err){notif('Erro ao cancelar descarte.')}
@@ -965,7 +966,7 @@ async function carregarMsgsTi(ticketId){
       const imgHtml=m.imagem_url?`<img class="msg-img-ti" src="${escapeHtml(m.imagem_url)}" alt="print" onclick="abrirLightbox('${escapeHtml(m.imagem_url)}')" />`:'';
       const textoHtml=m.conteudo?`<div class="msg-bubble-ti">${escapeHtml(m.conteudo)}</div>`:'';
       const tickHtml=deTi?`<span class="msg-tick${m.lido_pc?' lido':''}">${m.lido_pc?SVG.tick2:SVG.tick1}</span>`:'';
-      return`<div class="msg ${lado}">${imgHtml}${textoHtml}<div class="msg-meta-ti">${nomeRem} · ${hora} ${tickHtml}</div></div>`;
+      return`<div class="msg ${lado}">${imgHtml}${textoHtml}<div class="msg-meta-ti">${escapeHtml(nomeRem)} · ${hora} ${tickHtml}</div></div>`;
     }).join('');
     if(atBottom)chat.scrollTop=chat.scrollHeight;
   }catch(e){console.error('chat',e)}
@@ -1058,7 +1059,7 @@ function renderPCs(){
   const txt={ativo:'Ativo',em_manutencao:'Manutenção',descartado:'Descartado'};
   grid.innerHTML=lista.map(pc=>{
     const cls=pc.status_pc==='em_manutencao'?' manutencao':pc.status_pc==='descartado'?' descartado':'';
-    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${pc.tag||'—'}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${pc.tag}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${pc.laboratorio||'—'}</span><span>Lado ${pc.lado||'—'}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
+    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${pc.tag}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
   }).join('');
 }
 window.deletarPC=async function(id,tag,e){e.stopPropagation();if(!await dsosConfirm({msg:`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`,tipo:'danger',titulo:'Remover PC'}))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`PC ${tag} removido.`);await carregarPCs();}catch(e){notif('Erro ao remover.')}};
@@ -1103,7 +1104,7 @@ window.salvarPC=async function(){
   }else{
     try{
       await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});
-      await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:H,body:JSON.stringify({laboratorio:lab,lado:lado})});
+      await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({laboratorio:lab,lado:lado})});
       
       // ━━ LOGGING (alterar status PC) ━━
       const pcAntigo=todosOsPCs.find(p=>p.id===pcEditandoId);
@@ -1141,7 +1142,7 @@ function renderTIs(){
     const initials=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');
     const profBadge=u.is_professor?`<span style="font-size:.48rem;font-weight:700;letter-spacing:.05em;color:var(--kpi-green);background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);border-radius:3px;padding:1px 5px;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">${SVG.professor} PROF</span>`:'';
     const presencaBadge=`<span class="ti-presenca-badge" style="background:${presencaColor}" title="${presencaLabel}"></span>`;
-    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar" style="position:relative">${initials}${presencaBadge}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}${isMe?'<span class="ti-you-tag">você</span>':''}${profBadge}</div><div class="ti-user-login">@${u.login||'—'} <span style="color:${presencaColor};font-size:.6rem">${presencaLabel}</span></div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" title="Remover usuário T.I. permanentemente" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar" style="position:relative">${initials}${presencaBadge}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}${isMe?'<span class="ti-you-tag">você</span>':''}${profBadge}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')} <span style="color:${presencaColor};font-size:.6rem">${presencaLabel}</span></div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" title="Remover usuário T.I. permanentemente" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
   }).join('');
 }
 window.abrirModalTI=function(id){
@@ -1223,7 +1224,7 @@ async function carregarProfs(){
 function renderProfs(){
   const list=document.getElementById('prof-user-list');
   if(!todosOsProfs.length){list.innerHTML=`<div class="empty"><div class="eicon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg></div><p>Nenhum professor cadastrado.</p></div>`;return}
-  list.innerHTML=todosOsProfs.map(u=>{const i=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');return`<div class="ti-user-row"><div class="ti-avatar" style="background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.3);color:var(--kpi-green)">${i}</div><div class="ti-user-info"><div class="ti-user-nome">${u.nome||'—'}</div><div class="ti-user-login">@${u.login||'—'}${u.disciplina?' · '+u.disciplina:''}</div></div><button class="btn-ti-edit" onclick="abrirModalProf(${u.id})">Editar</button><button class="btn-ti-del-u" onclick="deletarProf(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;}).join('');
+  list.innerHTML=todosOsProfs.map(u=>{const i=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');return`<div class="ti-user-row"><div class="ti-avatar" style="background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.3);color:var(--kpi-green)">${i}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')}${u.disciplina?' · '+escapeHtml(u.disciplina):''}</div></div><button class="btn-ti-edit" onclick="abrirModalProf(${u.id})">Editar</button><button class="btn-ti-del-u" onclick="deletarProf(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;}).join('');
 }
 window.abrirModalProf=function(id){profEditandoId=id;const ed=id!==null;document.getElementById('mprof-title').textContent=ed?'Editar Professor':'Cadastrar Professor';document.getElementById('mprof-senha-hint').style.display=ed?'block':'none';document.getElementById('mprof-login').disabled=ed;document.getElementById('mprof-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';const tiRow=document.getElementById('mprof-ti-row');if(tiRow)tiRow.style.display=ed?'none':'flex';const cb=document.getElementById('mprof-is-ti');if(cb){cb.checked=false;cb.disabled=ed;}if(ed){const u=todosOsProfs.find(x=>x.id===id);if(!u)return;document.getElementById('mprof-nome').value=u.nome||'';document.getElementById('mprof-login').value=u.login||'';document.getElementById('mprof-disciplina').value=u.disciplina||'';document.getElementById('mprof-senha').value='';}else{['mprof-nome','mprof-login','mprof-disciplina','mprof-senha'].forEach(i=>document.getElementById(i).value='');document.getElementById('mprof-login').disabled=false;}document.getElementById('modal-professor').classList.add('open');setTimeout(()=>document.getElementById('mprof-nome').focus(),120);};
 window.fecharModalProf=function(){document.getElementById('modal-professor').classList.remove('open');profEditandoId=null;};
@@ -1311,12 +1312,12 @@ window.copiarIdModal=function(){
 };
 
 /* ═══════════════════════════════════════════
-   AI FEATURES — TI (Groq deepseek-r1)
+   AI FEATURES — TI (Groq llama-3.3-70b-versatile)
 ═══════════════════════════════════════════ */
 async function _groqTI(messages,maxTokens=1024){
-  const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+  const resp=await fetch(`${SB}/functions/v1/groq-proxy`,{
     method:'POST',
-    headers:{'Content-Type':'application/json',Authorization:`Bearer ${GROQ_KEY}`},
+    headers:H,
     body:JSON.stringify({model:'llama-3.3-70b-versatile',temperature:0.3,max_tokens:maxTokens,messages})
   });
   if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error('Groq '+resp.status+': '+(e?.error?.message||''));}

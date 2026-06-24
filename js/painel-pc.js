@@ -1,6 +1,7 @@
 // DSos v1.6 — painel-pc.js com Logging Completo
-import { SB_URL, SB_KEY, H, GROQ_KEY } from './supabase-config.js';
+import { SB_URL, SB_KEY, H } from './supabase-config.js';
 import { dsosAlert } from './dsos-ui.js';
+import { escapeHtml } from './ui.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
@@ -55,9 +56,9 @@ async function _verificarDuplicata(desc, pcId) {
 const _GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 async function _groqCall(messages, maxTokens = 1024) {
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const resp = await fetch(`${SB_URL}/functions/v1/groq-proxy`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+    headers: H,
     body: JSON.stringify({ model: _GROQ_MODEL, temperature: 0, max_tokens: maxTokens, messages })
   });
   if (!resp.ok) {
@@ -397,7 +398,7 @@ function renderChamados() {
     const nlBadge=nl>0&&podeChat?`<span class="ticket-unread-badge-pc visible"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${nl}</span>`:'';
     return`<div class="ticket-card ${t.status}" onclick="${podeChat?`abrirChat(${t.id})`:`abrirDetalhes(${t.id})`}" style="position:relative">
       <div class="t-icon">${tipoIcon(t.tipo)}</div>
-      <div class="t-info"><div class="t-title">${t.tipo||'—'}</div><div class="t-meta">#${t.id} · ${t.laboratorio||'—'} Lado ${t.lado||'—'}</div></div>
+      <div class="t-info"><div class="t-title">${_esc(t.tipo||'—')}</div><div class="t-meta">#${t.id} · ${_esc(t.laboratorio||'—')} Lado ${_esc(t.lado||'—')}</div></div>
       <div class="t-right">
         <span class="status-pill pill-${t.status}">${statusLabel(t.status)}</span>
         <span class="t-time">${hora}</span>
@@ -478,7 +479,7 @@ async function carregarMsgs(ticketId) {
       const imgHtml=m.imagem_url?`<img class="msg-img" src="${_esc(m.imagem_url)}" alt="print" onclick="abrirLightbox('${_esc(m.imagem_url)}')" />`:'';
       const textoHtml=m.conteudo?`<div class="msg-bubble">${_esc(m.conteudo)}</div>`:'';
       const tickHtml=(!deTI)?`<span class="msg-tick${m.lido_ti?' lido':''}">${m.lido_ti?tick2:tick1}</span>`:'';
-      return`<div class="msg ${de}">${imgHtml}${textoHtml}<div class="msg-meta">${nomeRem} · ${hora} ${tickHtml}</div></div>`;
+      return`<div class="msg ${de}">${imgHtml}${textoHtml}<div class="msg-meta">${_esc(nomeRem)} · ${hora} ${tickHtml}</div></div>`;
     }).join('');
     chat.scrollTop=chat.scrollHeight;
   }catch(e){console.error(e)}
@@ -564,7 +565,7 @@ window.selecionarImagem = function(event) {
     imgsPendentes.push(file);
     const url=URL.createObjectURL(file);
     const wrap=document.createElement('div');wrap.className='img-preview-item';
-    wrap.innerHTML=`<img src="${url}" class="img-preview-thumb"/><span class="img-preview-nome">${file.name}</span><button class="img-preview-remove" onclick="removerImgPendente(${imgsPendentes.length-1},this.closest('.img-preview-item'))">✕</button>`;
+    wrap.innerHTML=`<img src="${url}" class="img-preview-thumb"/><span class="img-preview-nome">${_esc(file.name)}</span><button class="img-preview-remove" onclick="removerImgPendente(${imgsPendentes.length-1},this.closest('.img-preview-item'))">✕</button>`;
     document.getElementById('img-preview-list').appendChild(wrap);
   });
   document.getElementById('img-preview-row').classList.add('visible');
@@ -580,7 +581,8 @@ window.abrirLightbox = function(url) { document.getElementById('lightbox-img').s
 window.fecharLightbox = function() { document.getElementById('lightbox').classList.remove('open'); };
 document.addEventListener('keydown',e=>{ if(e.key==='Escape')window.fecharLightbox(); });
 
-function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+// _esc agora delega para escapeHtml importado de ./ui.js (fonte única)
+const _esc = escapeHtml;
 
 window.toggleSel = function() { document.getElementById('sel-wrap').classList.toggle('open'); };
 window.pickTipo = function(opt) {

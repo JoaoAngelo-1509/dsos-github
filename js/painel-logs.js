@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════
-import { SB_URL, SB_KEY, GROQ_KEY } from './supabase-config.js';
+import { SB_URL, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
 
 const CFG = {
@@ -1935,11 +1935,11 @@ Laboratórios com mais chamados: ${topLab||'N/A'}
 Dia com mais chamados: ${maxDia[0]} (${maxDia[1]} chamados)
 Tempo médio de resolução: ${tempoMedMin!=null?tempoMedMin+' minutos':'dados insuficientes'}`;
 
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const resp = await fetch(`${SB_URL}/functions/v1/groq-proxy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'deepseek-r1-distill-llama-70b',
+        model: 'llama-3.3-70b-versatile',
         temperature: 0.4,
         max_tokens: 800,
         messages: [

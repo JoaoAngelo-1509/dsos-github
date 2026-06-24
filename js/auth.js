@@ -1,6 +1,6 @@
 // DSos v1.3 alpha alpha — auth.js
 // ── auth.js — Lógica de autenticação da página de login ──
-import { SUPABASE_URL, SUPABASE_HEADERS as headers, GROQ_KEY } from './supabase-config.js';
+import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js';
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
 import { dsosAlert } from './dsos-ui.js';
 import { logger } from './logging.js';
@@ -44,12 +44,69 @@ function limparErro() {
   document.getElementById('erro').classList.remove('visivel');
 }
 
+// ── RATE LIMITING VISUAL (complementa o rate limit do banco) ──
+// Após 5 tentativas falhas em 5 min, bloqueia o botão por 60s com countdown.
+const RL_MAX_TENTATIVAS = 5;
+const RL_JANELA_MS      = 5 * 60 * 1000;
+const RL_BLOQUEIO_MS    = 60 * 1000;
+let _rlTimer = null;
+
+function _rlRegistrarFalha() {
+  const agora = Date.now();
+  let arr = [];
+  try { arr = JSON.parse(sessionStorage.getItem('dsos_login_attempts') || '[]'); } catch { arr = []; }
+  arr = arr.filter(t => agora - t < RL_JANELA_MS);
+  arr.push(agora);
+  sessionStorage.setItem('dsos_login_attempts', JSON.stringify(arr));
+  if (arr.length >= RL_MAX_TENTATIVAS) {
+    sessionStorage.setItem('dsos_login_block_until', String(agora + RL_BLOQUEIO_MS));
+    sessionStorage.removeItem('dsos_login_attempts');
+    _rlIniciarBloqueio();
+  }
+}
+
+function _rlResetar() {
+  sessionStorage.removeItem('dsos_login_attempts');
+  sessionStorage.removeItem('dsos_login_block_until');
+}
+
+// Retorna true se ainda está bloqueado (e inicia/atualiza o countdown).
+function _rlBloqueado() {
+  const ate = parseInt(sessionStorage.getItem('dsos_login_block_until') || '0', 10);
+  if (Date.now() < ate) { _rlIniciarBloqueio(); return true; }
+  return false;
+}
+
+function _rlIniciarBloqueio() {
+  const btn = document.getElementById('btn');
+  if (_rlTimer) clearInterval(_rlTimer);
+  const tick = () => {
+    const ate = parseInt(sessionStorage.getItem('dsos_login_block_until') || '0', 10);
+    const restante = Math.ceil((ate - Date.now()) / 1000);
+    if (restante <= 0) {
+      clearInterval(_rlTimer); _rlTimer = null;
+      sessionStorage.removeItem('dsos_login_block_until');
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.querySelector('span').textContent = 'Entrar';
+      limparErro();
+      return;
+    }
+    btn.disabled = true;
+    btn.classList.remove('loading');
+    btn.querySelector('span').textContent = `Aguarde ${restante}s`;
+    mostrarErro(`Muitas tentativas. Tente novamente em ${restante}s.`);
+  };
+  tick();
+  _rlTimer = setInterval(tick, 1000);
+}
+
 // ── VALIDAÇÃO DE NOME VIA GROQ ──
 async function validarNome(nome) {
   try {
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/groq-proxy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      headers,
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         temperature: 0,
@@ -78,6 +135,9 @@ window.entrar = async function () {
   const usuario = document.getElementById('usuario').value.trim();
   const senha   = document.getElementById('senha').value;
   const btn     = document.getElementById('btn');
+
+  // Rate limiting: se ainda está no período de bloqueio, nem tenta.
+  if (_rlBloqueado()) return;
 
   limparErro();
 
@@ -116,6 +176,7 @@ window.entrar = async function () {
     const tiList = await resTI.json();
 
     if (Array.isArray(tiList) && tiList.length > 0) {
+      _rlResetar();
       const ti = tiList[0];
       if (ti.is_professor && ti.professor_id) {
         btn.classList.remove('loading');
@@ -145,6 +206,7 @@ window.entrar = async function () {
     const pcList = await resPC.json();
 
     if (Array.isArray(pcList) && pcList.length > 0) {
+      _rlResetar();
       const pc = pcList[0];
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'pc',
@@ -170,6 +232,7 @@ window.entrar = async function () {
     const profList = await resProf.json();
 
     if (Array.isArray(profList) && profList.length > 0) {
+      _rlResetar();
       const prof = profList[0];
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'professor',
@@ -186,6 +249,7 @@ window.entrar = async function () {
 
     // Nenhum tipo de usuário encontrado — log de falha
     await logger.logLoginFalho(usuario, 'usuario ou senha incorretos');
+    _rlRegistrarFalha();
     mostrarErro('Usuário ou senha incorretos.');
 
   } catch (e) {

@@ -12,7 +12,9 @@ class DSosLogger {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
-  _getDeviceInfo() {
+  // Coleta o "user agent"/fingerprint do dispositivo:
+  // browser | SO | resolução | idioma | fuso horário.
+  _getUserAgent() {
     const ua = navigator.userAgent;
     const browserMatch = ua.match(/(Chrome|Firefox|Safari|Edge|Opera)[\/\s]([\d.]+)/);
     const browser = browserMatch ? `${browserMatch[1]}/${browserMatch[2].split('.')[0]}` : 'Desconhecido';
@@ -44,7 +46,11 @@ class DSosLogger {
   ]);
 
   async _callRPC(rpcName, params) {
-    const body = { ...params, p_ip_address: this._getDeviceInfo() };
+    // NOTA: o valor enviado é o user-agent/fingerprint do dispositivo
+    // (ver _getUserAgent), NÃO um endereço IP. O nome do parâmetro
+    // `p_ip_address` é mantido porque é o contrato das RPCs de log no banco
+    // (renomeá-lo aqui causaria erro de "unknown parameter" no PostgREST).
+    const body = { ...params, p_ip_address: this._getUserAgent() };
     if (!DSosLogger._SEM_SESSAO.has(rpcName)) body.p_sessao_id = this.sessionId;
 
     try {
