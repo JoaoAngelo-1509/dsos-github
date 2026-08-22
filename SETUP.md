@@ -3,8 +3,8 @@
 ## 1. Clone o repositório
 
 ```bash
-git clone https://github.com/SEU_USUARIO/dsos.git
-cd dsos
+git clone https://github.com/JoaoAngelo-1509/dsos-github.git
+cd dsos-github
 ```
 
 ## 2. Crie os arquivos de configuração do Supabase
