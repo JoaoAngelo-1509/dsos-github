@@ -1,5 +1,44 @@
 # DSos — Changelog
 
+## [2.0.1] — 2026-08-22
+
+### Deploy
+- **ALTERADO** Deploy migrado de Vercel para Netlify: `vercel.json` removido, `netlify.toml` adicionado com os mesmos rewrites de URL limpa, headers de segurança (CSP) e cache-control por tipo de asset
+
+### IA (Groq)
+- **CORRIGIDO** Modelo `llama-3.3-70b-versatile` descontinuado deixava `content` vazio por consumir todos os tokens em reasoning — migrado para `openai/gpt-oss-20b` em `auth.js` (validação de nome), `painel-pc.js` (classificação de chamados) e `painel-ti.js` (resumo de ticket + sugestão de resposta), além do default do `groq-proxy`
+- **MELHORADO** Prompts simplificados para evitar reasoning desnecessário; adicionado "Responda SEMPRE em português brasileiro" em todos os prompts
+- **AUMENTADO** Limite de tokens por ação: classificação de chamados 1024→2048, resumo de ticket 128→256, sugestão de resposta 256→512
+- **CONHECIDO** `painel-logs.js` (função `gerarRelatorioIA`, relatório semanal do dashboard) ainda usa `llama-3.3-70b-versatile` — não foi migrado nesta rodada, alinhar em próxima alteração (ver [WORKFLOW.md](WORKFLOW.md))
+
+## [2.0.0] — 2026-06-22
+
+### Novas funcionalidades — painel-ti
+- **NOVO** SLA visual em chamados abertos: cor conforme tempo decorrido (verde < 30min, amarelo 30min–2h, laranja 2h–24h, vermelho > 24h)
+- **NOVO** Tooltips nos botões destrutivos (remover PC, remover usuário, apagar logs)
+
+### Novas funcionalidades — painel-pc
+- **NOVO** Melhorias no fluxo de abertura de chamado e na lista "Meus Chamados" (`painel-pc.js`/`painel-pc.css`, ver detalhes no commit `c16eb91`)
+
+### Novas funcionalidades — painel-logs
+- **NOVO** Aba "Dashboard" com gráficos Chart.js: chamados por dia, por tipo, por status, comparativo semanal, acessos diários e heatmap por hora
+- **NOVO** Exportação para PDF via impressão do navegador
+
+### Refatoração
+- **NOVO** Módulo `js/dsos-ui.js`: popups estilizados (`dsosAlert`/`dsosConfirm`) substituindo `alert`/`confirm` nativos, com suporte a tema escuro e Modo Hacker
+- Refatoração de `index.html` (landing de consentimento) e de `css/base.css`/`css/login.css`
+
+### Melhorias de UX
+- "Esqueceu a senha? Contate o T.I." exibido na tela de login
+- Mensagem de ajuda atualizada com instrução sobre recuperação de senha
+- Mensagens de erro padronizadas em todas as telas
+- Troca de papel: técnicos T.I. que também são professores podem trocar para o modo Professor sem precisar fazer logout
+
+### Backend / Segurança
+- **NOVO** Edge Function `groq-proxy` (`supabase/functions/groq-proxy/`) para mover a chave da API Groq do frontend para o servidor
+- `professor_id` agora armazenado na sessão para usuários com conta dupla T.I.+Professor
+- Documentação sobre a `GROQ_KEY` adicionada ao [SETUP.md](SETUP.md)
+
 ## [1.2.0] — 2026-03-17
 
 ### Banco de dados (produção + teste)

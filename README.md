@@ -1,42 +1,65 @@
-# DSos — HelpDesk Escolar (Refatorado)
+# DSos — HelpDesk Escolar
+
+Sistema de chamados de suporte técnico para laboratórios de informática escolares, com painel de aluno/professor, painel de T.I., auditoria/logs com dashboard analítico e classificação de chamados assistida por IA (Groq). Frontend em HTML/CSS/JS puro (sem framework/build step), backend em Supabase (Postgres + RPCs + Realtime + Edge Functions).
 
 ## Estrutura do Projeto
 
 ```
 /
+├── index.html              ← Landing page de consentimento/aviso (fase de testes)
+├── netlify.toml              ← Rewrites de URL, headers de segurança (CSP) e cache-control do deploy
 ├── html/
-│   ├── login.html          ← Página de login
-│   ├── painel-pc.html      ← Painel do usuário/PC/Professor
-│   └── painel-ti.html      ← Painel T.I.
+│   ├── login.html           ← Login (usuário do PC / professor / técnico T.I.)
+│   ├── painel-pc.html        ← Painel do aluno/professor (abrir e acompanhar chamados)
+│   ├── painel-ti.html        ← Painel do técnico de T.I. (gestão de chamados, PCs, equipe)
+│   ├── painel-logs.html      ← Auditoria de logs + dashboard com gráficos (Chart.js)
+│   └── skillcheck.html       ← Protótipo standalone do minigame "Skill Check" (não usado em produção)
 ├── css/
-│   ├── base.css            ← Estilos compartilhados (animações, lightbox, .bg)
-│   ├── login.css           ← Estilos exclusivos do login
-│   ├── painel-pc.css       ← Estilos do painel do usuário
-│   └── painel-ti.css       ← Estilos do painel T.I.
+│   ├── base.css              ← Reset, fundo, lightbox, easter egg, Modo Hacker (compartilhado)
+│   ├── login.css             ← Estilos exclusivos do login
+│   ├── painel-pc.css         ← Estilos do painel do aluno/professor
+│   ├── painel-ti.css         ← Estilos do painel T.I. (o mais extenso: inclui easter eggs)
+│   └── painel-logs.css       ← Estilos do painel de logs/dashboard (inclui layout de impressão)
 ├── js/
-   ├── supabase-config.js  ← Configuração centralizada do Supabase
-   ├── ui.js               ← Utilitários compartilhados (tema, toast, escapeHtml, etc.)
-   ├── auth.js             ← Lógica de login
-   ├── painel-pc.js        ← Lógica do painel do usuário
-   └── painel-ti.js        ← Lógica do painel T.I.
+│   ├── supabase-config.js    ← Config do Supabase (URL + anon key) — NÃO versionado, ver SETUP.md
+│   ├── ui.js                 ← Utilitários compartilhados (tema, toast, escapeHtml, labels de status)
+│   ├── dsos-ui.js             ← Popups estilizados (dsosAlert/dsosConfirm), substitui alert/confirm nativos
+│   ├── auth.js                ← Lógica de login, rate limiting e validação de nome via IA
+│   ├── logging.js             ← Cliente de auditoria (RPCs de log), usado pelo painel-logs
+│   ├── painel-pc.js            ← Lógica do painel do aluno/professor
+│   ├── painel-ti.js            ← Lógica do painel T.I. (o maior módulo do sistema)
+│   ├── painel-logs.js           ← Lógica do painel de logs/dashboard
+│   └── session-guard.js        ← Logout automático por inatividade (módulo pronto, hoje não importado por nenhuma página — ver nota abaixo)
+├── supabase/
+│   ├── functions/groq-proxy/index.ts   ← Edge Function: proxy da API Groq (mantém a chave fora do cliente)
+│   └── migrations/                     ← Migrations SQL (privilégios de colunas sensíveis, etc.)
+├── images/                  ← Logo, fundo (BG.svg/BG_dark_mode.svg), favicon
+└── sounds/                  ← Efeitos sonoros (notificação, login, minigame Skill Check)
 ```
 
-## Bugs Corrigidos
+> `js/supabase-config.js` e `js/supabase-config.test.js` estão no `.gitignore` e precisam ser criados localmente — veja [SETUP.md](SETUP.md).
 
-1. **Tema persistente unificado**: O painel-ti.html usava a chave `dsos_tema` enquanto os outros 
-   usavam `dsos_tema_login`. Agora todos usam `dsos_tema_login` para consistência.
-2. **Remoção de CSS duplicado**: A regra `.bg` era definida em múltiplos arquivos. 
-   Agora está centralizada em `base.css`.
-3. **Separação de responsabilidades**: CSS inline, JS inline e estilos misturados 
-   foram separados em arquivos próprios.
-4. **Animações duplicadas**: `@keyframes spin`, `@keyframes cardIn`, etc. estavam definidas 
-   em múltiplos lugares. Centralizadas em `base.css`.
-5. **Utilitários compartilhados**: Funções como `toggleTema`, `sair`, `escapeHtml`, `toast`, 
-   `tipoIcon` e `statusLabel` estavam duplicadas. Centralizadas em `ui.js`.
+## Principais funcionalidades
 
-## Como Usar
+- **Chamados com chat em tempo real** (Supabase Realtime), envio de imagem por upload ou câmera, avaliação por estrelas pós-atendimento.
+- **Classificação de chamados por IA** (Groq): tipo, prioridade e sugestão de solução antes mesmo de abrir o chamado; detecção de chamado duplicado; resumo automático e sugestão de resposta no painel T.I.; relatório semanal em linguagem natural no painel de logs.
+- **SLA visual**: cada chamado exibe há quanto tempo está aberto, com cor (verde/amarelo/laranja/vermelho) conforme o tempo decorrido.
+- **Painel de auditoria e dashboard**: logs de login/logout, alterações de banco, atividades e alterações críticas, com filtros, exportação CSV/PDF e gráficos (Chart.js) — chamados por dia/tipo/status, acessos, heatmap por hora, ranking de laboratórios e técnicos.
+- **Gestão completa** de PCs, equipe de T.I. e professores (com suporte a contas duplas T.I. + Professor), incluindo fila de descarte de equipamento com fluxo de conformidade PNRS (Lei 12.305/2010).
+- **Login triplo** (PC/aluno, professor, técnico T.I.) com rate limiting client-side e troca de papel sem logout.
+- **Modo Hacker** (tema alternativo estilo terminal) disponível em todos os painéis.
+- **Easter eggs**: 5 cliques na logo em todas as telas, Konami code e Ordens Paranormais (RPG com 5 temas visuais) no painel T.I., e um minigame "Skill Check" (Dead by Daylight) integrado ao fluxo de resolução de chamados.
 
-Sirva os arquivos via servidor HTTP local (ex: Live Server no VSCode). 
-Abra `html/login.html` no navegador.
+## Como usar
 
-Os arquivos `BG.jpeg` e `Logo.png` devem estar na pasta image (deve ser criada) do projeto.
+O projeto é 100% estático (sem build step). Depois de configurar as credenciais (veja [SETUP.md](SETUP.md)), sirva os arquivos via qualquer servidor HTTP local (ex: `npx serve .`, Live Server no VSCode) e abra `html/login.html` — ou `index.html` na raiz, que direciona para o login após o aviso de consentimento.
+
+Em produção, o deploy é feito na Netlify (`netlify.toml` já configura os rewrites de URL limpa e os headers de segurança).
+
+## Documentação relacionada
+
+- [SETUP.md](SETUP.md) — como configurar o ambiente local
+- [WORKFLOW.md](WORKFLOW.md) — fluxo de alterações no banco de dados
+- [CHANGELOG.md](CHANGELOG.md) — histórico de versões
+- [LASTCHANGES.md](LASTCHANGES.md) — resumo das últimas alterações
+- [js/README.md](js/README.md) — como criar os arquivos de configuração do Supabase

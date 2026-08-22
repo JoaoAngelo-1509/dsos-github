@@ -1,13 +1,21 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-08-22 — Deploy e correção de modelo de IA
+
+- **Deploy migrado para Netlify**: `vercel.json` substituído por `netlify.toml` (mesmos rewrites de URL e headers de segurança)
+- **Migração de modelo Groq**: `llama-3.3-70b-versatile` (descontinuado, retornava respostas vazias por excesso de reasoning) substituído por `openai/gpt-oss-20b` em `auth.js`, `painel-pc.js`, `painel-ti.js` e no default do `groq-proxy`
+- Prompts otimizados para responder sempre em português e evitar reasoning desnecessário; limites de tokens aumentados nas ações de IA mais complexas
+- Pendência: `painel-logs.js` (relatório semanal do dashboard) ainda não foi migrado para o novo modelo
+
 ## v2.0 (Junho 2026)
 
 ### Novas funcionalidades
-- **SLA em chamados abertos**: cada ticket no painel TI mostra há quanto tempo está aberto (verde < 30min, amarelo 30min–2h, laranja 2–24h, vermelho > 24h)
+- **SLA em chamados abertos**: cada ticket no painel TI mostra há quanto tempo está aberto (verde < 30min, amarelo 30min–2h, laranja 2h–24h, vermelho > 24h)
 - **Dashboard com gráficos**: aba "Dashboard" no Painel de Logs com charts Chart.js — chamados por dia, por tipo, por status, e acessos diários
 - **Exportar PDF**: botão de impressão no Painel de Logs para gerar relatórios em PDF diretamente pelo navegador
 - **Troca de papel**: técnicos TI que também são professores podem trocar para o modo Professor sem precisar fazer logout
-- **Proxy Groq via Edge Function**: esqueleto criado em `supabase/functions/groq-proxy/` para mover a chave Groq para o servidor
+- **Proxy Groq via Edge Function**: `supabase/functions/groq-proxy/` implementado e em uso — move a chave da API Groq para o servidor, usado pela classificação de chamados, validação de nome no login, resumo de tickets e relatório do dashboard
+- **Módulo `js/dsos-ui.js`**: popups estilizados (`dsosAlert`/`dsosConfirm`) substituindo `alert`/`confirm` nativos
 
 ### Melhorias de UX
 - "Esqueceu a senha? Contate o T.I." exibido na tela de login
@@ -17,7 +25,8 @@
 
 ### Segurança
 - `professor_id` agora armazenado na sessão para usuários com conta dupla TI+Professor
-- Documentação sobre remoção da chave Groq do código-fonte adicionada ao `SETUP.md`
+- Documentação sobre a chave da Groq (`GROQ_KEY`, secret da Edge Function) adicionada ao `SETUP.md`
+- Privilégios de coluna reforçados em `public.pc` (coluna `senha` não fica exposta via REST) — mesma proteção já aplicada em `usuario_ti`
 
 ## v1.2.0 (Março 2026)
 
