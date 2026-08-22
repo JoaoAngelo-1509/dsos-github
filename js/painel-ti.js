@@ -538,7 +538,7 @@ function renderDescarte(){
         ?`<span class="done-label">${SVG.check} Concluído</span>`
         :`<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
            <button class="btn-desc-ok" onclick="abrirModalDescarte(${t.pc_problema},${t.id},'${itemEsc}','${descEsc}',event)">${SVG.trash} Feito</button>
-           <button class="btn-desc-cancel-fila" onclick="cancelarItemDescarte(${t.id},${t.pc_problema},event)">✕ Cancelar</button>
+           <button class="btn-desc-cancel-fila" onclick="cancelarItemDescarte(${t.id},${t.pc_problema},event)">Cancelar</button>
          </div>`
       }</div>`;
     list.appendChild(div);
