@@ -1939,11 +1939,11 @@ Tempo médio de resolução: ${tempoMedMin!=null?tempoMedMin+' minutos':'dados i
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         temperature: 0.4,
         max_tokens: 800,
         messages: [
-          { role: 'system', content: 'Você é um analista de TI escolar. Com base nos dados fornecidos, escreva um relatório semanal de suporte em português claro e direto. Use linguagem natural, sem markdown, sem asteriscos, sem bullet points formatados com traços — apenas parágrafos curtos separados por linha em branco. Inclua: resumo geral do período, padrões observados, laboratórios mais problemáticos, e uma recomendação prática para a equipe de TI. Máximo 250 palavras.' },
+          { role: 'system', content: 'Responda SEMPRE em português brasileiro. Você é um analista de TI escolar. Com base nos dados fornecidos, escreva um relatório semanal de suporte em português claro e direto. Use linguagem natural, sem markdown, sem asteriscos, sem bullet points formatados com traços — apenas parágrafos curtos separados por linha em branco. Inclua: resumo geral do período, padrões observados, laboratórios mais problemáticos, e uma recomendação prática para a equipe de TI. Máximo 250 palavras.' },
           { role: 'user', content: `Dados da semana:\n${contexto}` }
         ]
       })

@@ -33,7 +33,7 @@ A função `supabase/functions/groq-proxy` roda com a chave `GROQ_KEY` armazenad
 4. Deploy no projeto de PRODUÇÃO: supabase functions deploy groq-proxy --project-ref <PROD_PROJECT_ID>
 ```
 
-> Ao trocar o modelo Groq usado (`model` no payload), mantenha consistência entre `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e o default do `groq-proxy` — houve um caso em que `painel-logs.js` ficou desatualizado em relação aos demais após uma migração de modelo. Confirme os quatro pontos antes de fechar a mudança.
+> Ao trocar o modelo Groq usado (`model` no payload), mantenha consistência entre `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e o default do `groq-proxy`. Atualmente todos usam `openai/gpt-oss-20b` com tokens ajustados: auth (200), painel-pc (2048), painel-ti-resumo (256), painel-ti-sugestao (512), painel-logs (800). Confirme os cinco pontos antes de fechar a mudança.
 
 ## Estrutura de arquivos
 
