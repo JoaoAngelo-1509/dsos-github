@@ -9,7 +9,7 @@
 - **CORRIGIDO** Modelo `llama-3.3-70b-versatile` descontinuado deixava `content` vazio por consumir todos os tokens em reasoning — migrado para `openai/gpt-oss-20b` em `auth.js` (validação de nome), `painel-pc.js` (classificação de chamados) e `painel-ti.js` (resumo de ticket + sugestão de resposta), além do default do `groq-proxy`
 - **MELHORADO** Prompts simplificados para evitar reasoning desnecessário; adicionado "Responda SEMPRE em português brasileiro" em todos os prompts
 - **AUMENTADO** Limite de tokens por ação: classificação de chamados 1024→2048, resumo de ticket 128→256, sugestão de resposta 256→512
-- **CONHECIDO** `painel-logs.js` (função `gerarRelatorioIA`, relatório semanal do dashboard) ainda usa `llama-3.3-70b-versatile` — não foi migrado nesta rodada, alinhar em próxima alteração (ver [WORKFLOW.md](WORKFLOW.md))
+- **COMPLETO** `painel-logs.js` (função `gerarRelatorioIA`, relatório semanal do dashboard) também migrado para `openai/gpt-oss-20b` — todos os 5 pontos de IA sincronizados (ver [WORKFLOW.md](WORKFLOW.md))
 
 ## [2.0.0] — 2026-06-22
 

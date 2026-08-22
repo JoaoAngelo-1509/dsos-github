@@ -3,9 +3,9 @@
 ## 2026-08-22 — Deploy e correção de modelo de IA
 
 - **Deploy migrado para Netlify**: `vercel.json` substituído por `netlify.toml` (mesmos rewrites de URL e headers de segurança)
-- **Migração de modelo Groq**: `llama-3.3-70b-versatile` (descontinuado, retornava respostas vazias por excesso de reasoning) substituído por `openai/gpt-oss-20b` em `auth.js`, `painel-pc.js`, `painel-ti.js` e no default do `groq-proxy`
-- Prompts otimizados para responder sempre em português e evitar reasoning desnecessário; limites de tokens aumentados nas ações de IA mais complexas
-- Pendência: `painel-logs.js` (relatório semanal do dashboard) ainda não foi migrado para o novo modelo
+- **Migração de modelo Groq**: `llama-3.3-70b-versatile` (descontinuado, retornava respostas vazias por excesso de reasoning) completamente substituído por `openai/gpt-oss-20b` em `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e no default do `groq-proxy` — **todos os 5 pontos sincronizados**
+- Prompts otimizados para responder sempre em português brasileiro e evitar reasoning desnecessário
+- Limites de tokens aumentados: auth (200), painel-pc (2048), painel-ti-resumo (256), painel-ti-sugestao (512), painel-logs (800)
 
 ## v2.0 (Junho 2026)
 
