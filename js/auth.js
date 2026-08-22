@@ -103,29 +103,54 @@ function _rlIniciarBloqueio() {
 
 // ── VALIDAÇÃO DE NOME VIA GROQ ──
 async function validarNome(nome) {
+  console.log('[validarNome] Iniciando validação para:', nome);
   try {
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/groq-proxy`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0,
-        max_tokens: 64,
-        messages: [
-          {
-            role: 'system',
-            content: 'Você verifica se um texto é um nome de pessoa real em português. Responda apenas VALIDO ou INVALIDO. Considere INVALIDO: palavrões, xingamentos, nomes ofensivos, textos aleatórios, números, emojis, "teste", "admin", frases, caracteres repetidos (ex: "aaaa"), qualquer coisa que claramente não seja um nome de pessoa.'
-          },
-          { role: 'user', content: `Nome: ${nome}` }
-        ]
-      })
-    });
-    if (!resp.ok) return true; // falha silenciosa: deixa passar
+    const url = `${SUPABASE_URL}/functions/v1/groq-proxy`;
+    const payload = {
+      model: 'openai/gpt-oss-20b',
+      temperature: 0,
+      max_tokens: 200,
+      messages: [
+        {
+          role: 'system',
+          content: `Responda SEMPRE em português brasileiro. SIM (nome real) ou NÃO (teste/admin/número/aleatório). Uma palavra.`
+        },
+        { role: 'user', content: nome }
+      ]
+    };
+    console.log('[validarNome] URL:', url);
+    console.log('[validarNome] Payload:', payload);
+
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    console.log('[validarNome] HTTP Status:', resp.status);
+
+    if (!resp.ok) {
+      console.error('[validarNome] HTTP erro:', resp.status);
+      const errText = await resp.text();
+      console.error('[validarNome] Erro body:', errText);
+      return true;
+    }
+
     const data = await resp.json();
-    const raw = (data.choices?.[0]?.message?.content || '').trim().toUpperCase();
-    return raw.startsWith('VALIDO');
-  } catch {
-    return true; // sem conexão com Groq: não bloqueia o login
+    console.log('[validarNome] JSON resposta:', JSON.stringify(data));
+
+    const raw = data.choices?.[0]?.message?.content || '';
+    console.log('[validarNome] Content extraído:', raw);
+
+    const normalized = raw.toUpperCase();
+    const ehSim = normalized.includes('SIM');
+    const ehNao = normalized.includes('NAO') || normalized.includes('NÃO');
+
+    console.log('[validarNome] ehSim:', ehSim, 'ehNao:', ehNao);
+
+    if (ehSim && !ehNao) return true;
+    if (ehNao && !ehSim) return false;
+
+    console.warn('[validarNome] Resposta ambígua:', raw);
+    return true;
+  } catch (e) {
+    console.error('[validarNome] Exception:', e.message, e);
+    return true;
   }
 }
 

@@ -53,13 +53,12 @@ async function _verificarDuplicata(desc, pcId) {
 // ──────────────────────────────────────────────────────────────────────────
 
 // ── CLASSIFICAÇÃO DE PRIORIDADE VIA GROQ AI ──────────────────────────────────
-const _GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-async function _groqCall(messages, maxTokens = 1024) {
+async function _groqCall(messages, maxTokens = 2048) {
   const resp = await fetch(`${SB_URL}/functions/v1/groq-proxy`, {
     method: 'POST',
     headers: H,
-    body: JSON.stringify({ model: _GROQ_MODEL, temperature: 0, max_tokens: maxTokens, messages })
+    body: JSON.stringify({ model: 'openai/gpt-oss-20b', temperature: 0, max_tokens: maxTokens, messages })
   });
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
@@ -76,7 +75,7 @@ async function classificarChamado(descricao) {
     const txt = (await _groqCall([
       {
         role: 'system',
-        content: `Você é um técnico de TI especialista analisando chamados de suporte em uma escola pública. Responda com exatamente este formato e nada mais:
+        content: `Você é um técnico de TI especialista em português brasileiro analisando chamados de suporte em uma escola pública. Responda SEMPRE em português e com exatamente este formato e nada mais:
 
 TIPO: <hardware|software|rede|outro>
 PRIORIDADE: <baixo|medio|alto|falso|emergencia>

@@ -1318,7 +1318,7 @@ async function _groqTI(messages,maxTokens=1024){
   const resp=await fetch(`${SB}/functions/v1/groq-proxy`,{
     method:'POST',
     headers:H,
-    body:JSON.stringify({model:'llama-3.3-70b-versatile',temperature:0.3,max_tokens:maxTokens,messages})
+    body:JSON.stringify({model:'openai/gpt-oss-20b',temperature:0.3,max_tokens:maxTokens,messages})
   });
   if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error('Groq '+resp.status+': '+(e?.error?.message||''));}
   const d=await resp.json();
@@ -1345,9 +1345,9 @@ async function _aiResumoModal(t){
       t.descricao_resolucao&&`Resolução registrada: "${t.descricao_resolucao}"`,
     ].filter(Boolean).join('\n');
     const resumo=await _groqTI([
-      {role:'system',content:'Você é um técnico de TI. Resuma o chamado em 1 ou 2 frases diretas em português, indicando o problema principal e qualquer informação relevante para quem vai atender. Sem introduções, sem "O chamado relata que", vá direto ao ponto. Máximo 60 palavras.'},
+      {role:'system',content:'Responda SEMPRE em português brasileiro. Resuma em 1-2 frases diretas. Problema + info relevante. Sem intro. Max 30 palavras.'},
       {role:'user',content:contexto}
-    ],2048);
+    ],256);
     txt.textContent=resumo||'Sem resumo disponível.';
   }catch(e){
     txt.textContent='(Não foi possível gerar resumo — verifique a conexão)';
@@ -1378,9 +1378,9 @@ window.aiSugerirResposta=async function(){
       msgs.length?`\nÚltimas mensagens do chat:\n${msgs.join('\n')}`:'',
     ].filter(Boolean).join('\n');
     const sugestao=await _groqTI([
-      {role:'system',content:'Você é um técnico de TI sugerindo uma resposta para o usuário (aluno ou professor) que abriu um chamado de suporte. A resposta deve ser curta (1 a 3 frases), educada, em português informal mas profissional. Não use saudações longas. Vá direto ao ponto. Não invente informações que não estão no contexto.'},
-      {role:'user',content:`Contexto do chamado:\n${contexto}\n\nSugira uma resposta do técnico:`}
-    ],2048);
+      {role:'system',content:'Responda SEMPRE em português brasileiro. Resposta curta (1-3 frases), direta, sem saudação longa. Português informal profissional. Sem inventar.'},
+      {role:'user',content:`${contexto}\n\nResponda:`}
+    ],512);
     if(sugestao&&inp){inp.value=sugestao;inp.focus();inp.dispatchEvent(new Event('input'));}
   }catch(e){
     notif('Erro ao gerar sugestão.');
