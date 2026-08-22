@@ -503,7 +503,7 @@ function renderResp(){
     const tec=t.tecnico_responsavel?`${SVG.wrench} ${tecNome(t.tecnico_responsavel)}`:'—';
     div.innerHTML=`
       <div class="tr-icon">${tipoIcon(t.tipo)}</div>
-      <div style="min-width:0"><div class="rc-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}</div><div style="font-size:.54rem;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:3px">${tec}</div></div>
+      <div style="min-width:0"><div class="rc-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}</div><div style="font-size:.54rem;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:3px">${tec}</div></div>
       <div class="rc-date">${d}</div>
       <div>${statusPill(t.status)}</div>
       <button class="rc-reopen" onclick="reabrirTicket(${t.id},event)">${SVG.reopen} REABRIR</button>

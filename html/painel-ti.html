@@ -166,8 +166,8 @@
         <button class="rf-btn" onclick="filtrar('descartado',this)"><span class="rf-dot" style="background:var(--muted)"></span>Descartado</button>
         <button class="rf-btn" onclick="filtrar('falso_alarme',this)"><span class="rf-dot" style="background:var(--red)"></span>Falso Alarme</button>
       </div>
-      <div class="tbl-head" style="grid-template-columns:32px 1fr 68px 72px auto auto">
-        <span></span><span>PC / Tipo · Técnico</span><span>Data</span><span>Status</span><span></span><span></span>
+      <div class="tbl-head" style="grid-template-columns:32px 1fr 68px minmax(72px,max-content) auto auto">
+        <span></span><span>PC / Tipo · Técnico</span><span style="margin-left:-14px">Data</span><span style="margin-left:15px">Status</span><span style="min-width:110px"></span><span></span>
       </div>
       <div class="ticket-list" id="resp-list">
         <div class="empty" id="resp-empty">
