@@ -75,7 +75,27 @@ e o motivo:
 - **DB-01 — migrations legadas não versionadas.** As migrations criadas a
   partir de 23/08/2026 estão em `supabase/migrations/`, mas as ~91 anteriores
   existem só no histórico interno do Supabase. Rodar `supabase db pull` para
-  gerar um baseline versionado continua pendente.
+  gerar um baseline versionado continua pendente (exige a CLI do Supabase).
+- **A11Y-03 — tabelas de log ainda são `<div>` + CSS grid**, não `<table>`
+  semântica. Migrar toca a estrutura DOM que o JS gera nas 6 abas; foi
+  deixado de fora para não acumular risco com as demais mudanças de
+  acessibilidade da mesma leva (`role`, `label`, `aria-label`, que foram
+  feitas).
+- **RESP-02 — revisão responsiva dedicada de `painel-pc.css`/`painel-ti.css`.**
+  O overflow horizontal da página foi eliminado a 375px (RESP-01), mas ler
+  tabela densa em celular ainda pede um layout de cards empilhados.
+- **CSSARCH-01 — 337 `!important`** em `painel-ti.css`/`painel-logs.css`,
+  resultado das camadas de tema/hacker/accent empilhadas sem estratégia de
+  cascata. É refactor estrutural de CSS, com risco real de regressão visual;
+  o momento de fazer é junto de uma reforma de tema, não avulso.
+- **DUP-03 — `showNotif` (painel-logs) x `toast` (ui.js).** Não unificados:
+  o `showNotif` tem ícone e as variantes `warn`/`info` que o `toast` não tem,
+  e usa markup (`#notif`) que só existe no painel de logs. Unificar exigiria
+  ou adicionar esse markup às outras páginas ou empobrecer o painel de logs —
+  nenhum dos dois se paga por um item P3.
+- **FEAT-02 — "Exportar Word" gera HTML com MIME do Word**, não `.docx` real.
+  A própria auditoria classifica como polimento opcional: funciona, o Word
+  abre, só exibe um aviso de formato.
 
 ## Estrutura de arquivos
 
