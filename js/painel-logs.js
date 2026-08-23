@@ -1898,8 +1898,97 @@ window.fecharModal       = fecharModal;
 window.exportarCSV       = exportarCSV;
 window.exportarTudo      = exportarTudo;
 window.showNotif         = showNotif;
+// BUG-13: COLS/LABELS abaixo só cobrem as abas de tabela. Na aba Dashboard
+// (e na de Avaliações, que tem exportação própria) cols/data ficavam vazios e
+// a janela de impressão saía com "Nenhum registro encontrado" — sem erro,
+// sem os gráficos —, apesar do CHANGELOG anunciar "Exportação para PDF via
+// impressão do navegador" como recurso do Dashboard. Aqui os canvases do
+// Chart.js são capturados como imagem (toDataURL) e montados num relatório
+// próprio.
+function _imprimirDashboard(){
+  const cards = [...document.querySelectorAll('#panel-dashboard canvas')]
+    .map(c => {
+      const titulo = c.closest('.dash-card')?.querySelector('.dash-card-title, .card-title, h3')?.textContent?.trim()
+                  || c.id || '';
+      let img = '';
+      try { img = c.toDataURL('image/png', 1.0); } catch(err){ console.error('[imprimirDashboard] canvas', c.id, err); }
+      return img ? { titulo, img } : null;
+    })
+    .filter(Boolean);
+
+  if (!cards.length) {
+    showNotif('Abra o Dashboard e aguarde os gráficos carregarem antes de imprimir', 'warn');
+    return;
+  }
+
+  // KPIs em texto, para o relatório não ser só imagem. Os filhos são lidos
+  // separadamente porque o textContent do card vem colado ("3Pendentes").
+  const kpis = [...document.querySelectorAll('#panel-dashboard .dash-kpi, #panel-dashboard .kpi-card')]
+    .map(k => {
+      const partes = [...k.children].map(x => x.textContent.trim()).filter(Boolean);
+      const txt = partes.length ? partes.join(' · ') : k.textContent.replace(/\s+/g, ' ').trim();
+      return txt ? e(txt) : '';
+    })
+    .filter(Boolean);
+
+  const de  = document.getElementById('dash-de')?.value  || '';
+  const ate = document.getElementById('dash-ate')?.value || '';
+  const dataHora = new Date().toLocaleString('pt-BR', { dateStyle:'long', timeStyle:'short' });
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>DSos — Dashboard</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#000;background:#fff}
+  header{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 28px 14px;border-bottom:2.5px solid #000}
+  .sys-name{font-size:16pt;font-weight:800;letter-spacing:-.5px;line-height:1}
+  .sys-sub{font-size:8pt;color:#555;margin-top:3px}
+  .hdr-right{text-align:right;font-size:8pt;color:#444;line-height:1.7}
+  .report-title{padding:14px 28px 10px;font-size:13pt;font-weight:700;border-bottom:1px solid #ccc}
+  .kpis{display:flex;flex-wrap:wrap;gap:10px;padding:14px 28px}
+  .kpi{border:1px solid #ddd;border-radius:5px;padding:8px 12px;font-size:8pt;min-width:120px}
+  .charts{padding:8px 28px 28px;display:flex;flex-direction:column;gap:18px}
+  .chart{page-break-inside:avoid;break-inside:avoid}
+  .chart h3{font-size:9pt;margin-bottom:6px;font-weight:700}
+  .chart img{width:100%;max-width:100%;border:1px solid #e0e0e0;border-radius:4px}
+  footer{padding:6px 28px;border-top:1px solid #ccc;display:flex;justify-content:space-between;font-size:7pt;color:#777}
+  @page{margin:12mm}
+</style></head>
+<body>
+<header>
+  <div><div class="sys-name">DSos</div><div class="sys-sub">Sistema de Ordem de Serviço</div></div>
+  <div class="hdr-right">
+    <div><strong>Emitido em:</strong> ${e(dataHora)}</div>
+    <div><strong>Relatório:</strong> Dashboard</div>
+    ${de||ate ? `<div><strong>Período:</strong> ${e(de)} a ${e(ate)}</div>` : ''}
+  </div>
+</header>
+<div class="report-title">Dashboard — Visão Geral</div>
+${kpis.length ? `<div class="kpis">${kpis.map(k=>`<div class="kpi">${k}</div>`).join('')}</div>` : ''}
+<div class="charts">
+  ${cards.map(c=>`<div class="chart">${c.titulo?`<h3>${e(c.titulo)}</h3>`:''}<img src="${c.img}" alt="${e(c.titulo)}"></div>`).join('')}
+</div>
+<footer><span>DSos — Relatório gerado automaticamente</span><span>${e(dataHora)}</span></footer>
+<script>window.onload=function(){window.print();window.onafterprint=function(){window.close()};}<\/script>
+</body></html>`;
+
+  const win = window.open('','_blank','width=960,height=700');
+  if(!win){showNotif('Permita popups para gerar o PDF','warn');return;}
+  win.document.write(html);
+  win.document.close();
+}
+
 window.prepararEImprimir = function(){
   const aba = STATE.abaAtiva;
+
+  // BUG-13: o Dashboard tem um caminho de impressão próprio (gráficos como
+  // imagem); a aba de Avaliações já tem o botão "Exportar" dedicado.
+  if (aba === 'dashboard') { _imprimirDashboard(); return; }
+  if (aba === 'avaliacoes') {
+    showNotif('Use os botões "Exportar PDF/Word" desta aba', 'warn');
+    return;
+  }
+
   const LABELS = {
     auditoria:  'Auditoria de Ações',
     'audit-log':'Log de Auditoria',
