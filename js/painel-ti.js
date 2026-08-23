@@ -1,7 +1,7 @@
 // DSos v1.6 — painel-ti.js com Logging Completo (PARTE 1/2)
 import { SB, H, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, tipoIcon, statusLabel as uiStatusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 import { initEasterEgg } from './easter-egg.js';
@@ -49,10 +49,13 @@ const SVG={
   professor:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>`,
 };
 
-function tipoIcon(t)  { return SVG[t?.toLowerCase()]||SVG.outro }
+// DUP-01: tipoIcon vem de ui.js (o SVG produzido é idêntico ao que o objeto
+// SVG local devolvia). O objeto SVG continua aqui porque carrega vários
+// outros ícones da tela (trash, zap, reopen, clock…) que não são de tipo.
 function tipoLabel(t) { return{hardware:'Hardware',software:'Software',periferico:'Periférico',rede:'Rede',outro:'Outro'}[t]||t||'—' }
 function statusCor(s) { return{em_andamento:'rr-yellow',resolvido:'rr-green',descartado:'rr-black',falso_alarme:'rr-red'}[s]||'rr-yellow' }
-function statusLabel(s){ return{em_andamento:'EM PROGRESSO',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO ALARME'}[s]||s }
+// DUP-01: usa a variante 'caps' de ui.js em vez de um mapa próprio
+function statusLabel(s){ return uiStatusLabel(s,'caps') }
 function statusPill(s){
   const cls={aberto:'sp-aberto',em_andamento:'sp-andamento',resolvido:'sp-resolvido',descartado:'sp-descartado',falso_alarme:'sp-falso'};
   const lbl={aberto:'ABERTO',em_andamento:'EM PROG.',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO'};

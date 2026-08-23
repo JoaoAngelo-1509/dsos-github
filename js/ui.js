@@ -73,14 +73,29 @@ export function toast(msg, t) {
 }
 
 // ── TRADUZ STATUS ──
-export function statusLabel(s) {
-  return {
+// DUP-01: painel-pc.js e painel-ti.js reimplementavam esta função localmente,
+// e as versões DIVERGIAM: a de painel-ti.js devolve o rótulo em caixa alta
+// ('EM PROGRESSO') para caber no visual do painel, enquanto esta devolve
+// 'Em andamento'. Qualquer refatoração que trocasse uma pela outra por engano
+// mudaria rótulos visíveis em silêncio. Agora é uma fonte só, com a variante
+// explícita — `variante: 'caps'` reproduz o formato do painel T.I.
+export function statusLabel(s, variante) {
+  const base = {
     aberto: 'Aberto',
     em_andamento: 'Em andamento',
     resolvido: 'Resolvido',
     descartado: 'Descartado',
     falso_alarme: 'Falso alarme'
-  }[s] || s;
+  };
+  const caps = {
+    aberto: 'ABERTO',
+    em_andamento: 'EM PROGRESSO',
+    resolvido: 'RESOLVIDO',
+    descartado: 'DESCARTADO',
+    falso_alarme: 'FALSO ALARME'
+  };
+  const mapa = variante === 'caps' ? caps : base;
+  return mapa[s] || s;
 }
 
 // ── SVG ÍCONE POR TIPO DE TICKET ──

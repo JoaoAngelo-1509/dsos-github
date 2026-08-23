@@ -1,7 +1,7 @@
 // DSos v1.6 — painel-pc.js com Logging Completo
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
 import { dsosAlert } from './dsos-ui.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, tipoIcon, statusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 
@@ -419,16 +419,9 @@ function renderChamados() {
   }).join('');
 }
 
-function tipoIcon(tipo) {
-  const s=inner=>`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
-  if(!tipo)return s('<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/>');
-  const t=tipo.toLowerCase();
-  if(t.includes('hardware'))return s('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>');
-  if(t.includes('software'))return s('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>');
-  if(t.includes('rede'))return s('<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/>');
-  return s('<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/>');
-}
-function statusLabel(s){return{aberto:'Aberto',em_andamento:'Em andamento',resolvido:'Resolvido',descartado:'Descartado',falso_alarme:'Falso alarme'}[s]||s}
+// DUP-01: tipoIcon e statusLabel eram reimplementados aqui, byte a byte
+// iguais aos de ui.js (a versão de lá inclui também o ícone de 'periferico',
+// que faltava nesta cópia). Agora vêm de ui.js — ver import no topo.
 
 window.abrirChat    = function(id) { const t=tickets.find(x=>x.id===id); if(t) _abrirModal(t); };
 window.abrirDetalhes = function(id) { const t=tickets.find(x=>x.id===id); if(t) _abrirModal(t); };
