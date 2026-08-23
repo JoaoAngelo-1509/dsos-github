@@ -249,7 +249,7 @@ window.entrar = async function () {
       }));
       // Log de login bem-sucedido
       await logger.logLogin(pc.id, 'pc', pc.tag, nome);
-      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
+      try { new Audio('../sounds/login.mp3').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }
@@ -273,7 +273,7 @@ window.entrar = async function () {
       }));
       // Log de login bem-sucedido
       await logger.logLogin(prof.id, 'professor', prof.login, prof.nome || nome);
-      try { new Audio('../sounds/login.wav').play().catch(()=>{}); } catch(e){}
+      try { new Audio('../sounds/login.mp3').play().catch(()=>{}); } catch(e){}
       window.location.href = 'painel-pc.html';
       return;
     }

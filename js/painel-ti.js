@@ -4,6 +4,7 @@ import { dsosConfirm } from './dsos-ui.js';
 import { escapeHtml } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
+import { initEasterEgg } from './easter-egg.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -3407,26 +3408,8 @@ window.sair=async function(){
   window.location.href='login.html';
 };
 
-/* EASTER EGGS */
-const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
-const EGG_NOME='Rickelme';
-const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
-
-let _eggClicks=0,_eggTimer=null;
-document.getElementById('egg-trigger')?.addEventListener('click',()=>{
-  _eggClicks++;clearTimeout(_eggTimer);
-  _eggTimer=setTimeout(()=>{_eggClicks=0},1500);
-  if(_eggClicks>=5){_eggClicks=0;_abrirEgg();}
-});
-function _abrirEgg(){
-  document.getElementById('egg-img').src=EGG_FOTO||'';
-  document.getElementById('egg-nome').textContent=EGG_NOME;
-  document.getElementById('egg-frase').textContent=EGG_FRASE;
-  document.getElementById('egg-bg').classList.add('open');
-  document.addEventListener('keydown',_fecharEggKey);
-}
-window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_fecharEggKey);};
-function _fecharEggKey(e){if(e.key==='Escape')window.fecharEgg();}
+/* EASTER EGGS — os 5 cliques na logo vivem em ./easter-egg.js (fonte única) */
+initEasterEgg();
 
 document.getElementById('unresp-search')?.addEventListener('input',function(){
   if(this.value.toLowerCase().trim()==='corinthians'){

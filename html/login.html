@@ -86,27 +86,10 @@
 </div>
 
 <script type="module" src="../js/auth.js"></script>
-<script>
-(function(){
-  const EGG_FOTO='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXzyAvoM6vUPr887008lkLrtO0YIy4Vu25pg&s';
-  const EGG_NOME='Rickelme';
-  const EGG_FRASE='"Eu não fiz o design, eu sou o desing!"';
-  let _clicks=0,_timer=null;
-  document.getElementById('egg-trigger')?.addEventListener('click',()=>{
-    _clicks++;clearTimeout(_timer);
-    _timer=setTimeout(()=>{_clicks=0},1500);
-    if(_clicks>=5){_clicks=0;_abrir();}
-  });
-  function _abrir(){
-    document.getElementById('egg-img').src=EGG_FOTO||'';
-    document.getElementById('egg-nome').textContent=EGG_NOME;
-    document.getElementById('egg-frase').textContent=EGG_FRASE;
-    document.getElementById('egg-bg').classList.add('open');
-    document.addEventListener('keydown',_esc);
-  }
-  window.fecharEgg=function(){document.getElementById('egg-bg').classList.remove('open');document.removeEventListener('keydown',_esc);};
-  function _esc(e){if(e.key==='Escape')window.fecharEgg();}
-})();
+<script type="module">
+  // easter egg dos 5 cliques — fonte única em js/easter-egg.js (DUP-06)
+  import { initEasterEgg } from '../js/easter-egg.js';
+  initEasterEgg();
 </script>
 </body>
 </html>
