@@ -161,8 +161,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   //   INSERT → nova mensagem (de PC ou de outro TI): recarrega contagem de não lidas
   //            e toca som se veio do PC
   //   UPDATE → mensagem marcada como lida em outra aba/sessão: recarrega não lidas
-  // Tabela `usuario_ti`:
-  //   UPDATE → presença (online/ausente) de outro técnico mudou: recarrega mapa de TIs
+  // (usuario_ti/professor propositalmente NÃO estão neste canal — ver bloco abaixo)
   // Quem recebe: todos os técnicos T.I. com o painel aberto (sem filtro por usuário).
   // ─────────────────────────────────────────────────────────────────────
   sbClient.channel('tickets-realtime')
@@ -179,23 +178,23 @@ window.addEventListener('DOMContentLoaded',async()=>{
       if(payload.new?.remetente==='PC')(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem'},()=>carregarNaoLidas())
-    // Equipe T.I.: presença/edição (UPDATE) já eram refletidas; INSERT/DELETE
-    // faltavam — sem eles, um técnico cadastrado ou removido por um admin só
-    // aparecia/sumia da lista (e do tecNome() nas linhas de chamado) após F5.
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'usuario_ti'},()=>carregarTIs())
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
-    .on('postgres_changes',{event:'DELETE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
-    // Professores: nenhum evento era escutado antes — cadastro/edição/remoção
-    // só refletia em outros painéis T.I. abertos após reload.
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'professor'},()=>carregarProfs())
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'professor'},()=>carregarProfs())
-    .on('postgres_changes',{event:'DELETE',schema:'public',table:'professor'},()=>carregarProfs())
     .subscribe(rtStatusHandler('tickets-realtime','rt-dot'));
 
-  let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);
+  // ─────────────────────────────────────────────────────────────────────
+  // usuario_ti e professor NÃO estão no canal realtime acima de propósito:
+  // ambas as tabelas têm coluna de senha (senha / senha_hash) e o Postgres
+  // Realtime transmite a LINHA INTEIRA (todas as colunas) para quem estiver
+  // escutando — publicar essas tabelas exporia hashes de senha e e-mail a
+  // qualquer cliente com a anon key (que é pública, está no bundle do site).
+  // Por isso equipe T.I./professores são cobertos só pelo poll abaixo
+  // (até 30s de atraso para um cadastro/remoção aparecer noutro painel).
+  // Ver docs/REALTIME.md.
+  // ─────────────────────────────────────────────────────────────────────
+  function _pollEquipe(){carregarTIs();carregarProfs();}
+  let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollEquipe();},30000);
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){clearInterval(_pollTI);_pollTI=null;}
-    else{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);}
+    else{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollEquipe();_pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollEquipe();},30000);}
   });
   window.addEventListener('beforeunload',()=>{
     if(session?.id)navigator.sendBeacon(`${SB}/rest/v1/rpc/rpc_set_presenca?apikey=${SB_KEY}`,new Blob([JSON.stringify({p_id:session.id,p_presenca:'ausente'})],{type:'application/json'}));

@@ -32,8 +32,11 @@ página; indicador visual "AO VIVO" na topbar usa `rt-dot`):
 | `ticket` | UPDATE | Chamado mudou de status/prioridade → `_scheduleTicketsKPIRefresh()` |
 | `mensagem` | INSERT | Nova mensagem → `carregarNaoLidas()`, som se veio do PC |
 | `mensagem` | UPDATE | Mensagem lida em outra sessão → `carregarNaoLidas()` |
-| `usuario_ti` | INSERT/UPDATE/DELETE | Técnico cadastrado/editado/removido/presença mudou → `carregarTIs()` (sincroniza `tiMap` usado por `tecNome()`) |
-| `professor` | INSERT/UPDATE/DELETE | Professor cadastrado/editado/removido → `carregarProfs()` |
+
+`usuario_ti` e `professor` **não estão neste canal, de propósito** — ver
+"Por que equipe T.I./professores não são realtime" abaixo.
+`carregarTIs()`/`carregarProfs()` (equipe T.I./professores, incl. presença e
+`tiMap` usado por `tecNome()`) são cobertos pelo poll de 30s (`_pollEquipe()`).
 
 `_scheduleTicketsKPIRefresh()` faz **debounce de 300ms + coalescing**: eventos
 próximos (dois técnicos agindo quase ao mesmo tempo, ou um evento coincidindo
@@ -80,15 +83,53 @@ em tempo real).
 
 ## Já existente e frequentemente confundido com "faltando"
 
-Estas duas coisas **já eram realtime antes deste trabalho** e não precisaram
-de mudança:
+Isto **já era realtime antes deste trabalho**, confirmado empiricamente (teste
+com INSERT/UPDATE reais contra o banco de produção, via script, observando o
+evento chegar pelo WebSocket em <1s):
 
 - **Confirmação de leitura de mensagens** (`lido_ti` / `lido_pc` na tabela
   `mensagem`, ticks ✓/✓✓ no chat de ambos os painéis) — já existia e já
   atualiza via os canais `chat-ti-*` / `chat-pc-*` acima.
-- **Presença online/ausente de técnicos** — já refletia via UPDATE em
-  `usuario_ti`; só faltava INSERT/DELETE (técnico novo/removido), que foi
-  adicionado.
+- **Chamados e mensagens** (`ticket`, `mensagem`) — ambas as tabelas estão na
+  publicação `supabase_realtime` do Postgres com política de SELECT
+  permissiva (`qual: true` para `public`), então os eventos são entregues
+  corretamente.
+
+> Presença online/ausente de técnicos **não** era realtime, apesar de o
+> código ter um listener de UPDATE em `usuario_ti` desde antes — o listener
+> nunca disparava porque a tabela nunca esteve na publicação
+> `supabase_realtime` (confirmado consultando `pg_publication_tables`).
+> Ou seja: a presença de um colega de equipe só atualizava em outro painel
+> aberto quando aquele painel fizesse algo que disparasse `carregarTIs()` por
+> conta própria (ex: editar seu próprio cadastro) — não espontaneamente.
+> A lição: a presença de um `.on('postgres_changes', ...)` no código **não
+> garante** que o evento seja entregue — é preciso confirmar a tabela na
+> publicação e a RLS, não só ler o JS.
+
+## Por que equipe T.I./professores não são realtime
+
+`usuario_ti` tem coluna `senha` e `professor` tem `senha_hash` (e `usuario_ti`
+também tem `email`, usado no 2FA). O Postgres Realtime (Postgres Changes)
+transmite **a linha inteira** — todas as colunas, sem filtro — para qualquer
+cliente com uma subscription ativa na tabela, independente de quais colunas o
+app realmente usa no `select=`. A anon key usada por esses clientes é pública
+(está no bundle JS do site).
+
+Isso significa que publicar `usuario_ti`/`professor` no Realtime **vazaria
+hash de senha e e-mail** de toda a equipe para qualquer pessoa que abrisse o
+DevTools e se inscrevesse no canal com a mesma anon key — mesmo sem estar
+logada. Por isso essas duas tabelas nunca foram (e não devem ser) adicionadas
+à publicação `supabase_realtime`.
+
+Hoje a lista de equipe T.I. e professores atualiza via **poll de 30s**
+(`_pollEquipe()` em `painel-ti.js`, chamado junto do poll de tickets) — seguro,
+só um pouco mais lento que realtime.
+
+Se no futuro isso precisar ser instantâneo, a forma seguravel de fazer é via
+**Realtime Broadcast** (não Postgres Changes): um trigger no Postgres que
+publica manualmente só os campos seguros (`id`, `nome`, `login`, `presenca`,
+`is_professor`) num canal de broadcast, em vez de expor a tabela inteira via
+replicação. Isso é trabalho novo, não implementado aqui.
 
 ## Diagnosticando problemas
 
@@ -104,6 +145,13 @@ de mudança:
 4. **Fallback por poll**: mesmo com o realtime totalmente fora do ar, o
    painel T.I. (30s) e o painel do PC (30s) continuam sincronizando via poll
    — os dados nunca ficam presos indefinidamente, só mais lentos.
+5. **Antes de suspeitar de bug no código: confirme que o deploy está
+   atualizado.** `git log origin/main -1` local vs. `git log -1` — se
+   divergirem, o site publicado está rodando código antigo e nenhuma mudança
+   de JS vai aparecer até o push + deploy acontecerem. Esse foi exatamente o
+   motivo de "precisa dar F5" reportado durante o desenvolvimento deste
+   documento: o código estava correto e testado, mas nunca tinha sido enviado
+   ao GitHub/Netlify.
 
 ## Fora do escopo (deliberadamente sem realtime)
 
