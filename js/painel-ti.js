@@ -3,6 +3,7 @@ import { SB, H, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
 import { escapeHtml } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
+import { initSessionGuard } from './session-guard.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -101,6 +102,9 @@ window.addEventListener('DOMContentLoaded',async()=>{
   if(!raw){window.location.href='login.html';return}
   session=JSON.parse(raw);
   if(session.tipo!=='ti'){window.location.href='login.html';return}
+
+  // Logout automático por inatividade (30min, aviso aos 28min)
+  initSessionGuard({onLogout:()=>window.sair()});
 
   // Marcar técnico como online ao entrar
   fetch(`${SB}/rest/v1/rpc/rpc_set_presenca`,{method:'POST',headers:H,body:JSON.stringify({p_id:session.id,p_presenca:'online'})}).catch(()=>{});
@@ -257,12 +261,12 @@ async function abrirBellPanel(){
       const tag=t.pc_info?.tag||`PC #${id}`;
       const msg=ultimaMsg[id];
       const msgHtml=msg
-        ?`<div class="bell-item-msg">${(msg.conteudo||'(imagem)').slice(0,80)}</div>`
+        ?`<div class="bell-item-msg">${escapeHtml((msg.conteudo||'(imagem)').slice(0,80))}</div>`
         :'';
       return`<div class="bell-item" onclick="window._bellAbrirTicket(${id})">
         <div class="bell-item-top">
-          <span class="bell-item-tag">${tag}</span>
-          <span class="bell-item-lab">${t.laboratorio||''}</span>
+          <span class="bell-item-tag">${escapeHtml(tag)}</span>
+          <span class="bell-item-lab">${escapeHtml(t.laboratorio||'')}</span>
           <span class="bell-item-badge">${nl}</span>
         </div>
         <div class="bell-item-tipo">${tipoLabel(t.tipo)}</div>
@@ -570,7 +574,7 @@ function renderResp(){
     const tec=t.tecnico_responsavel?`${SVG.wrench} ${tecNome(t.tecnico_responsavel)}`:'—';
     div.innerHTML=`
       <div class="tr-icon">${tipoIcon(t.tipo)}</div>
-      <div style="min-width:0"><div class="rc-id">${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}</div><div style="font-size:.54rem;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:3px">${tec}</div></div>
+      <div style="min-width:0"><div class="rc-id">${escapeHtml(t.pc_info?.tag||'PC #'+(t.pc_problema||'—'))} / ${tipoLabel(t.tipo)}</div><div style="font-size:.54rem;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:3px">${tec}</div></div>
       <div class="rc-date">${d}</div>
       <div>${statusPill(t.status)}</div>
       <button class="rc-reopen" onclick="reabrirTicket(${t.id},event)">${SVG.reopen} REABRIR</button>
@@ -598,7 +602,7 @@ function renderDescarte(){
     div.className=`desc-row${feito?' done':''}`;
     div.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:center;color:var(--orange)">${SVG.trash}</div>
-      <div style="min-width:0"><div class="desc-pc">${pcTag}</div><div class="desc-item" title="${item}">${item}</div><div class="desc-sub">${SVG.wrench} ${tecNome(t.tecnico_responsavel)} · #${t.id}</div></div>
+      <div style="min-width:0"><div class="desc-pc">${escapeHtml(pcTag)}</div><div class="desc-item" title="${escapeHtml(item)}">${escapeHtml(item)}</div><div class="desc-sub">${SVG.wrench} ${tecNome(t.tecnico_responsavel)} · #${t.id}</div></div>
       <div class="desc-date">${d}</div>
       <div>${statusPcPill(pcStatus)}</div>
       <div style="text-align:right">${feito
@@ -1130,7 +1134,7 @@ function renderPCs(){
   const txt={ativo:'Ativo',em_manutencao:'Manutenção',descartado:'Descartado'};
   grid.innerHTML=lista.map(pc=>{
     const cls=pc.status_pc==='em_manutencao'?' manutencao':pc.status_pc==='descartado'?' descartado':'';
-    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${pc.tag}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
+    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${(pc.tag||'').replace(/'/g,"\\'")}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
   }).join('');
 }
 window.deletarPC=async function(id,tag,e){e.stopPropagation();if(!await dsosConfirm({msg:`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`,tipo:'danger',titulo:'Remover PC'}))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`PC ${tag} removido.`);await carregarPCs();}catch(e){notif('Erro ao remover.')}};
@@ -1488,7 +1492,7 @@ window.exportarChamadosCSV=function(){
   if(!todos.length){notif('Nenhum chamado para exportar.');return}
   const hdrs=['ID','PC','Lab','Tipo','Status','Solicitante','Técnico','Aberto em','Resolvido em'];
   const rows=todos.map(t=>[t.id,t.pc_info?.tag||t.pc_problema,t.laboratorio,t.tipo,t.status,t.nome_solicitante,tecNome(t.tecnico_responsavel),t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR'):'',t.resolvido_em?new Date(t.resolvido_em).toLocaleString('pt-BR'):'']);
-  const csv=[hdrs,...rows].map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv=[hdrs,...rows].map(r=>r.map(c=>{let s=String(c??'');if(/^[=+\-@]/.test(s))s="'"+s;return`"${s.replace(/"/g,'""')}"`;}).join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'}));
   a.download=`chamados_${new Date().toISOString().split('T')[0]}.csv`;
@@ -1604,7 +1608,7 @@ function _renderRespostasRapidas(){
   if(!wrap)return;
   const replies=[_cfg.reply1,_cfg.reply2,_cfg.reply3].filter(Boolean);
   wrap.innerHTML=replies.length
-    ?replies.map(r=>`<button class="quick-reply-btn" onclick="usarRespostaRapida(${JSON.stringify(r)})">${r}</button>`).join('')
+    ?replies.map(r=>`<button class="quick-reply-btn" onclick="usarRespostaRapida(${JSON.stringify(r)})">${escapeHtml(r)}</button>`).join('')
     :'';
   wrap.style.display=replies.length?'flex':'none';
 }
