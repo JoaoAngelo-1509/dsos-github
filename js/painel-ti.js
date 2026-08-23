@@ -310,17 +310,22 @@ async function carregarKPIs(pulse=false){
   try{
     const hoje=new Date().toISOString().split('T')[0];
     const ontem=new Date(Date.now()-86400000).toISOString().split('T')[0];
-    const [rHoje,rOntem,rPend]=await Promise.all([
-      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=status`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${ontem}T00:00:00&aberto_em=lt.${hoje}T00:00:00&select=status`,{headers:H}),
+    const [rHoje,rOntem,rResHoje,rResOntem,rPend]=await Promise.all([
+      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${ontem}T00:00:00&aberto_em=lt.${hoje}T00:00:00&select=id`,{headers:H}),
+      // "Resolvidos hoje" = resolvido/descartado HOJE, independente de quando foi aberto
+      // (filtrar por aberto_em fazia o KPI nunca subir: um chamado aberto ontem e
+      // resolvido hoje não entrava na contagem, então ficava travado em 0 na prática).
+      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${hoje}T00:00:00&status=in.(resolvido,descartado)&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${ontem}T00:00:00&resolvido_em=lt.${hoje}T00:00:00&status=in.(resolvido,descartado)&select=id`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&select=id`,{headers:H}),
     ]);
-    const all=await rHoje.json(),ontemAll=await rOntem.json(),pend=await rPend.json();
     const arr=d=>Array.isArray(d)?d:[];
-    const resolvidosHoje=arr(all).filter(t=>t.status==='resolvido'||t.status==='descartado').length;
-    const resolvidosOntem=arr(ontemAll).filter(t=>t.status==='resolvido'||t.status==='descartado').length;
-    const abertosHoje=arr(all).length;
-    const abertosOntem=arr(ontemAll).length;
+    const abertosHoje=arr(await rHoje.json()).length;
+    const abertosOntem=arr(await rOntem.json()).length;
+    const resolvidosHoje=arr(await rResHoje.json()).length;
+    const resolvidosOntem=arr(await rResOntem.json()).length;
+    const pend=await rPend.json();
     _setKpiValor('kpi-pendentes',arr(pend).length,pulse);
     _setKpiValor('kpi-resolvidos',resolvidosHoje,pulse);
     _setKpiValor('kpi-hoje',abertosHoje,pulse);
