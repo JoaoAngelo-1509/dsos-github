@@ -360,29 +360,72 @@ function _setTrend(elId,hoje,ontem,upIsGood){
 }
 
 /* FETCH TICKETS */
+// BUG-05: as duas caixas de busca (não respondidos e respondidos) chamam esta
+// mesma função, que sobrescreve os arrays compartilhados `tickets` e
+// `respondidos`. Digitando nas duas em sequência, a resposta mais lenta podia
+// sobrescrever a mais recente. O contador de sequência descarta respostas
+// obsoletas — mesmo padrão que o arquivo já usava para os eventos de realtime.
+let _seqCarregarTickets=0;
+
 async function carregarTickets(q=''){
+  const seq=++_seqCarregarTickets;
   try{
-    const qF=q?`&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`:'';
+    // BUG-04: quando havia termo de busca, esta função disparava mais DUAS
+    // requisições sem filtro nenhum, baixando a tabela inteira de tickets
+    // (aberto+fechado) a cada tecla, só para poder filtrar por tag de PC no
+    // cliente. Agora resolve as tags no servidor: uma consulta pequena na
+    // view de PCs devolve os ids que casam com o termo, e esses ids entram
+    // no mesmo `or=(...)` das consultas principais. Passa de 5 requisições
+    // (2 filtradas + 2 completas + descarte) para 4, e nenhuma delas baixa a
+    // tabela de tickets inteira.
+    let qF='';
+    if(q){
+      const enc=encodeURIComponent(q);
+      let pcIds=[];
+      try{
+        const rp=await fetch(`${SB}/rest/v1/v_pc_pub?tag=ilike.*${enc}*&select=id`,{headers:H});
+        pcIds=await rp.json().then(d=>Array.isArray(d)?d.map(p=>p.id):[]);
+      }catch(err){console.error('[carregarTickets] busca de PCs por tag falhou',err);}
+
+      const clausulas=[
+        `descricao.ilike.*${enc}*`,
+        `laboratorio.ilike.*${enc}*`,
+      ];
+
+      // `tipo` é o enum tipo_problema, não text: `tipo.ilike.*x*` faz o
+      // Postgres devolver "operator does not exist: tipo_problema ~~* unknown"
+      // e derruba a query INTEIRA (404). Como o catch caía em tickets=[], a
+      // busca de chamados vinha retornando vazio nas listas principais — o
+      // que provavelmente explica por que existiam aqueles dois fetches
+      // completos sem filtro: eram o único caminho que ainda achava algo.
+      // Casa o termo contra os rótulos dos valores válidos do enum.
+      const ql=q.toLowerCase();
+      const tiposCasados=['hardware','software','periferico','rede','outro']
+        .filter(t=>t.includes(ql)||tipoLabel(t).toLowerCase().includes(ql));
+      if(tiposCasados.length)clausulas.push(`tipo.in.(${tiposCasados.join(',')})`);
+
+      if(pcIds.length)clausulas.push(`pc_problema.in.(${pcIds.join(',')})`);
+      qF=`&or=(${clausulas.join(',')})`;
+    }
+
     const [r1,r2,r3]=await Promise.all([
       fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)${qF}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)${qF}&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
     ]);
-    let rawR1=await r1.json().then(d=>Array.isArray(d)?d:[]);
-    let rawR2=await r2.json().then(d=>Array.isArray(d)?d:[]);
-    if(q){
-      const ql=q.toLowerCase(),matchTag=t=>t.pc_info?.tag?.toLowerCase().includes(ql);
-      const [rt1,rt2]=await Promise.all([
-        fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
-        fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}).then(r=>r.json()).then(d=>Array.isArray(d)?d.filter(matchTag):[]),
-      ]);
-      const merge=(a,b)=>{const ids=new Set(a.map(x=>x.id));return[...a,...b.filter(x=>!ids.has(x.id))]};
-      rawR1=merge(rawR1,rt1);rawR2=merge(rawR2,rt2);
-    }
+    const rawR1=await r1.json().then(d=>Array.isArray(d)?d:[]);
+    const rawR2=await r2.json().then(d=>Array.isArray(d)?d:[]);
+    const rawR3=await r3.json().then(d=>Array.isArray(d)?d:[]);
+
+    if(seq!==_seqCarregarTickets)return;   // chegou tarde, já tem busca mais nova
+
     tickets=rawR1;
     respondidos=rawR2.filter(t=>!ocultados.has(t.id));
-    descarteFila=await r3.json().then(d=>Array.isArray(d)?d:[]);
-  }catch(e){console.error(e);tickets=[]}
+    descarteFila=rawR3;
+  }catch(e){
+    if(seq!==_seqCarregarTickets)return;
+    console.error('[carregarTickets]',e);tickets=[];
+  }
   renderUnresp();renderResp();renderDescarte();_atualizarBadgeGrupo();
   _renderFiltroChips();
 }
@@ -1468,6 +1511,16 @@ async function _groqTI(messages,maxTokens=1024){
 }
 
 /* AI: Resumo automático do ticket no modal */
+// PERF-01: o resumo era gerado toda vez que um chamado era aberto, inclusive
+// ao reabrir o mesmo chamado histórico já resolvido — cada reabertura era uma
+// chamada paga ao Groq gerando exatamente o mesmo texto. O cache guarda o
+// resumo por ticket, com uma assinatura dos campos que entram no prompt, para
+// que ele seja refeito se o chamado mudar (nova nota interna, resolução etc.).
+const _aiResumoCache=new Map();
+function _aiResumoChave(t){
+  return [t.tipo,t.laboratorio,t.lado,t.pc_info?.tag,t.descricao,t.nota_interna,t.descricao_resolucao].join('|');
+}
+
 async function _aiResumoModal(t){
   const el=document.getElementById('ai-resumo');
   const txt=document.getElementById('ai-resumo-texto');
@@ -1476,6 +1529,15 @@ async function _aiResumoModal(t){
   if(!_cfg.aiResumo){el.style.display='none';return;}
   el.style.display='block';
   txt.textContent='';
+
+  const chave=_aiResumoChave(t);
+  const cached=_aiResumoCache.get(t.id);
+  if(cached&&cached.chave===chave){
+    txt.textContent=cached.resumo;
+    if(spin)spin.style.display='none';
+    return;
+  }
+
   if(spin)spin.style.display='inline';
   try{
     const contexto=[
@@ -1496,6 +1558,7 @@ async function _aiResumoModal(t){
     // palavras pedidas no prompt (BUG-02).
     ],512);
     txt.textContent=resumo||'Sem resumo disponível.';
+    if(resumo)_aiResumoCache.set(t.id,{chave,resumo});
   }catch(e){
     // sem o log, uma falha real (rede, proxy fora, estouro de tokens) ficava
     // indistinguível de "veio vazio" — ver LOG-02

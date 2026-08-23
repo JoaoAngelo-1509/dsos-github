@@ -177,9 +177,12 @@ function _atualizarBadgeAI(descricao, tipo) {
   _aiDebounceTimer = setTimeout(async () => {
     badge.className = 'ai-badge loading';
     badge.textContent = '⏳ Classificando…';
-    const { prioridade: p, tipo: tipoDetectado, sugestao } = await classificarChamado(descricao);
+    const resultado = await classificarChamado(descricao);
+    const { prioridade: p, tipo: tipoDetectado, sugestao } = resultado;
     _aiUltimaDesc = descricao;
-    _aiUltimoResultado = p;
+    // PERF-02: guarda o resultado COMPLETO (antes só a prioridade), para que
+    // abrirChamado possa reaproveitá-lo em vez de classificar tudo de novo
+    _aiUltimoResultado = resultado;
     if (tipoDetectado) {
       const opt = document.querySelector(`.sel-opt[data-v="${tipoDetectado}"]`);
       if (opt) window.pickTipo(opt);
@@ -654,8 +657,21 @@ window.abrirChamado = async function() {
   }
 
   const badge=document.getElementById('ai-prioridade-badge');
-  if(badge){badge.className='ai-badge loading';badge.textContent='⏳ Classificando...';}
-  const { prioridade: prioridadeIA, tipo: tipoDetectado } = await classificarChamado(desc);
+  // PERF-02: o badge que aparece enquanto o usuário digita já classificou
+  // esta mesma descrição (debounced). Antes o resultado era descartado e
+  // abrirChamado chamava classificarChamado() de novo do zero, dobrando
+  // custo e latência de IA por chamado aberto sem necessidade. Só
+  // reclassifica se a descrição mudou desde a última classificação exibida.
+  let resultadoIA;
+  if(_aiUltimoResultado && _aiUltimaDesc === desc){
+    resultadoIA = _aiUltimoResultado;
+  }else{
+    if(badge){badge.className='ai-badge loading';badge.textContent='⏳ Classificando...';}
+    resultadoIA = await classificarChamado(desc);
+    _aiUltimaDesc = desc;
+    _aiUltimoResultado = resultadoIA;
+  }
+  const { prioridade: prioridadeIA, tipo: tipoDetectado } = resultadoIA;
   if (tipoDetectado && !tipo) tipo = tipoDetectado;
   const labelsIA={alto:'🔴 Prioridade Alta',medio:'🟡 Prioridade Média',baixo:'🟢 Prioridade Baixa',falso:'⚠️ Possível falso alarme',emergencia:'🚨 EMERGÊNCIA DETECTADA'};
   if(badge){badge.className=`ai-badge pri-${prioridadeIA}`;badge.textContent=labelsIA[prioridadeIA];}
