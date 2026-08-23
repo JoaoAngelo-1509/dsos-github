@@ -838,6 +838,13 @@ window.enviarAvaliacao=async function(){
   const comentario=document.getElementById('avaliacao-comentario').value.trim();
   window.fecharAvaliacao();
   if(!_avaliacaoTicketId)return;
+  // Sessão anterior a esta versão não tem token; sem este guarda, p_token
+  // sairia undefined e o PostgREST responderia "Could not find the function",
+  // que não diz nada ao usuário.
+  if(!session?.token){
+    toast('Sua sessão é de uma versão anterior. Faça login novamente.','err');
+    return;
+  }
   try{
     // SEC-05: era um PATCH direto em ticket. Como a policy de UPDATE era
     // USING(true), a mesma chamada dava para escrever qualquer coluna de

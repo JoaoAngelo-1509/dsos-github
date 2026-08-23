@@ -37,9 +37,20 @@ async function _logEvent(rpcName, params = {}) {
 // os botões "só o T.I. pode" eram cosméticos. Agora a autorização acontece no
 // banco, a partir do token emitido no login (ver sessao_token).
 async function _rpcEscrita(nome, params) {
+  // Sessão sem token: acontece com quem já estava logado no momento em que
+  // esta versão subiu — o sessionStorage antigo não tem o campo. Sem este
+  // guarda, p_token sai como undefined, o JSON omite a chave e o PostgREST
+  // responde "Could not find the function ..." — erro que não diz nada ao
+  // usuário. Melhor mandar refazer o login, que é o que resolve.
+  if (!session?.token) {
+    notif('Sua sessão é de uma versão anterior. Faça login novamente.');
+    setTimeout(() => { window.location.href = 'login.html'; }, 1800);
+    throw new Error('sessão sem token — refaça o login');
+  }
+
   const r = await fetch(`${SB}/rest/v1/rpc/${nome}`, {
     method: 'POST', headers: H,
-    body: JSON.stringify({ p_token: session?.token, ...params })
+    body: JSON.stringify({ p_token: session.token, ...params })
   });
   if (!r.ok) {
     const t = await r.text().catch(() => '');
