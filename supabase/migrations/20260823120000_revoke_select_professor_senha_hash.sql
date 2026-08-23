@@ -13,6 +13,12 @@
 -- migration mover_pc_senha_para_tabela_separada.sql — REVOKE em nível de
 -- tabela + GRANT por coluna funciona sem ressalvas aqui.
 
+-- ATENÇÃO ao mexer nisto depois: `REVOKE SELECT ON <tabela>` derruba também
+-- os privilégios de COLUNA já concedidos, não apenas o privilégio de tabela.
+-- Ou seja, rodar só o REVOKE deixa anon sem ler NADA de professor e quebra a
+-- listagem de professores no painel. O GRANT coluna a coluna abaixo tem que
+-- vir sempre junto — foi o que aconteceu, e foi corrigido, durante os testes
+-- de regressão desta auditoria.
 REVOKE SELECT ON public.professor FROM anon, authenticated;
 
 DO $$
