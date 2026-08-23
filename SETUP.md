@@ -66,7 +66,28 @@ supabase secrets set GROQ_PROXY_ALLOWED_ORIGIN=https://seu-dominio.netlify.app
 
 Sem `GROQ_KEY` configurada, a função responde `500` e as funcionalidades de IA falham de forma silenciosa (fail-open) no frontend.
 
-## 5. Sirva localmente
+## 5. Deploy na Netlify
+
+`js/supabase-config.js` não existe no repositório (passo 2), então um deploy
+via Netlify conectado direto ao GitHub **não tem esse arquivo** a menos que
+seja gerado no build. `netlify.toml` já roda `scripts/netlify-build.sh`
+automaticamente, que cria `js/supabase-config.js` a partir de variáveis de
+ambiente do próprio site na Netlify — sem precisar commitar a chave.
+
+No painel da Netlify, no site conectado a este repositório, vá em
+**Site configuration → Environment variables** e adicione:
+
+| Variável | Valor |
+|---|---|
+| `SUPABASE_URL` | URL do projeto (mesma de `PROJECT_URL` no passo 2) |
+| `SUPABASE_ANON_KEY` | Anon key do projeto (mesma de `ANON_KEY` no passo 2) |
+
+Depois de salvar, dispare um novo deploy (**Deploys → Trigger deploy →
+Deploy site**). Sem essas duas variáveis, o build falha de propósito (com
+uma mensagem clara) em vez de publicar o site sem conseguir falar com o
+Supabase.
+
+## 6. Sirva localmente
 
 Use qualquer servidor HTTP estático, por exemplo:
 

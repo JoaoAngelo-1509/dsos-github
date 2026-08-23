@@ -34,6 +34,8 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 ├── supabase/
 │   ├── functions/groq-proxy/index.ts   ← Edge Function: proxy da API Groq (mantém a chave fora do cliente)
 │   └── migrations/                     ← Migrations SQL (privilégios de colunas sensíveis, etc.)
+├── scripts/
+│   └── netlify-build.sh    ← Gera js/supabase-config.js no build da Netlify a partir de env vars
 ├── images/                  ← Logo, fundo (BG.svg/BG_dark_mode.svg), favicon
 └── sounds/                  ← Efeitos sonoros (notificação, login, minigame Skill Check)
 ```
@@ -55,7 +57,7 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 
 O projeto é 100% estático (sem build step). Depois de configurar as credenciais (veja [SETUP.md](SETUP.md)), sirva os arquivos via qualquer servidor HTTP local (ex: `npx serve .`, Live Server no VSCode) e abra `html/login.html` — ou `index.html` na raiz, que direciona para o login após o aviso de consentimento.
 
-Em produção, o deploy é feito na Netlify (`netlify.toml` já configura os rewrites de URL limpa e os headers de segurança).
+Em produção, o deploy é feito na Netlify (`netlify.toml` já configura os rewrites de URL limpa, os headers de segurança e o build que gera `js/supabase-config.js` a partir de variáveis de ambiente — veja [SETUP.md](SETUP.md#5-deploy-na-netlify)).
 
 ## Documentação relacionada
 
