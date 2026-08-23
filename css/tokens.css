@@ -1,0 +1,42 @@
+/* DSos — tokens.css
+   ────────────────────────────────────────────────────────────────────────
+   Fonte única das cores de MARCA (DUP-07).
+
+   Antes, `--red` estava declarado nas 4 folhas de estilo de página com o
+   mesmo valor, e `--green` em 3: trocar a cor da marca obrigava a editar
+   quatro arquivos e torcer para não esquecer nenhum.
+
+   O que entra aqui é só o que é genuinamente comum e tem o MESMO valor em
+   todo lugar — conferido token a token antes de extrair. O que NÃO entra,
+   e por quê:
+
+   --text     diverge de propósito: login.css e painel-pc.css usam #2a2a2a
+              (tela clara) e painel-ti.css/painel-logs.css usam #e8e8e8
+              (tela escura). Não é duplicação, é tema diferente.
+   --yellow   diverge sem motivo aparente: painel-pc.css usa #e6b800 e as
+              outras duas #f5d000. Ficou como está para não mudar cor de
+              tela nesta leva; unificar exige decisão de design, não de
+              refatoração.
+
+   Carregue ANTES da folha da página, para que qualquer :root local ainda
+   consiga sobrescrever um token quando isso for intencional:
+
+     <link rel="stylesheet" href="../css/tokens.css"/>
+     <link rel="stylesheet" href="../css/painel-ti.css"/>
+   ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* vermelho da marca (Centro Paula Souza) — usado em ações destrutivas,
+     destaques e no estado de erro */
+  --red:       #c0171a;
+  --red-dim:   rgba(192, 23, 26, .18);
+  --red-glow:  rgba(192, 23, 26, .35);
+  --red-hover: #a01215;
+
+  /* ciano de apoio — sucesso, informação e destaque secundário */
+  --green:     #06b6d4;
+  --green-dim: rgba(6, 182, 212, .15);
+
+  /* laranja — avisos e estados intermediários */
+  --orange:    #f97316;
+}

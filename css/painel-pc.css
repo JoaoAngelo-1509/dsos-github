@@ -1,7 +1,8 @@
 /* DSos v1.5.0 — painel-pc.css */
 
 :root {
-  --red:        #c0171a;
+  /* cores de marca vem de css/tokens.css (DUP-07) */
+  
   --red-dark:   #7a0b0d;
   --red-deep:   #3d0405;
   --gray-card:  #e4e4e4;
@@ -12,7 +13,7 @@
   --text:       #2a2a2a;
   --text-muted: #666;
   /* CIANO substitui roxo */
-  --green:      #06b6d4;
+  
   --green-dark: #0891b2;
   --yellow:     #e6b800;
   --body-bg:    #f0f0f0;

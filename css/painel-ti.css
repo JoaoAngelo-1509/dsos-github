@@ -3,10 +3,11 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root {
-  --red:#c0171a;--red-dim:rgba(192,23,26,.18);--red-glow:rgba(192,23,26,.35);--red-hover:#a01215;
+  /* cores de marca vem de css/tokens.css (DUP-07) */
+  
   --yellow:#f5d000;--yellow-dim:rgba(245,208,0,.15);
-  --green:#06b6d4;--green-dim:rgba(6,182,212,.15);
-  --orange:#f97316;--orange-dim:rgba(249,115,22,.15);
+  
+  --orange-dim:rgba(249,115,22,.15);
   --glass:rgba(8,4,4,.82);--glass-top:rgba(14,6,6,.90);
   --glass-b:rgba(255,255,255,.07);--glass-b2:rgba(255,255,255,.04);
   --row-bg:rgba(255,255,255,.03);--row-hover:rgba(255,255,255,.07);--row-b:rgba(255,255,255,.06);

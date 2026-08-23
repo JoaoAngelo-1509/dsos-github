@@ -2,7 +2,8 @@
 /* ── login.css — Estilos exclusivos da página de login ── */
 
 :root {
-  --red:        #c0171a;
+  /* cores de marca vem de css/tokens.css (DUP-07) */
+  
   --red-dark:   #7a0b0d;
   --red-deep:   #3d0405;
   --gray-card:  #e4e4e4;
