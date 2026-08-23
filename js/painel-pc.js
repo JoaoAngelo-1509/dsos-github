@@ -3,6 +3,7 @@ import { SB_URL, SB_KEY, H } from './supabase-config.js';
 import { dsosAlert } from './dsos-ui.js';
 import { escapeHtml } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
+import { initSessionGuard } from './session-guard.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
@@ -267,6 +268,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (!raw) { window.location.href = 'login.html'; return; }
   session = JSON.parse(raw);
   if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
+
+  // Logout automático por inatividade (30min, aviso aos 28min)
+  initSessionGuard({onLogout:()=>window.sair()});
 
   // ── Heartbeat de sessão ──
   const _pingUrl = `${SB_URL}/rest/v1/rpc/rpc_sessao_ping?apikey=${SB_KEY}`;
