@@ -7,6 +7,8 @@
 import { SB_URL, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
+import { sair } from './ui.js';
+import { initSessionGuard } from './session-guard.js';
 
 const CFG = {
   SB_URL,
@@ -125,6 +127,13 @@ const STATE = {
 // INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  const _raw = sessionStorage.getItem('dsos_session');
+  const _session = _raw ? JSON.parse(_raw) : null;
+  if (!_session || _session.tipo !== 'ti') { window.location.href = 'login.html'; return; }
+
+  // Logout automático por inatividade (30min, aviso aos 28min)
+  initSessionGuard({ onLogout: sair });
+
   carregarUsuario();
   iniciarRelogio();
   registrarFiltros();
@@ -888,12 +897,13 @@ async function exportarTudo(aba, filename) {
 
 function _gerarCSV(data, filename) {
   const hdrs = Object.keys(data[0]);
+  const csvSafe = s => /^[=+\-@]/.test(s) ? "'" + s : s;
   const rows = data.map(row =>
     hdrs.map(h => {
       const val = row[h];
       if (val === null || val === undefined) return '""';
-      if (typeof val === 'object') return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
-      return `"${String(val).replace(/"/g, '""')}"`;
+      const raw = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      return `"${csvSafe(raw).replace(/"/g, '""')}"`;
     }).join(',')
   );
 
@@ -1034,7 +1044,7 @@ function e(v) {
 }
 
 function esc(obj) {
-  return JSON.stringify(obj).replace(/"/g,'&quot;');
+  return JSON.stringify(obj).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function empty() {
@@ -1345,44 +1355,47 @@ async function apagarLogs(aba) {
   const meta = TAB_META[aba];
   if (!meta) return;
 
+  // rpc_limpar_logs só aceita UM limite superior de data (p_threshold) — data
+  // inicial e qualquer outro filtro (status, login, texto etc.) NÃO são
+  // respeitados pela exclusão em si, mesmo que estejam ativos na tela. Por
+  // isso o texto de confirmação e a contagem abaixo espelham exatamente o
+  // que a RPC vai apagar (WHERE <coluna_data> < threshold), e não o total
+  // filtrado exibido na tabela.
   const filtros = TAB_FILTERS[aba] || [];
-  const temFiltroData = filtros.some(f => {
+  const endEl = document.getElementById(`${aba}-dataEnd`);
+  const endVal = endEl?.value?.trim();
+  const threshold = endVal ? new Date(endVal + 'T23:59:59').toISOString() : null;
+
+  const outrosFiltrosIgnorados = filtros.some(f => {
+    if (f.id === endEl?.id) return false;
     const el = document.getElementById(f.id);
-    return el && el.value.trim() && (f.op === 'gte' || f.op === 'lte');
+    return el && el.value.trim();
   });
 
-  const total = STATE.totais[aba] || 0;
-  const msg = temFiltroData
-    ? `Apagar ${total} registro(s) do período filtrado em "${aba}"?\n\nEssa ação é irreversível.`
-    : `Apagar TODOS os registros de "${aba}"?\n\nEssa ação é irreversível e não pode ser desfeita.`;
+  let total = 0;
+  try {
+    const countUrl = threshold
+      ? `${CFG.SB_URL}/rest/v1/${meta.table}?select=${meta.order}&${meta.order}=lt.${encodeURIComponent(threshold)}`
+      : `${CFG.SB_URL}/rest/v1/${meta.table}?select=${meta.order}`;
+    const countRes = await fetch(countUrl, { method: 'HEAD', headers: headers() });
+    total = parseInt(countRes.headers.get('content-range')?.split('/')[1] || '0', 10);
+  } catch (e) {
+    console.error('[apagarLogs] erro ao contar registros', e);
+    showNotif('Erro ao calcular o impacto da exclusão', 'err');
+    return;
+  }
+
+  const aviso = outrosFiltrosIgnorados
+    ? '\n\nATENÇÃO: apenas a data final é respeitada pela exclusão — data inicial e os demais filtros ativos nesta aba serão IGNORADOS.'
+    : '';
+  const msg = threshold
+    ? `Apagar ${total} registro(s) de "${aba}" com data anterior a ${endVal.split('-').reverse().join('/')}?${aviso}\n\nEssa ação é irreversível.`
+    : `Apagar TODOS os ${total} registros de "${aba}"?${aviso}\n\nEssa ação é irreversível e não pode ser desfeita.`;
 
   if (!await dsosConfirm({msg,tipo:'danger',titulo:'Apagar registros'})) return;
-  if (!temFiltroData && !await dsosConfirm({msg:`Confirmação final: apagar TODOS os logs de "${aba}"?`,tipo:'danger',titulo:'Confirmação final'})) return;
+  if (!threshold && !await dsosConfirm({msg:`Confirmação final: apagar TODOS os logs de "${aba}"?`,tipo:'danger',titulo:'Confirmação final'})) return;
 
   try {
-    let url = `${CFG.SB_URL}/rest/v1/${meta.table}?`;
-
-    if (temFiltroData) {
-      const params = [];
-      filtros.forEach(f => {
-        if (f.op !== 'gte' && f.op !== 'lte') return;
-        const el = document.getElementById(f.id);
-        if (!el || !el.value.trim()) return;
-        params.push(`${f.param}=${f.op}.${el.value.trim()}${f.suffix || ''}`);
-      });
-      url += params.join('&');
-    } else {
-      // sem filtro — precisa de condição para o Supabase aceitar DELETE sem WHERE
-      url += `${meta.order}=not.is.null`;
-    }
-
-    const threshold = temFiltroData
-      ? (() => {
-          const endEl = document.getElementById(`${aba}-dataEnd`);
-          return endEl?.value ? new Date(endEl.value + 'T23:59:59').toISOString() : null;
-        })()
-      : null;
-
     const res = await fetch(`${CFG.SB_URL}/rest/v1/rpc/rpc_limpar_logs`, {
       method: 'POST',
       headers: { ...headers(), 'Content-Type': 'application/json' },
@@ -1676,10 +1689,10 @@ async function carregarAvaliacoes() {
   listEl.innerHTML = _avaliacoesData.map(r => `
     <div class="table-row" style="grid-template-columns:70px 90px 110px 60px 1fr 140px">
       <span class="cell-mono">#${r.id}</span>
-      <span>${r.laboratorio || '—'}</span>
-      <span>${r.ti?.nome || '—'}</span>
+      <span>${e(r.laboratorio) || '—'}</span>
+      <span>${e(r.ti?.nome) || '—'}</span>
       <span>${stars(r.avaliacao)}</span>
-      <span class="cell-trunc">${r.avaliacao_comentario || '<span style="opacity:.4">sem comentário</span>'}</span>
+      <span class="cell-trunc">${r.avaliacao_comentario ? e(r.avaliacao_comentario) : '<span style="opacity:.4">sem comentário</span>'}</span>
       <span class="cell-date">${fmtData(r.resolvido_em)}</span>
     </div>`).join('');
 }
@@ -1691,10 +1704,10 @@ function _avaliacoesHtmlTable(data) {
     <tbody>
       ${data.map(r => `<tr>
         <td>#${r.id}</td>
-        <td>${r.laboratorio || '—'}</td>
-        <td>${r.ti?.nome || '—'}</td>
+        <td>${e(r.laboratorio) || '—'}</td>
+        <td>${e(r.ti?.nome) || '—'}</td>
         <td>${estrelas(r.avaliacao)}</td>
-        <td>${r.avaliacao_comentario || '—'}</td>
+        <td>${r.avaliacao_comentario ? e(r.avaliacao_comentario) : '—'}</td>
         <td>${fmtData(r.resolvido_em)}</td>
       </tr>`).join('')}
     </tbody>
@@ -1959,7 +1972,7 @@ Tempo médio de resolução: ${tempoMedMin!=null?tempoMedMin+' minutos':'dados i
 
     conteudo.innerHTML = `
       <div style="font-size:.58rem;font-weight:700;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">RELATÓRIO SEMANAL · ${de} a ${ate}</div>
-      <div style="font-size:.68rem;line-height:1.7;color:var(--text);white-space:pre-line">${texto}</div>
+      <div style="font-size:.68rem;line-height:1.7;color:var(--text);white-space:pre-line">${e(texto)}</div>
       <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--glass-b);font-size:.58rem;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap">
         <span>📋 ${total} chamados</span>
         <span>✅ ${resolvidos} resolvidos</span>
