@@ -5,6 +5,21 @@
 
 body { font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
+/* A11Y: conteúdo só para leitor de tela — some visualmente sem sair da
+   árvore de acessibilidade (display:none e visibility:hidden removeriam o
+   elemento também do leitor, que é o oposto do que se quer aqui). Usado em
+   rótulos de campos cuja identificação visual já vem do ícone/contexto. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: var(--gray-border, rgba(255,255,255,.12)); border-radius: 2px; }
 

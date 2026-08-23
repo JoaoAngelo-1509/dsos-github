@@ -277,6 +277,11 @@ function mudarAba(aba) {
   if (tabNova) tabNova.classList.add('active');
   if (panelNovo) panelNovo.classList.add('active');
 
+  // A11Y-01: sem isto o aria-selected congelaria no valor do HTML inicial e
+  // o leitor de tela anunciaria sempre a mesma aba como selecionada
+  if (tabAtiva) tabAtiva.setAttribute('aria-selected', 'false');
+  if (tabNova)  tabNova.setAttribute('aria-selected', 'true');
+
   STATE.abaAtiva = aba;
 
   // Antes zerava a página SEMPRE, mas só recarregava os dados quando não

@@ -359,9 +359,15 @@ window.atualizarContadorChat = function(inp, contId) {
 
 
 window.trocarAba = function(aba) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.remove('active');
+    // A11Y-01: mantém aria-selected em sincronia com a classe .active
+    if(t.hasAttribute('role')) t.setAttribute('aria-selected','false');
+  });
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('tab-'+aba).classList.add('active');
+  const tabNova = document.getElementById('tab-'+aba);
+  tabNova.classList.add('active');
+  if(tabNova.hasAttribute('role')) tabNova.setAttribute('aria-selected','true');
   document.getElementById('view-'+aba).classList.add('active');
 };
 

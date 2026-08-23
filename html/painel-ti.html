@@ -30,12 +30,12 @@
       AO VIVO
     </div>
     <div class="topbar-user" onclick="ciclarPresenca()" style="cursor:pointer" title="Clique para mudar status de presença"><div class="online-dot" id="presenca-dot"></div><span id="nome-ti">T.I.</span></div>
-    <button class="btn-icon" id="btn-trocar-papel" onclick="trocarParaProfessor()" title="Trocar para modo Professor" style="display:none">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+    <button class="btn-icon" id="btn-trocar-papel" onclick="trocarParaProfessor()" title="Trocar para modo Professor" style="display:none" aria-label="Trocar para modo Professor">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
     </button>
     <div class="bell-wrap" id="bell-wrap">
-      <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas" onclick="toggleBellPanel()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <button class="btn-notif-bell btn-icon" id="btn-bell" title="Mensagens não lidas" onclick="toggleBellPanel()" aria-label="Mensagens não lidas">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notif-bell-count" id="bell-count">0</span>
       </button>
       <div class="bell-panel" id="bell-panel">
@@ -46,14 +46,14 @@
         <div id="bell-panel-list"></div>
       </div>
     </div>
-    <button class="btn-icon" onclick="abrirConfig()" title="Configurações do painel">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <button class="btn-icon" onclick="abrirConfig()" title="Configurações do painel" aria-label="Configurações do painel">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-    <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema">
-      <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <button class="btn-icon" id="btn-tema" onclick="toggleTema()" title="Alternar tema" aria-label="Alternar tema">
+      <svg id="ico-tema" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-    <button class="btn-icon" onclick="sair()" title="Sair">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <button class="btn-icon" onclick="sair()" title="Sair" aria-label="Sair">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
     </button>
   </div>
 </div>
@@ -62,15 +62,15 @@
 <div class="center">
   <div class="kpis">
     <div class="kpi">
-      <div class="kpi-icon red"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg></div>
+      <div class="kpi-icon red"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg></div>
       <div class="kpi-info"><div class="kpi-n red" id="kpi-pendentes">—</div><div class="kpi-l">Pendentes</div></div>
     </div>
     <div class="kpi">
-      <div class="kpi-icon green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+      <div class="kpi-icon green"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
       <div class="kpi-info"><div class="kpi-n green" id="kpi-resolvidos">—</div><div class="kpi-l">Resolvidos hoje</div><div class="kpi-trend" id="kpi-trend-resolvidos"></div></div>
     </div>
     <div class="kpi">
-      <div class="kpi-icon yellow"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <div class="kpi-icon yellow"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
       <div class="kpi-info"><div class="kpi-n yellow" id="kpi-hoje">—</div><div class="kpi-l">Abertos hoje</div><div class="kpi-trend" id="kpi-trend-hoje"></div></div>
     </div>
     <div class="kpi-clock" id="kpi-clock"></div>
@@ -80,23 +80,23 @@
     <!-- NÍVEL 1: Pills Chamados / Gestão -->
     <div class="grupo-nav">
       <button class="grupo-pill active" id="grupo-chamados" onclick="mudarGrupo('chamados')">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Chamados
         <span class="grupo-badge" id="grupo-badge-chamados">0</span>
       </button>
       <button class="grupo-pill" id="grupo-gestao" onclick="mudarGrupo('gestao')">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Gestão
       </button>
     </div>
 
     <!-- NÍVEL 2: Abas do grupo Chamados -->
     <div class="tabs-container" id="tabs-chamados">
-      <div class="tabs" id="tabs-scroll">
-        <button class="tab active" id="tab-abertos" onclick="mudarAba('abertos')">Não Respondidos <span class="tab-badge" id="badge-unresp">0</span></button>
-        <button class="tab" id="tab-respondidos" onclick="mudarAba('respondidos')">Já Respondidos <span class="tab-badge" id="badge-resp">0</span></button>
-        <button class="tab" id="tab-descarte" onclick="mudarAba('descarte')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+      <div class="tabs" id="tabs-scroll" role="tablist">
+        <button class="tab active" id="tab-abertos" onclick="mudarAba('abertos')" role="tab" aria-selected="true" aria-controls="panel-abertos">Não Respondidos <span class="tab-badge" id="badge-unresp">0</span></button>
+        <button class="tab" id="tab-respondidos" onclick="mudarAba('respondidos')" role="tab" aria-selected="false" aria-controls="panel-respondidos">Já Respondidos <span class="tab-badge" id="badge-resp">0</span></button>
+        <button class="tab" id="tab-descarte" onclick="mudarAba('descarte')" role="tab" aria-selected="false" aria-controls="panel-descarte">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
           Fila de Descarte <span class="tab-badge" id="badge-descarte">0</span>
         </button>
       </div>
@@ -104,43 +104,43 @@
 
     <!-- NÍVEL 2: Abas do grupo Gestão (ocultas inicialmente) -->
     <div class="tabs-container" id="tabs-gestao" style="display:none">
-      <div class="tabs">
-        <button class="tab" id="tab-pcs" onclick="mudarAba('pcs')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <div class="tabs" role="tablist">
+        <button class="tab" id="tab-pcs" onclick="mudarAba('pcs')" role="tab" aria-selected="false" aria-controls="panel-pcs">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Computadores <span class="tab-badge" id="badge-pcs">0</span>
         </button>
-        <button class="tab" id="tab-ti" onclick="mudarAba('ti')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <button class="tab" id="tab-ti" onclick="mudarAba('ti')" role="tab" aria-selected="false" aria-controls="panel-ti">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Equipe T.I. <span class="tab-badge" id="badge-ti">0</span>
         </button>
-        <button class="tab" id="tab-professores" onclick="mudarAba('professores')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
+        <button class="tab" id="tab-professores" onclick="mudarAba('professores')" role="tab" aria-selected="false" aria-controls="panel-professores">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
           Professores <span class="tab-badge" id="badge-prof">0</span>
         </button>
-        <button class="tab" id="tab-manutencao" onclick="mudarAba('manutencao')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <button class="tab" id="tab-manutencao" onclick="mudarAba('manutencao')" role="tab" aria-selected="false" aria-controls="panel-manutencao">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Manutenção
         </button>
          <a class="tab" id="tab-logs-link" href="./painel-logs.html">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Logs
          </a>
       </div>
     </div>
 
     <!-- ABA: NÃO RESPONDIDOS -->
-    <div class="tab-panel active" id="panel-abertos">
+    <div class="tab-panel active" id="panel-abertos" role="tabpanel" aria-labelledby="tab-abertos">
       <div class="crud-search-row">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="unresp-search" placeholder="Buscar por PC, tipo ou laboratório…" oninput="buscarTicketsAbertos(this.value)" autocomplete="off" />
-        <button class="btn-icon" id="btn-agrupar-lab" onclick="toggleAgruparLab()" title="Agrupar por laboratório" style="flex-shrink:0;margin-left:4px">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h16M4 18h7"/></svg>
+        <button class="btn-icon" id="btn-agrupar-lab" onclick="toggleAgruparLab()" title="Agrupar por laboratório" style="flex-shrink:0;margin-left:4px" aria-label="Agrupar por laboratório">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h7"/></svg>
         </button>
-        <button class="btn-icon" id="btn-compacto" onclick="toggleModoCompacto()" title="Modo compacto" style="flex-shrink:0">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <button class="btn-icon" id="btn-compacto" onclick="toggleModoCompacto()" title="Modo compacto" style="flex-shrink:0" aria-label="Modo compacto">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         </button>
-        <button class="btn-icon" onclick="exportarChamadosCSV()" title="Exportar chamados em CSV" style="flex-shrink:0">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <button class="btn-icon" onclick="exportarChamadosCSV()" title="Exportar chamados em CSV" style="flex-shrink:0" aria-label="Exportar chamados em CSV">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
       </div>
       <div id="filtro-chips" class="filtro-chips"></div>
@@ -158,9 +158,9 @@
     </div>
 
     <!-- ABA: JÁ RESPONDIDOS -->
-    <div class="tab-panel" id="panel-respondidos">
+    <div class="tab-panel" id="panel-respondidos" role="tabpanel" aria-labelledby="tab-respondidos">
       <div class="crud-search-row">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="resp-search" placeholder="Buscar por PC, tipo ou laboratório…" oninput="buscarTicketsRespondidos(this.value)" autocomplete="off" />
       </div>
       <div class="resp-filters">
@@ -175,7 +175,7 @@
       </div>
       <div class="ticket-list" id="resp-list">
         <div class="empty" id="resp-empty">
-          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
           <p>Nenhum chamado respondido ainda</p>
         </div>
       </div>
@@ -185,16 +185,16 @@
         <div class="leg"><div class="leg-sq" style="background:var(--sp-falso-bg);border:1px solid var(--sp-falso-b)"></div>Falso alarme</div>
         <div class="leg"><div class="leg-sq" style="background:var(--sp-desc-bg);border:1px solid var(--sp-desc-b)"></div>Descartado</div>
         <button class="btn-limpar" onclick="limparRespondidos()">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Limpar lista
         </button>
       </div>
     </div>
 
     <!-- ABA: FILA DE DESCARTE -->
-    <div class="tab-panel" id="panel-descarte">
+    <div class="tab-panel" id="panel-descarte" role="tabpanel" aria-labelledby="tab-descarte">
       <div class="crud-search-row">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="descarte-search" placeholder="Buscar por PC ou item…" oninput="buscarDescarte(this.value)" autocomplete="off" />
       </div>
       <div class="tbl-head" style="grid-template-columns:28px 1fr 72px auto 70px">
@@ -202,7 +202,7 @@
       </div>
       <div class="ticket-list" id="desc-list">
         <div class="empty" id="desc-empty">
-          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></div>
+          <div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></div>
           <p>Nenhum item aguardando descarte</p>
         </div>
       </div>
@@ -213,7 +213,7 @@
     </div>
 
     <!-- ABA: COMPUTADORES -->
-    <div class="tab-panel" id="panel-pcs">
+    <div class="tab-panel" id="panel-pcs" role="tabpanel" aria-labelledby="tab-pcs">
       <div class="pc-filters">
         <input class="pc-search" id="pc-search" placeholder="Buscar por tag ou laboratório…" oninput="buscarPCs(this.value);filtrarPCs()" />
         <button class="pf-btn active" id="pf-todos"      onclick="setPcFiltro('todos',this)">Todos</button>
@@ -221,7 +221,7 @@
         <button class="pf-btn"        id="pf-manutencao" onclick="setPcFiltro('em_manutencao',this)">Manutenção</button>
         <button class="pf-btn"        id="pf-descartado" onclick="setPcFiltro('descartado',this)">Descartados</button>
         <button class="btn-add-pc"    onclick="abrirModalPC(null)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo PC
         </button>
       </div>
@@ -234,9 +234,9 @@
     </div>
 
     <!-- ABA: EQUIPE T.I. -->
-    <div class="tab-panel" id="panel-ti">
+    <div class="tab-panel" id="panel-ti" role="tabpanel" aria-labelledby="tab-ti">
       <div class="crud-search-row">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="ti-search" placeholder="Buscar técnico por nome ou login…" oninput="buscarTIs(this.value)" autocomplete="off" />
       </div>
       <div class="ti-user-list" id="ti-user-list">
@@ -245,16 +245,16 @@
       <div class="ti-user-footer">
         <span class="ti-user-count"><span id="ti-count">—</span> usuário(s) cadastrado(s)</span>
         <button class="btn-add-ti" onclick="abrirModalTI(null)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Usuário
         </button>
       </div>
     </div>
 
     <!-- ABA: PROFESSORES -->
-    <div class="tab-panel" id="panel-professores">
+    <div class="tab-panel" id="panel-professores" role="tabpanel" aria-labelledby="tab-professores">
       <div class="crud-search-row">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" class="crud-search-input" id="prof-search" placeholder="Buscar professor por nome ou disciplina…" oninput="buscarProfs(this.value)" autocomplete="off" />
       </div>
       <div class="ti-user-list" id="prof-user-list">
@@ -263,19 +263,19 @@
       <div class="ti-user-footer">
         <span class="ti-user-count"><span id="prof-count">—</span> professor(es) cadastrado(s)</span>
         <button class="btn-add-ti" onclick="abrirModalProf(null)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Professor
         </button>
       </div>
     </div>
 
     <!-- ABA: MANUTENÇÃO -->
-    <div class="tab-panel" id="panel-manutencao">
+    <div class="tab-panel" id="panel-manutencao" role="tabpanel" aria-labelledby="tab-manutencao">
       <div class="manutencao-wrap">
         <div class="manutencao-section">
           <div class="manutencao-section-header">
             <div class="manutencao-section-icon">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </div>
             <div>
               <div class="manutencao-section-title">Limpeza do banco de dados</div>
@@ -294,21 +294,21 @@
             </div>
             <div id="limpeza-preview" class="limpeza-preview-box" style="margin-bottom:12px">
               <div class="limpeza-preview-idle">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>Clique em "Ver impacto" para analisar</span>
               </div>
             </div>
             <div class="limpeza-aviso" style="margin-bottom:14px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
               Esta ação é <strong>irreversível</strong>. Remove tickets encerrados, todas as mensagens de chat e as imagens do storage.
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn-mini-confirmar" style="background:var(--input-bg);color:var(--text);border:1px solid var(--glass-b)" onclick="verImpactoLimpeza()" id="btn-ver-impacto">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 Ver impacto
               </button>
               <button class="btn-mini-confirmar" style="background:var(--red)" onclick="executarLimpeza()" id="btn-executar-limpeza" disabled>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 Limpar agora
               </button>
             </div>
@@ -354,26 +354,26 @@
 </div>
 
 <!-- MODAL PC -->
-<div class="modal-pc-bg" id="modal-pc">
+<div class="modal-pc-bg" id="modal-pc" role="dialog" aria-modal="true">
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mpc-title">Cadastrar Computador</span>
       <button class="modal-close" onclick="fecharModalPC()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-pc-body">
       <div class="mpc-field">
-        <div class="mpc-label">Tag do PC (identificador único)</div>
+        <label class="mpc-label" for="mpc-tag">Tag do PC (identificador único)</label>
         <input class="mpc-input" id="mpc-tag" placeholder="Ex: LAB1-A01" autocomplete="off" oninput="this.value=this.value.toUpperCase()" />
       </div>
       <div class="mpc-row">
         <div class="mpc-field">
-          <div class="mpc-label">Laboratório</div>
+          <label class="mpc-label" for="mpc-lab">Laboratório</label>
           <input class="mpc-input" id="mpc-lab" placeholder="Ex: Laboratório 1" autocomplete="off" />
         </div>
         <div class="mpc-field">
-          <div class="mpc-label">Lado</div>
+          <label class="mpc-label" for="mpc-lado">Lado</label>
           <select class="mpc-sel" id="mpc-lado">
             <option value="A">Lado A</option>
             <option value="B">Lado B</option>
@@ -381,12 +381,12 @@
         </div>
       </div>
       <div class="mpc-field">
-        <div class="mpc-label" id="mpc-senha-label">Senha de acesso</div>
+        <label class="mpc-label" id="mpc-senha-label" for="mpc-senha">Senha de acesso</label>
         <div style="position:relative">
           <input class="mpc-input" id="mpc-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaMPC()" id="btn-olho-mpc"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
@@ -394,7 +394,7 @@
         <div class="mpc-hint" id="mpc-senha-hint">Deixe em branco para não alterar a senha atual.</div>
       </div>
       <div class="mpc-field" id="mpc-status-field" style="display:none">
-        <div class="mpc-label">Status do PC</div>
+        <label class="mpc-label" for="mpc-status">Status do PC</label>
         <select class="mpc-sel" id="mpc-status">
           <option value="ativo">Ativo</option>
           <option value="em_manutencao">Em manutenção</option>
@@ -414,25 +414,25 @@
      MODAL — CADASTRO / EDIÇÃO DE USUÁRIO T.I.
      v1.5: email, is_professor, disciplina
 ══════════════════════════════════ -->
-<div class="modal-pc-bg" id="modal-ti-user">
+<div class="modal-pc-bg" id="modal-ti-user" role="dialog" aria-modal="true">
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mti-title">Cadastrar Usuário T.I.</span>
       <button class="modal-close" onclick="fecharModalTI()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-pc-body">
 
       <!-- Nome -->
       <div class="mpc-field">
-        <div class="mpc-label">Nome completo</div>
+        <label class="mpc-label" for="mti-nome">Nome completo</label>
         <input class="mpc-input" id="mti-nome" placeholder="Ex: João da Silva" autocomplete="off" />
       </div>
 
       <!-- Login -->
       <div class="mpc-field">
-        <div class="mpc-label">Login de acesso</div>
+        <label class="mpc-label" for="mti-login">Login de acesso</label>
         <input class="mpc-input" id="mti-login" placeholder="Ex: joao.silva" autocomplete="off" />
       </div>
 
@@ -455,12 +455,12 @@
 
       <!-- Senha -->
       <div class="mpc-field">
-        <div class="mpc-label">Senha</div>
+        <label class="mpc-label" for="mti-senha">Senha</label>
         <div style="position:relative">
           <input class="mpc-input" id="mti-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaTI()" id="btn-olho-ti"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
@@ -485,7 +485,7 @@
 
       <!-- Disciplina — aparece quando "É professor" está marcado -->
       <div class="mpc-field" id="mti-disc-row" style="display:none">
-        <div class="mpc-label">Disciplina do professor (opcional)</div>
+        <label class="mpc-label" for="mti-disciplina">Disciplina do professor (opcional)</label>
         <input class="mpc-input" id="mti-disciplina" placeholder="Ex: Matemática, Português…" autocomplete="off" />
       </div>
 
@@ -498,34 +498,34 @@
 </div>
 
 <!-- MODAL PROFESSOR -->
-<div class="modal-pc-bg" id="modal-professor">
+<div class="modal-pc-bg" id="modal-professor" role="dialog" aria-modal="true">
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mprof-title">Cadastrar Professor</span>
       <button class="modal-close" onclick="fecharModalProf()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-pc-body">
       <div class="mpc-field">
-        <div class="mpc-label">Nome completo</div>
+        <label class="mpc-label" for="mprof-nome">Nome completo</label>
         <input class="mpc-input" id="mprof-nome" placeholder="Ex: Maria Souza" autocomplete="off" />
       </div>
       <div class="mpc-field">
-        <div class="mpc-label">Login de acesso</div>
+        <label class="mpc-label" for="mprof-login">Login de acesso</label>
         <input class="mpc-input" id="mprof-login" placeholder="Ex: maria.souza" autocomplete="off" />
       </div>
       <div class="mpc-field">
-        <div class="mpc-label">Disciplina (opcional)</div>
+        <label class="mpc-label" for="mprof-disciplina">Disciplina (opcional)</label>
         <input class="mpc-input" id="mprof-disciplina" placeholder="Ex: Matemática" autocomplete="off" />
       </div>
       <div class="mpc-field">
-        <div class="mpc-label">Senha</div>
+        <label class="mpc-label" for="mprof-senha">Senha</label>
         <div style="position:relative">
           <input class="mpc-input" id="mprof-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
           <button type="button" onclick="toggleSenhaProf()" id="btn-olho-prof"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
-            <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </svg>
           </button>
@@ -555,14 +555,14 @@
 </div>
 
 <!-- MODAL TICKET -->
-<div class="modal-bg" id="modal">
+<div class="modal-bg" id="modal" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="modal-head">
       <div class="modal-head-info">
         <div style="display:flex;align-items:center;gap:6px">
           <div class="modal-htitle" id="m-title">—</div>
-          <button class="btn-copy-id" id="btn-copy-id" onclick="copiarIdModal()" title="Copiar ID do chamado">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <button class="btn-copy-id" id="btn-copy-id" onclick="copiarIdModal()" title="Copiar ID do chamado" aria-label="Copiar ID do chamado">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
         </div>
         <div class="modal-hmeta">
@@ -571,7 +571,7 @@
         </div>
       </div>
       <button class="modal-close" onclick="fecharModal()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-scroll">
@@ -598,7 +598,7 @@
       <!-- RESUMO IA -->
       <div id="ai-resumo" style="display:none;margin:0 4px 10px;padding:10px 12px;border-radius:8px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.22);font-size:.62rem;line-height:1.55;color:var(--text)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <span style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:.52rem;letter-spacing:.07em;color:rgba(99,102,241,.9)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>RESUMO IA</span>
+          <span style="display:flex;align-items:center;gap:4px;font-weight:700;font-size:.52rem;letter-spacing:.07em;color:rgba(99,102,241,.9)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>RESUMO IA</span>
           <span id="ai-resumo-spin" style="font-size:.52rem;color:var(--muted);display:none">analisando…</span>
         </div>
         <div id="ai-resumo-texto" style="color:var(--text2)">—</div>
@@ -622,7 +622,7 @@
       <!-- NOTAS INTERNAS -->
       <div class="nota-interna-section">
         <div class="nota-interna-header">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Nota interna <span style="color:var(--muted);font-weight:400">(visível só para TI)</span>
         </div>
         <textarea id="m-nota-interna" class="nota-interna-textarea" placeholder="Anotações, contexto entre turnos, observações técnicas…" maxlength="800"></textarea>
@@ -635,10 +635,10 @@
       <!-- SEÇÃO DE CHAT -->
       <div class="chat-section" id="chat-section">
         <div class="chat-section-bar">
-          <span style="display:flex;align-items:center;gap:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o PC</span>
+          <span style="display:flex;align-items:center;gap:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat com o PC</span>
           <span id="chat-status-label" style="color:var(--muted)"></span>
-          <button class="btn-ia-chat" id="btn-sugerir-resp" onclick="aiSugerirResposta()" title="IA sugere resposta baseada no contexto do chamado" disabled>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <button class="btn-ia-chat" id="btn-sugerir-resp" onclick="aiSugerirResposta()" title="IA sugere resposta baseada no contexto do chamado" disabled aria-label="IA sugere resposta baseada no contexto do chamado">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Sugerir resposta
           </button>
         </div>
@@ -648,13 +648,13 @@
         <div class="img-preview-ti" id="img-preview-ti">
           <img class="img-prev-thumb" id="img-prev-thumb" src="" alt="" />
           <span class="img-prev-nome" id="img-prev-nome"></span>
-          <button class="img-prev-rm" onclick="removerImgTi()" title="Remover">✕</button>
+          <button class="img-prev-rm" onclick="removerImgTi()" title="Remover" aria-label="Remover">✕</button>
         </div>
         <div id="quick-replies-wrap" style="display:none;flex-wrap:wrap;gap:5px;padding:4px 0 2px"></div>
         <div class="chat-input-row-ti">
           <input type="file" id="file-input-ti" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="selecionarImagemTi(event)" />
-          <button class="btn-img-ti" title="Enviar print/imagem" onclick="document.getElementById('file-input-ti').click()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <button class="btn-img-ti" title="Enviar print/imagem" onclick="document.getElementById('file-input-ti').click()" aria-label="Enviar print/imagem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </button>
           <input class="chat-input-ti" id="chat-input-ti" placeholder="Mensagem para o PC…" maxlength="500" oninput="atualizarContadorChatTI(this)" onkeydown="enviarMsgTi(event)" />
           <button class="btn-send-ti" id="btn-send-ti" onclick="enviarMsgTi({key:'Enter'})">Enviar</button>
@@ -666,15 +666,15 @@
 </div>
 
 <!-- MODAL CONFIGURAÇÕES -->
-<div class="modal-pc-bg" id="modal-config">
+<div class="modal-pc-bg" id="modal-config" role="dialog" aria-modal="true">
   <div class="modal-pc" style="max-width:420px">
     <div class="modal-pc-head">
       <div class="modal-pc-title">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Configurações
       </div>
       <button class="modal-pc-close" onclick="fecharConfig()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="cfg-body">
@@ -685,12 +685,12 @@
       <div class="cfg-row">
         <span class="cfg-label">Cor de destaque</span>
         <div class="cfg-swatches" id="cfg-swatches">
-          <button class="cfg-swatch" data-color="#6366f1" style="background:#6366f1" title="Índigo" onclick="aplicarAccent('#6366f1')"></button>
-          <button class="cfg-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Azul" onclick="aplicarAccent('#3b82f6')"></button>
-          <button class="cfg-swatch" data-color="#10b981" style="background:#10b981" title="Verde" onclick="aplicarAccent('#10b981')"></button>
-          <button class="cfg-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Âmbar" onclick="aplicarAccent('#f59e0b')"></button>
-          <button class="cfg-swatch" data-color="#ef4444" style="background:#ef4444" title="Vermelho" onclick="aplicarAccent('#ef4444')"></button>
-          <button class="cfg-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Ciano" onclick="aplicarAccent('#06b6d4')"></button>
+          <button class="cfg-swatch" data-color="#6366f1" style="background:#6366f1" title="Índigo" onclick="aplicarAccent('#6366f1')" aria-label="Índigo"></button>
+          <button class="cfg-swatch" data-color="#3b82f6" style="background:#3b82f6" title="Azul" onclick="aplicarAccent('#3b82f6')" aria-label="Azul"></button>
+          <button class="cfg-swatch" data-color="#10b981" style="background:#10b981" title="Verde" onclick="aplicarAccent('#10b981')" aria-label="Verde"></button>
+          <button class="cfg-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Âmbar" onclick="aplicarAccent('#f59e0b')" aria-label="Âmbar"></button>
+          <button class="cfg-swatch" data-color="#ef4444" style="background:#ef4444" title="Vermelho" onclick="aplicarAccent('#ef4444')" aria-label="Vermelho"></button>
+          <button class="cfg-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Ciano" onclick="aplicarAccent('#06b6d4')" aria-label="Ciano"></button>
         </div>
       </div>
 
@@ -810,14 +810,14 @@
 </div>
 
 <!-- MODAL ORDEM PARANORMAL -->
-<div class="modal-pc-bg" id="modal-op" onclick="if(event.target===this)fecharModalOP()">
+<div class="modal-pc-bg" id="modal-op" onclick="if(event.target===this)fecharModalOP()" role="dialog" aria-modal="true">
   <div class="modal-pc op-modal">
     <div class="modal-pc-head">
       <div class="modal-pc-title" style="gap:8px;display:flex;align-items:center">
         <span style="font-size:1rem">🎲</span> Ordem Paranormal RPG
       </div>
       <button class="modal-pc-close" onclick="fecharModalOP()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="op-modal-body">
@@ -835,14 +835,14 @@
 </div>
 
 <!-- MINI-MODAL DESCARTE -->
-<div class="mini-modal-bg" id="mini-modal-descarte">
+<div class="mini-modal-bg" id="mini-modal-descarte" role="dialog" aria-modal="true">
   <div class="mini-modal">
     <div class="mini-modal-head">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       <span>Enviar para fila de descarte</span>
       <span class="mini-modal-pc" id="mini-pc-tag"></span>
       <button class="modal-close" onclick="fecharMiniModalDescarte()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="mini-modal-body">
@@ -855,7 +855,7 @@
     <div class="mini-modal-footer">
       <button class="btn-mpc-cancel" onclick="fecharMiniModalDescarte()">Cancelar</button>
       <button class="btn-mini-confirmar" onclick="confirmarEnvioFila()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         Enviar para fila
       </button>
     </div>
@@ -863,39 +863,39 @@
 </div>
 
 <!-- MODAL DESCARTE FÍSICO -->
-<div class="modal-desc-bg" id="modal-descarte">
+<div class="modal-desc-bg" id="modal-descarte" role="dialog" aria-modal="true">
   <div class="modal-desc">
     <div class="modal-desc-head">
       <div class="modal-desc-icon">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
       <div style="flex:1">
         <div class="modal-desc-title">Registrar Descarte Físico</div>
         <div class="modal-desc-subtitle">Confirme como o equipamento foi ou será descartado para rastreabilidade PNRS</div>
       </div>
       <button class="modal-close" onclick="fecharModalDescarte()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-desc-body">
       <div class="desc-form-col">
         <div class="desc-field">
           <div class="desc-field-label">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
             O que foi descartado?
           </div>
           <input class="desc-input" id="desc-oque" type="text" placeholder="Ex: HD 500GB Samsung, Teclado USB, Monitor 19&quot;…" />
         </div>
         <div class="desc-field">
           <div class="desc-field-label">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2.5"/></svg>
             Por que foi descartado?
           </div>
           <input class="desc-input" id="desc-porque" type="text" readonly placeholder="(motivo do chamado)" />
         </div>
         <div class="desc-field">
           <div class="desc-field-label">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Descreva como e qual meio de descarte
           </div>
           <textarea class="desc-textarea" id="desc-como" placeholder="Ex: Entregue à empresa ABREE para reciclagem em 11/03/2026. Responsável: Prof. Carlos."></textarea>
@@ -932,7 +932,7 @@
         </div>
         <div class="pnrs-note">
           <div class="pnrs-note-ico">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <div class="pnrs-note-text">
             O descarte adequado de e-waste é exigido pela <strong>Lei 12.305/2010 — PNRS</strong>. Este registro garante rastreabilidade completa do equipamento descartado.
@@ -943,18 +943,18 @@
     <div class="modal-desc-footer">
       <button class="btn-desc-cancel" onclick="fecharModalDescarte()">Cancelar</button>
       <button class="btn-desc-guia" onclick="abrirGuia()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         Guia de Descarte
       </button>
       <button class="btn-desc-enviar" onclick="confirmarDescarteFisico()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         Confirmar Descarte
       </button>
     </div>
   </div>
 </div>
 
-<div class="notif" id="notif"></div>
+<div class="notif" id="notif" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
 <script type="module" src="../js/painel-ti.js"></script>
 

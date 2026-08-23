@@ -697,9 +697,12 @@ function renderDescarte(){
 const _ultimaAba={chamados:'abertos',gestao:'pcs'};
 const _grupoDeAba={abertos:'chamados',respondidos:'chamados',descarte:'chamados',pcs:'gestao',ti:'gestao',professores:'gestao',manutencao:'gestao'};
 window.mudarAba=function(aba){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');if(t.hasAttribute('role'))t.setAttribute('aria-selected','false');});
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('tab-'+aba)?.classList.add('active');
+  const _tabNova=document.getElementById('tab-'+aba);
+  _tabNova?.classList.add('active');
+  // A11Y-01: mantém aria-selected em sincronia com a classe .active
+  if(_tabNova?.hasAttribute('role'))_tabNova.setAttribute('aria-selected','true');
   document.getElementById('panel-'+aba)?.classList.add('active');
   const grupo=_grupoDeAba[aba];if(grupo)_ultimaAba[grupo]=aba;
   if(aba==='manutencao')resetAbaManutencao();
