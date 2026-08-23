@@ -1054,7 +1054,22 @@ window.enviarMsgTi=async function(e){
   if(!txt&&!imgPendenteTi)return;if(!modalTicketId)return;
   inp.value='';
   let imagem_url=null;
-  if(imgPendenteTi){try{imagem_url=await uploadImagem(imgPendenteTi);}catch(err){notif('Erro ao enviar imagem.');return}removerImgTi();}
+  // O campo é limpo antes do upload (assíncrono) terminar. Se o upload
+  // falhasse, a função só notificava e retornava — o texto que o técnico
+  // acabou de digitar sumia sem forma de recuperar. Agora ele volta pro
+  // campo, com o cursor no fim, pra poder reenviar (BUG-14).
+  if(imgPendenteTi){
+    try{
+      imagem_url=await uploadImagem(imgPendenteTi);
+    }catch(err){
+      console.error('[enviarMsgTi] upload de imagem falhou',err);
+      inp.value=txt;
+      inp.focus();
+      notif('Erro ao enviar imagem. Seu texto foi mantido.');
+      return;
+    }
+    removerImgTi();
+  }
   try{
     await fetch(`${SB}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({
       ticket_id:modalTicketId,remetente:'TI',conteudo:txt||null,imagem_url,
@@ -1431,9 +1446,17 @@ async function _aiResumoModal(t){
     const resumo=await _groqTI([
       {role:'system',content:'Responda SEMPRE em português brasileiro. Resuma em 1-2 frases diretas. Problema + info relevante. Sem intro. Max 30 palavras.'},
       {role:'user',content:contexto}
-    ],256);
+    // gpt-oss-20b é modelo de raciocínio: gasta 300+ tokens "pensando" antes
+    // de escrever. Com 256 o resumo voltava vazio/truncado em silêncio —
+    // mesma classe de bug já corrigida em auth.js (commits f0ee161/ccc3f69),
+    // onde o teto acabou em 1000. 512 dá margem para o raciocínio + as ~30
+    // palavras pedidas no prompt (BUG-02).
+    ],512);
     txt.textContent=resumo||'Sem resumo disponível.';
   }catch(e){
+    // sem o log, uma falha real (rede, proxy fora, estouro de tokens) ficava
+    // indistinguível de "veio vazio" — ver LOG-02
+    console.error('[_aiResumoModal]',e);
     txt.textContent='(Não foi possível gerar resumo — verifique a conexão)';
   }finally{
     if(spin)spin.style.display='none';
@@ -3364,7 +3387,11 @@ function _atualizarKbDicas(){
   document.addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable)return;
     if(e.ctrlKey||e.metaKey||e.altKey)return;
-    if(document.querySelector('.modal-pc-bg.open,.modal-bg.open,.modal-desc-bg.open,.mini-modal-bg.open'))return;
+    // .sc-overlay é o minigame Skill Check, que aparece em 30% das resoluções
+    // e fica esperando a barra de espaço. Sem ele nesta lista, teclas como
+    // R/P/setas continuavam agindo no chamado POR BAIXO do overlay — dava pra
+    // marcar RESOLVIDO no ticket errado durante o minigame (BUG-06).
+    if(document.querySelector('.modal-pc-bg.open,.modal-bg.open,.modal-desc-bg.open,.mini-modal-bg.open,.sc-overlay.open'))return;
     const abertos=_abertosVisiveis();
     if(!abertos.length)return;
     const selIdx=abertos.findIndex(t=>t.id===selectedId);

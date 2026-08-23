@@ -121,6 +121,12 @@ const STATE = {
   dados:     {},
   arTimers:  {},
   newCounts: {},
+  // conjunto filtrado COMPLETO (não paginado) usado para calcular os KPIs,
+  // com a assinatura dos filtros que o gerou — ver _dadosParaKpi (BUG-07)
+  dadosKpi:  {},
+  kpiSig:    {},
+  // contador por aba para descartar respostas fora de ordem (BUG-10)
+  seq:       {},
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -250,7 +256,15 @@ function mudarAba(aba) {
   if (panelNovo) panelNovo.classList.add('active');
 
   STATE.abaAtiva = aba;
-  STATE.pagina[aba] = 0;
+
+  // Antes zerava a página SEMPRE, mas só recarregava os dados quando não
+  // havia cache. Quem estava na página 3, saía da aba e voltava, continuava
+  // vendo as linhas da página 3 enquanto o app já se achava na página 0: o
+  // contador "1–50 de N" mentia e a checagem de elegibilidade do
+  // recarregamento silencioso do realtime (pagina===0) passava a valer
+  // indevidamente. Agora a página só é zerada quando os dados de fato vão
+  // ser recarregados do zero (BUG-11).
+  if (!STATE.dados[aba]) STATE.pagina[aba] = 0;
 
   STATE.newCounts[aba] = 0;
   _atualizarBadgeRT(aba);
@@ -303,17 +317,45 @@ function limparFiltros(aba) {
   carregarDados(aba);
 }
 
+// ── helpers de data ──
+// toISOString() devolve a data em UTC. Para quem está no Brasil (UTC-3), das
+// 21h em diante o "dia" UTC já virou amanhã — então o filtro rápido "Hoje"
+// consultava o dia errado, enquanto os KPIs da mesma aba usavam
+// new Date().setHours(0,0,0,0) (horário LOCAL) e mostravam outro número.
+// fmtDataLocal é a fonte única de "que dia é hoje aqui" para os dois lados
+// (BUG-08).
+function fmtDataLocal(d) {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Converte um timestamp vindo do banco (o PostgREST devolve em UTC) para o
+// dia LOCAL a que ele pertence. Necessário para agrupar por dia: comparar
+// com `t.aberto_em.startsWith('2026-08-23')` agrupa pelo dia UTC, então um
+// chamado aberto às 22h do dia 22 (UTC-3) contava no dia 23 nos gráficos.
+function diaLocalDe(ts) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  return isNaN(d) ? null : fmtDataLocal(d);
+}
+
 // ── atalhos de data rápida ──
 function setDateRange(aba, range) {
   const hoje = new Date();
-  const fmt = d => d.toISOString().split('T')[0];
+  const fmt = fmtDataLocal;
 
   let start, end = fmt(hoje);
 
   if (range === 'today') {
     start = fmt(hoje);
   } else if (range === '24h') {
-    const d = new Date(hoje); d.setDate(d.getDate() - 1);
+    // Antes subtraía um dia de calendário e arredondava para a meia-noite
+    // daquele dia (sem componente de hora), então a janela real variava
+    // entre ~24h e ~48h conforme a hora do clique. Agora é exatamente 24h
+    // móveis (BUG-09).
+    const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
     start = fmt(d);
   } else if (range === 'week') {
     const d = new Date(hoje); d.setDate(d.getDate() - 7);
@@ -403,9 +445,53 @@ async function fetchAPI(url) {
 // ═══════════════════════════════════════════════════════════════
 // CARREGAR DADOS
 // ═══════════════════════════════════════════════════════════════
+
+// Assinatura dos filtros ativos de uma aba. Serve para saber se o conjunto
+// completo já buscado para os KPIs continua válido ou precisa ser refeito.
+function _assinaturaFiltros(aba) {
+  return (TAB_FILTERS[aba] || [])
+    .map(f => `${f.id}=${document.getElementById(f.id)?.value || ''}`)
+    .join('&');
+}
+
+// Os KPIs (rankings "Top ação", "Mais ativo", "Top tabela" e as contagens
+// "hoje"/"24h") eram calculados só com a PÁGINA visível (≤50 linhas), então
+// mudavam de forma incoerente conforme o usuário paginava e não descreviam o
+// período filtrado que diziam descrever (BUG-07). Agora usam o conjunto
+// filtrado completo.
+//
+// Sem custo extra quando não há o que buscar: se o total cabe numa página, a
+// própria página já é o conjunto completo; e o resultado é cacheado por
+// assinatura de filtro, então paginar não refaz a consulta.
+async function _dadosParaKpi(aba, dataPagina, total) {
+  if (total <= CFG.PER_PAGE) return dataPagina;
+
+  const sig = _assinaturaFiltros(aba);
+  if (STATE.kpiSig[aba] === sig && STATE.dadosKpi[aba]) return STATE.dadosKpi[aba];
+
+  try {
+    const [completo] = await fetchAPI(buildUrl(aba, { allPages: true }));
+    STATE.dadosKpi[aba] = completo;
+    STATE.kpiSig[aba]   = sig;
+    return completo;
+  } catch (err) {
+    // melhor um KPI da página atual do que nenhum — mas registra, porque
+    // silenciar aqui deixaria o número errado sem explicação (LOG-02)
+    console.error(`[painel-logs] KPI de ${aba}: falha ao buscar conjunto completo, usando a página atual`, err);
+    return dataPagina;
+  }
+}
+
 async function carregarDados(aba) {
   const container = document.getElementById(`rows-${aba}`);
   if (!container) return;
+
+  // O poll de 30s e o recarregamento silencioso do realtime podiam estar em
+  // voo ao mesmo tempo para a mesma aba; a resposta mais LENTA sobrescrevia a
+  // mais nova, deixando a tela com dado velho sem nenhum sinal disso
+  // (BUG-10). O contador de sequência descarta qualquer resposta que não seja
+  // a do carregamento mais recente.
+  const seq = STATE.seq[aba] = (STATE.seq[aba] || 0) + 1;
 
   container.innerHTML = '<div class="loading"><div class="spinner"></div> Carregando…</div>';
 
@@ -414,17 +500,22 @@ async function carregarDados(aba) {
     if (!url) throw new Error('Aba desconhecida: ' + aba);
 
     const [data, total] = await fetchAPI(url);
+    if (seq !== STATE.seq[aba]) return;   // chegou tarde, já tem coisa mais nova
 
     STATE.dados[aba]  = data;
     STATE.totais[aba] = total;
 
     RENDER[aba]?.(data, container);
-    RENDER_KPI[aba]?.(data);
     renderPaginacao(aba, total);
     atualizarLastUpdate(aba);
     atualizarContador(aba, total);
 
+    const dadosKpi = await _dadosParaKpi(aba, data, total);
+    if (seq !== STATE.seq[aba]) return;
+    RENDER_KPI[aba]?.(dadosKpi);
+
   } catch (err) {
+    if (seq !== STATE.seq[aba]) return;
     console.error(`[painel-logs] Erro ao carregar ${aba}:`, err);
     container.innerHTML = `<div class="empty">
       <div class="empty-icon">⚠️</div>
@@ -912,7 +1003,7 @@ function _gerarCSV(data, filename) {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `${filename}_${fmtDataLocal(new Date())}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -1431,15 +1522,15 @@ async function carregarDashboard() {
   // Lê período dos inputs (se preenchidos) ou usa padrão 30d
   const inputDe  = document.getElementById('dash-de')?.value;
   const inputAte = document.getElementById('dash-ate')?.value;
-  const dataHoje = new Date().toISOString().split('T')[0];
-  const ago30def = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+  const dataHoje = fmtDataLocal(new Date());
+  const ago30def = fmtDataLocal(new Date(Date.now() - 30 * 86400000));
   const periodoAte = inputAte || dataHoje;
   const periodoDe  = inputDe  || ago30def;
   // Inicializa inputs se vazios
   if(!inputDe)  { const el=document.getElementById('dash-de');  if(el)el.value=periodoDe; }
   if(!inputAte) { const el=document.getElementById('dash-ate'); if(el)el.value=periodoAte; }
 
-  const ago7  = new Date(Date.now() - 7  * 86400000).toISOString().split('T')[0];
+  const ago7  = fmtDataLocal(new Date(Date.now() - 7 * 86400000));
   const ago30 = periodoDe;
 
   let tickets = [], acessos = [], tiUsers = [];
@@ -1457,11 +1548,11 @@ async function carregarDashboard() {
   // Últimos 7 dias
   const dias7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(Date.now() - (6 - i) * 86400000);
-    return d.toISOString().split('T')[0];
+    return fmtDataLocal(d);
   });
   const labels7 = dias7.map(d => { const [,m,day] = d.split('-'); return `${day}/${m}`; });
-  const ticketsPorDia = dias7.map(dia => tickets.filter(t => t.aberto_em?.startsWith(dia)).length);
-  const acessosPorDia = dias7.map(dia => acessos.filter(a => a.timestamp?.startsWith(dia)).length);
+  const ticketsPorDia = dias7.map(dia => tickets.filter(t => diaLocalDe(t.aberto_em) === dia).length);
+  const acessosPorDia = dias7.map(dia => acessos.filter(a => diaLocalDe(a.timestamp) === dia).length);
 
   // Por tipo (últimos 30 dias)
   const tipos  = ['hardware','software','rede','periferico','outro'];
@@ -1520,7 +1611,7 @@ async function carregarDashboard() {
   if (c4) _dashCharts.s = new Chart(c4, { type: 'bar', data: { labels: statusLabels, datasets: [{ data: ticketsPorStatus, backgroundColor: ['#f5d000','#f97316','#06b6d4','#6b7280','#c0171a'], borderWidth: 0, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: scaleOpts } });
 
   // KPIs do topo do dashboard
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = fmtDataLocal(new Date());
   const hoje = tickets.filter(t => t.aberto_em?.startsWith(todayStr));
   const resolvidosHoje = hoje.filter(t => t.status === 'resolvido' || t.status === 'descartado');
   const pendentes = tickets.filter(t => t.status === 'aberto' || t.status === 'em_andamento');
@@ -1582,9 +1673,9 @@ async function carregarDashboard() {
   }
 
   // Feature 9 — Comparativo de semanas (linha: semana atual vs anterior)
-  const semAtual  = dias7.map(dia => tickets.filter(t => t.aberto_em?.startsWith(dia)).length);
-  const diasAnt   = Array.from({ length: 7 }, (_, i) => new Date(Date.now() - (13 - i) * 86400000).toISOString().split('T')[0]);
-  const semAnt    = diasAnt.map(dia => tickets.filter(t => t.aberto_em?.startsWith(dia)).length);
+  const semAtual  = dias7.map(dia => tickets.filter(t => diaLocalDe(t.aberto_em) === dia).length);
+  const diasAnt   = Array.from({ length: 7 }, (_, i) => fmtDataLocal(new Date(Date.now() - (13 - i) * 86400000)));
+  const semAnt    = diasAnt.map(dia => tickets.filter(t => diaLocalDe(t.aberto_em) === dia).length);
   const c5 = document.getElementById('chart-semanas')?.getContext('2d');
   if (c5) {
     _dashCharts.sem?.destroy();
@@ -1894,8 +1985,8 @@ window.onGsInput         = onGsInput;
 window.carregarDados     = carregarDados;
 window.carregarDashboard = carregarDashboard;
 window.dashPeriodoPreset = function(dias) {
-  const ate = new Date().toISOString().split('T')[0];
-  const de  = new Date(Date.now()-dias*86400000).toISOString().split('T')[0];
+  const ate = fmtDataLocal(new Date());
+  const de  = fmtDataLocal(new Date(Date.now()-dias*86400000));
   const deEl=document.getElementById('dash-de'), ateEl=document.getElementById('dash-ate');
   if(deEl)deEl.value=de; if(ateEl)ateEl.value=ate;
   document.querySelectorAll('.dash-periodo-btn').forEach(b=>b.classList.remove('active'));
@@ -1917,8 +2008,8 @@ window.gerarRelatorioIA = async function() {
 
   try {
     // Coleta dados dos últimos 7 dias
-    const ate = new Date().toISOString().split('T')[0];
-    const de = new Date(Date.now()-7*86400000).toISOString().split('T')[0];
+    const ate = fmtDataLocal(new Date());
+    const de = fmtDataLocal(new Date(Date.now()-7*86400000));
     const H7 = { apikey: CFG.SB_KEY, Authorization: `Bearer ${CFG.SB_KEY}` };
     const [r1, r2] = await Promise.all([
       fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${de}T00:00:00&aberto_em=lte.${ate}T23:59:59&select=tipo,status,prioridade,laboratorio,aberto_em,resolvido_em`, { headers: H7 }),
@@ -1938,7 +2029,7 @@ window.gerarRelatorioIA = async function() {
     const porTipo = dados.reduce((a,t)=>{a[t.tipo||'outro']=(a[t.tipo||'outro']||0)+1;return a},{});
     const porLab  = dados.reduce((a,t)=>{if(t.laboratorio){a[t.laboratorio]=(a[t.laboratorio]||0)+1;}return a},{});
     const topLab  = Object.entries(porLab).sort(([,a],[,b])=>b-a).slice(0,5).map(([k,v])=>`${k}: ${v}`).join(', ');
-    const porDia  = dados.reduce((a,t)=>{const d=t.aberto_em?.split('T')[0];if(d){a[d]=(a[d]||0)+1;}return a},{});
+    const porDia  = dados.reduce((a,t)=>{const d=diaLocalDe(t.aberto_em);if(d){a[d]=(a[d]||0)+1;}return a},{});
     const maxDia  = Object.entries(porDia).sort(([,a],[,b])=>b-a)[0]||['N/A','0'];
     const tiposStr = Object.entries(porTipo).map(([k,v])=>`${k}: ${v}`).join(', ');
     const temposMed = dados.filter(t=>t.aberto_em&&t.resolvido_em).map(t=>(new Date(t.resolvido_em)-new Date(t.aberto_em))/60000);
@@ -1960,15 +2051,47 @@ Tempo médio de resolução: ${tempoMedMin!=null?tempoMedMin+' minutos':'dados i
       body: JSON.stringify({
         model: 'openai/gpt-oss-20b',
         temperature: 0.4,
-        max_tokens: 800,
+        // O prompt pede até 250 palavras (~400-450 tokens) e gpt-oss-20b é
+        // modelo de raciocínio, que ainda gasta centenas de tokens "pensando"
+        // antes de escrever. Com 800 o teto era realista demais e a resposta
+        // podia ser cortada no meio (BUG-03). 2000 dá folga para raciocínio +
+        // relatório completo.
+        max_tokens: 2000,
         messages: [
           { role: 'system', content: 'Responda SEMPRE em português brasileiro. Você é um analista de TI escolar. Com base nos dados fornecidos, escreva um relatório semanal de suporte em português claro e direto. Use linguagem natural, sem markdown, sem asteriscos, sem bullet points formatados com traços — apenas parágrafos curtos separados por linha em branco. Inclua: resumo geral do período, padrões observados, laboratórios mais problemáticos, e uma recomendação prática para a equipe de TI. Máximo 250 palavras.' },
           { role: 'user', content: `Dados da semana:\n${contexto}` }
         ]
       })
     });
+    // Sem esta checagem, um erro do proxy (429, 500, edge function fora) caía
+    // direto no .json() e produzia texto vazio — o usuário via um relatório em
+    // branco sem nenhum indício de que houve falha (BUG-03 / LOG-02).
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => '');
+      console.error('[relatorioSemanal] proxy respondeu', resp.status, detalhe);
+      throw new Error(`o serviço de IA respondeu ${resp.status}`);
+    }
+
     const d = await resp.json();
-    const texto = (d.choices?.[0]?.message?.content||'').replace(/<think>[\s\S]*?<\/think>/gi,'').trim();
+    const bruto = d.choices?.[0]?.message?.content || '';
+
+    // O removedor de <think> só funciona quando o bloco FECHA. Se a resposta
+    // foi cortada no meio do raciocínio — exatamente o cenário de
+    // truncamento — sobrava o "pensamento" cru do modelo na tela do T.I.
+    // Nesse caso é melhor descartar a resposta inteira do que exibir algo
+    // que não era destinado ao usuário final (BUG-03).
+    const aberturasThink = (bruto.match(/<think>/gi) || []).length;
+    const fechamentosThink = (bruto.match(/<\/think>/gi) || []).length;
+    if (aberturasThink > fechamentosThink) {
+      console.error('[relatorioSemanal] resposta truncada no meio do <think>', { aberturasThink, fechamentosThink });
+      throw new Error('a resposta da IA veio incompleta — tente gerar de novo');
+    }
+
+    const texto = bruto.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    if (!texto) {
+      console.error('[relatorioSemanal] resposta vazia apos limpar <think>', { bruto });
+      throw new Error('a IA devolveu uma resposta vazia — tente gerar de novo');
+    }
 
     conteudo.innerHTML = `
       <div style="font-size:.58rem;font-weight:700;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">RELATÓRIO SEMANAL · ${de} a ${ate}</div>
