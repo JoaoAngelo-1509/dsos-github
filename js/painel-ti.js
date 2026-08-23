@@ -2,6 +2,7 @@
 import { SB, H, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
 import { escapeHtml } from './ui.js';
+import { rtStatusHandler } from './realtime-manager.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -149,6 +150,21 @@ window.addEventListener('DOMContentLoaded',async()=>{
   await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs(),carregarTIs(),carregarProfs(),carregarNaoLidas()]);
   _carregarLabsDisponiveis();
 
+  // ─────────────────────────────────────────────────────────────────────
+  // REALTIME — canal principal do painel T.I. (vive por toda a sessão da página)
+  // Tabela `ticket`:
+  //   INSERT → novo chamado aberto por aluno/professor: recarrega lista+KPIs,
+  //            toca som e dispara notificação (emergência tem som/label distintos)
+  //   UPDATE → chamado mudou de status/prioridade em qualquer origem: recarrega
+  //            lista+KPIs para refletir a mudança em todos os painéis T.I. abertos
+  // Tabela `mensagem`:
+  //   INSERT → nova mensagem (de PC ou de outro TI): recarrega contagem de não lidas
+  //            e toca som se veio do PC
+  //   UPDATE → mensagem marcada como lida em outra aba/sessão: recarrega não lidas
+  // Tabela `usuario_ti`:
+  //   UPDATE → presença (online/ausente) de outro técnico mudou: recarrega mapa de TIs
+  // Quem recebe: todos os técnicos T.I. com o painel aberto (sem filtro por usuário).
+  // ─────────────────────────────────────────────────────────────────────
   sbClient.channel('tickets-realtime')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},payload=>{
       carregarTickets();carregarKPIs();
@@ -164,7 +180,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem'},()=>carregarNaoLidas())
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
-    .subscribe();
+    .subscribe(rtStatusHandler('tickets-realtime'));
 
   let _pollTI=setInterval(()=>{carregarTickets();carregarKPIs();carregarPCs();carregarNaoLidas();},30000);
   document.addEventListener('visibilitychange',()=>{
@@ -944,11 +960,15 @@ async function iniciarChat(ticketId,ativo){
   chatInput.placeholder=ativo?'Mensagem para o PC…':'Chamado encerrado — chat desabilitado.';
   if(statusLbl)statusLbl.textContent=ativo?'Em aberto':'Encerrado';
   await carregarMsgsTi(ticketId);
+  // ── REALTIME — canal de chat do modal, escopado a este ticket ──
+  // Substitui o canal anterior (se o TI trocou de chamado sem fechar o modal)
+  // e é desinscrito em fecharModal(). INSERT/UPDATE em `mensagem` filtrados
+  // por ticket_id=eq.{ticketId}: recebe só o que pertence a este chamado.
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   realtimeChannel=sbClient.channel(`chat-ti-${ticketId}`)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>{carregarMsgsTi(ticketId);marcarLidoTi(ticketId);})
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>carregarMsgsTi(ticketId))
-    .subscribe();
+    .subscribe(rtStatusHandler(`chat-ti-${ticketId}`));
 }
 async function carregarMsgsTi(ticketId){
   try{

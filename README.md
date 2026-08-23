@@ -23,6 +23,7 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 ├── js/
 │   ├── supabase-config.js    ← Config do Supabase (URL + anon key) — NÃO versionado, ver SETUP.md
 │   ├── ui.js                 ← Utilitários compartilhados (tema, toast, escapeHtml, labels de status)
+│   ├── realtime-manager.js   ← Diagnóstico padronizado do status dos canais Supabase Realtime (usado por painel-ti/pc/logs)
 │   ├── dsos-ui.js             ← Popups estilizados (dsosAlert/dsosConfirm), substitui alert/confirm nativos
 │   ├── auth.js                ← Lógica de login, rate limiting e validação de nome via IA
 │   ├── logging.js             ← Cliente de auditoria (RPCs de log), usado pelo painel-logs

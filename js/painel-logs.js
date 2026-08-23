@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════════
 import { SB_URL, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
+import { rtStatusHandler } from './realtime-manager.js';
 
 const CFG = {
   SB_URL,
@@ -1094,6 +1095,24 @@ const TABLE_TO_ABA = {
   'alteracoes_criticas_log': 'criticas',
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// REALTIME — canal único do painel de logs (vive por toda a sessão da página)
+//
+// Para cada tabela de log em TABLE_TO_ABA:
+//   INSERT → se a aba correspondente está ativa e na página 0, recarrega a
+//            tabela silenciosamente (sem loading spinner); caso contrário,
+//            só incrementa o contador "novos" mostrado no badge da aba
+// Tabela `acesso_log`:
+//   UPDATE → captura duracao_sessao preenchida no logout; recarrega se a aba
+//            "acessos" está ativa e na página 0
+// Tabela `sessao_ativa` (INSERT/UPDATE/DELETE):
+//   Mantém o Set local `_sessoesAtivas` sincronizado e re-marca as células
+//   "duração ao vivo" no DOM sem refazer fetch — evita resetar a lista a
+//   cada heartbeat de 30s de outro usuário logado
+//
+// Quem recebe: qualquer sessão com o painel de logs aberto (sem filtro).
+// O indicador "AO VIVO" no topo (rt-dot) reflete o status da subscription.
+// ─────────────────────────────────────────────────────────────────────────
 function iniciarRealtime() {
   const _sb = window.supabase;
   if (!_sb) { console.warn('[realtime] SDK não carregado'); return; }
@@ -1140,7 +1159,9 @@ function iniciarRealtime() {
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'UPDATE'))
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'DELETE'));
 
+  const _logStatus = rtStatusHandler('logs-realtime-all');
   channel.subscribe(status => {
+    _logStatus(status);
     const dot = document.getElementById('rt-dot');
     if (!dot) return;
     if (status === 'SUBSCRIBED') {

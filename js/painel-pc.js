@@ -2,6 +2,7 @@
 import { SB_URL, SB_KEY, H } from './supabase-config.js';
 import { dsosAlert } from './dsos-ui.js';
 import { escapeHtml } from './ui.js';
+import { rtStatusHandler } from './realtime-manager.js';
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
@@ -484,6 +485,15 @@ async function carregarMsgs(ticketId) {
   }catch(e){console.error(e)}
 }
 
+// ── REALTIME — canal de chat do modal do PC/Professor, escopado a este ticket ──
+// Substitui o canal anterior ao trocar de chamado e é desinscrito em fecharChat().
+// Tabela `mensagem` (filtro ticket_id=eq.{ticketId}):
+//   INSERT → nova mensagem (própria ou do TI): recarrega o chat, marca como lida
+//            e toca som se veio do TI
+//   UPDATE → mensagem existente mudou (ex: marcada como lida pelo TI): recarrega
+// Tabela `ticket` (filtro id=eq.{ticketId}):
+//   UPDATE → chamado mudou de status: toca som se foi encerrado, recarrega lista
+//            de chamados e o chat (para refletir a resolução exibida no modal)
 function _iniciarRealtime(ticketId) {
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   realtimeChannel=sbClient.channel(`chat-pc-${ticketId}`)
@@ -497,7 +507,7 @@ function _iniciarRealtime(ticketId) {
       if(['resolvido','descartado','falso_alarme'].includes(payload.new?.status))window._dsosSom?.notificacao?.();
       carregarChamados();carregarMsgs(ticketId);
     })
-    .subscribe();
+    .subscribe(rtStatusHandler(`chat-pc-${ticketId}`));
 }
 
 window.fecharChat = function() {

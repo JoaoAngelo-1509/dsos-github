@@ -57,6 +57,7 @@ dsos/
 │   ├── supabase-config.js       ← PRODUÇÃO (não versionado — não alterar sem aprovação)
 │   ├── supabase-config.test.js  ← TESTE (não versionado — usar para validar mudanças)
 │   ├── ui.js                     ← utilitários compartilhados
+│   ├── realtime-manager.js       ← diagnóstico padronizado dos canais Supabase Realtime
 │   ├── dsos-ui.js                ← popups estilizados (dsosAlert/dsosConfirm)
 │   ├── auth.js                    ← lógica de login
 │   ├── logging.js                 ← cliente de auditoria
