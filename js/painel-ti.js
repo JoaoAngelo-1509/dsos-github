@@ -190,7 +190,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'professor'},()=>carregarProfs())
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'professor'},()=>carregarProfs())
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'professor'},()=>carregarProfs())
-    .subscribe(rtStatusHandler('tickets-realtime'));
+    .subscribe(rtStatusHandler('tickets-realtime','rt-dot'));
 
   let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);
   document.addEventListener('visibilitychange',()=>{

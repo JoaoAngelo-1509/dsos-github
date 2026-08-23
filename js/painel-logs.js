@@ -1159,22 +1159,7 @@ function iniciarRealtime() {
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'UPDATE'))
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'DELETE'));
 
-  const _logStatus = rtStatusHandler('logs-realtime-all');
-  channel.subscribe(status => {
-    _logStatus(status);
-    const dot = document.getElementById('rt-dot');
-    if (!dot) return;
-    if (status === 'SUBSCRIBED') {
-      dot.style.background = '#22c55e';
-      dot.style.boxShadow  = '0 0 6px #22c55e88';
-    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      dot.style.background = '#ef4444';
-      dot.style.boxShadow  = 'none';
-    } else {
-      dot.style.background = '#eab308';
-      dot.style.boxShadow  = 'none';
-    }
-  });
+  channel.subscribe(rtStatusHandler('logs-realtime-all', 'rt-dot'));
 }
 
 function _semFiltros(aba) {

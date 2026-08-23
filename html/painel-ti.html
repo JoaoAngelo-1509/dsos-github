@@ -25,6 +25,10 @@
       <span id="info-data">—</span>
       <span>Turno: <strong id="info-turno">—</strong></span>
     </div>
+    <div id="rt-indicator" title="Status da conexão em tempo real" style="display:flex;align-items:center;gap:5px;font-size:.6rem;font-weight:600;letter-spacing:.06em;color:var(--muted,#888);padding:0 4px">
+      <span id="rt-dot" style="width:7px;height:7px;border-radius:50%;background:var(--yellow,#eab308);flex-shrink:0;transition:background .4s"></span>
+      AO VIVO
+    </div>
     <div class="topbar-user" onclick="ciclarPresenca()" style="cursor:pointer" title="Clique para mudar status de presença"><div class="online-dot" id="presenca-dot"></div><span id="nome-ti">T.I.</span></div>
     <button class="btn-icon" id="btn-trocar-papel" onclick="trocarParaProfessor()" title="Trocar para modo Professor" style="display:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
