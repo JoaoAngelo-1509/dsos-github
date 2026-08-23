@@ -35,14 +35,32 @@ function _sessaoEstaAtiva(usuarioId, usuarioTipo) {
   return _sessoesAtivas.has(`${usuarioId}:${usuarioTipo}`);
 }
 function _atualizarCellsSessao() {
-  // Atualiza cada linha já renderizada da aba acessos sem refazer o fetch
+  // BUG-12: o pareamento linha-do-DOM ⇄ sessão usava só usuario_id:usuario_tipo,
+  // sem vínculo com a linha específica de acesso_log. Quando a mesma conta
+  // tinha DUAS linhas na tela (o caso clássico: um logout sujo seguido de novo
+  // login), a sessão nova marcava as duas como "ao vivo" — e a linha antiga
+  // passava a contar desde o login antigo, mostrando uma duração
+  // completamente errada, justamente no cenário que mais interessaria
+  // investigar numa auditoria.
+  //
+  // Só a linha MAIS RECENTE de cada conta pode representar a sessão ativa;
+  // as anteriores são sessões encerradas sem logout.
+  const maisRecentePorConta = new Map();
+  document.querySelectorAll('.table-row[data-uid][data-utipo]').forEach(row => {
+    const chave = `${row.dataset.uid}:${row.dataset.utipo}`;
+    const ts = row.dataset.loginTs || '';
+    const atual = maisRecentePorConta.get(chave);
+    if (!atual || ts > atual.ts) maisRecentePorConta.set(chave, { ts, row });
+  });
+
   document.querySelectorAll('.live-dur[data-start], .cell-sessao-inativa').forEach(el => {
     const row = el.closest('.table-row');
     if (!row) return;
     const uid  = row.dataset.uid;
     const tipo = row.dataset.utipo;
     if (!uid || !tipo) return;
-    const ativo = _sessaoEstaAtiva(uid, tipo);
+    const ehALinhaMaisRecente = maisRecentePorConta.get(`${uid}:${tipo}`)?.row === row;
+    const ativo = ehALinhaMaisRecente && _sessaoEstaAtiva(uid, tipo);
     if (ativo && !el.classList.contains('live-dur')) {
       // era inativa, virou ativa
       el.className = 'cell-mono live-dur';
@@ -413,8 +431,10 @@ function buildUrl(aba, opts = {}) {
   if (!meta) return null;
 
   const page   = opts.allPages ? null : (STATE.pagina[aba] || 0);
-  const offset = page !== null ? page * CFG.PER_PAGE : 0;
-  const limit  = opts.allPages ? 10000 : CFG.PER_PAGE;
+  // opts.limit/opts.offset permitem varrer o conjunto em blocos (ver
+  // exportarTudo, PERF-04) sem depender do estado de paginação da tela
+  const offset = opts.offset ?? (page !== null ? page * CFG.PER_PAGE : 0);
+  const limit  = opts.limit  ?? (opts.allPages ? 10000 : CFG.PER_PAGE);
 
   let url = `${CFG.SB_URL}/rest/v1/${meta.table}?select=*&order=${meta.order}.desc&limit=${limit}&offset=${offset}`;
 
@@ -616,7 +636,14 @@ const RENDER = {
       const loginTag = r.usuario_tipo === 'pc'
         ? `<span class="cell-mono" style="color:var(--green)">${hl(r.usuario_login, term)}</span>`
         : `<span class="cell-mono">${hl(r.usuario_login, term)}</span>`;
-      const estaAtivo = r.status_login === 'sucesso' && !r.duracao_sessao && _sessaoEstaAtiva(r.usuario_id, r.usuario_tipo);
+      // BUG-12: idem _atualizarCellsSessao — se a mesma conta aparece mais de
+      // uma vez na página, só a entrada mais recente pode ser a sessão ativa.
+      const maisRecenteDaConta = data
+        .filter(x => x.usuario_id === r.usuario_id && x.usuario_tipo === r.usuario_tipo && x.status_login === 'sucesso')
+        .reduce((a, x) => (!a || x.timestamp > a.timestamp ? x : a), null);
+      const estaAtivo = r.status_login === 'sucesso' && !r.duracao_sessao
+        && maisRecenteDaConta?.timestamp === r.timestamp
+        && _sessaoEstaAtiva(r.usuario_id, r.usuario_tipo);
       const duracaoCell = estaAtivo
         ? `<span class="cell-mono live-dur" data-start="${r.timestamp}" style="color:var(--green)">—</span>`
         : r.duracao_sessao
@@ -977,14 +1004,41 @@ function exportarCSV(aba, filename) {
   showNotif('CSV exportado com sucesso', 'ok');
 }
 
+// PERF-04: antes esta função pedia limit=10000 numa tacada só, sem sequer
+// saber quantos registros existiam — uma resposta potencialmente enorme
+// montada de uma vez no navegador. Agora conta primeiro com HEAD +
+// content-range (o mesmo truque que verImpactoLimpezaLogs já usava para não
+// baixar linha nenhuma) e, se houver muita coisa, busca em blocos com
+// feedback de progresso.
+const _EXPORT_CHUNK = 1000;
+
 async function exportarTudo(aba, filename) {
-  showNotif('Buscando todos os registros…', 'info');
+  const meta = TAB_META[aba];
+  if (!meta) return;
+
+  showNotif('Calculando volume…', 'info');
   try {
-    const url = buildUrl(aba, { allPages: true });
-    const [data] = await fetchAPI(url);
-    if (!data.length) { showNotif('Nenhum dado para exportar', 'warn'); return; }
-    _gerarCSV(data, filename + '_completo');
-    showNotif(`${data.length} registros exportados`, 'ok');
+    // 1) contagem barata: HEAD devolve só o content-range, sem corpo
+    const [, total] = await (async () => {
+      const res = await fetch(buildUrl(aba, { limit: 1, offset: 0 }), { method: 'HEAD', headers: headers() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return [null, parseInt(res.headers.get('content-range')?.split('/')[1] || '0', 10)];
+    })();
+
+    if (!total) { showNotif('Nenhum dado para exportar', 'warn'); return; }
+
+    // 2) busca em blocos, para não depender de uma única resposta gigante
+    const partes = [];
+    for (let offset = 0; offset < total; offset += _EXPORT_CHUNK) {
+      showNotif(`Exportando… ${Math.min(offset + _EXPORT_CHUNK, total)} de ${total}`, 'info');
+      const [bloco] = await fetchAPI(buildUrl(aba, { limit: _EXPORT_CHUNK, offset }));
+      if (!bloco.length) break;
+      partes.push(...bloco);
+    }
+
+    if (!partes.length) { showNotif('Nenhum dado para exportar', 'warn'); return; }
+    _gerarCSV(partes, filename + '_completo');
+    showNotif(`${partes.length} registros exportados`, 'ok');
   } catch (err) {
     console.error('[exportarTudo]', err);
     showNotif('Erro ao exportar — verifique a conexão', 'err');
