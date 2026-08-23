@@ -61,6 +61,7 @@ Em produção, o deploy é feito na Netlify (`netlify.toml` já configura os rew
 
 - [SETUP.md](SETUP.md) — como configurar o ambiente local
 - [WORKFLOW.md](WORKFLOW.md) — fluxo de alterações no banco de dados
+- [docs/REALTIME.md](docs/REALTIME.md) — arquitetura de realtime (canais, eventos, diagnóstico)
 - [CHANGELOG.md](CHANGELOG.md) — histórico de versões
 - [LASTCHANGES.md](LASTCHANGES.md) — resumo das últimas alterações
 - [EASTER_EGGS.md](EASTER_EGGS.md) — guia de todos os easter eggs escondidos no sistema
