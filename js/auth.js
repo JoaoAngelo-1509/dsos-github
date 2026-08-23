@@ -112,8 +112,10 @@ async function validarNome(nome) {
       // gpt-oss-20b é um modelo de raciocínio: gasta tokens "pensando" antes
       // de escrever a resposta final. Com 200 tokens ele estourava o limite
       // ainda no raciocínio (~198 tokens) e nunca chegava a escrever
-      // SIM/NÃO — sempre caía no fallback de "resposta ambígua".
-      max_tokens: 600,
+      // SIM/NÃO — sempre caía no fallback de "resposta ambígua". O raciocínio
+      // varia bastante por entrada (visto 89 a 546 tokens em produção) — 1000
+      // dá margem confortável mesmo nos casos mais "difíceis" para o modelo.
+      max_tokens: 1000,
       messages: [
         {
           role: 'system',
