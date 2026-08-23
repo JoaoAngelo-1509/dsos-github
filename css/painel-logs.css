@@ -912,16 +912,22 @@ mark.hl{background:rgba(245,208,0,.28);color:inherit;border-radius:2px;padding:0
   }
   .table-header .cell{color:#fff!important;opacity:1!important}
 
-  /* linhas */
-  .log-row,
-  [data-hacker="1"] .log-row{
+  /* linhas
+     DEAD-03: este bloco referenciava .log-row, classe que não existe mais —
+     o renderizador gera .table-row (ver RENDER em js/painel-logs.js). Ou
+     seja, nenhuma destas regras pegava nada. Corrigido para a classe real
+     em vez de removido, porque o bloco @media print ainda vale quando o
+     usuário imprime a página direto pelo Ctrl+P (os botões de exportar
+     abrem uma janela com HTML e CSS próprios e não passam por aqui). */
+  .table-row,
+  [data-hacker="1"] .table-row{
     background:#fff!important;color:#1a1a2e!important;
     border-bottom:1px solid #e2e8f0!important;
     font-size:.68rem!important;padding:6px 12px!important
   }
-  .log-row:nth-child(even),
-  [data-hacker="1"] .log-row:nth-child(even){background:#f7f9fc!important}
-  .log-row:hover,[data-hacker="1"] .log-row:hover{background:#f7f9fc!important}
+  .table-row:nth-child(even),
+  [data-hacker="1"] .table-row:nth-child(even){background:#f7f9fc!important}
+  .table-row:hover,[data-hacker="1"] .table-row:hover{background:#f7f9fc!important}
 
   /* células */
   .cell,.cell-mono,.cell-tag,.cell-label{
@@ -930,19 +936,20 @@ mark.hl{background:rgba(245,208,0,.28);color:inherit;border-radius:2px;padding:0
   }
   [data-hacker="1"] .cell,[data-hacker="1"] .cell-mono{color:#1a1a2e!important}
 
-  /* badges de status */
-  .badge-status{border-radius:3px!important;font-size:.6rem!important;font-weight:700!important;padding:2px 6px!important}
-  .badge-sucesso{background:#dcfce7!important;color:#166534!important}
-  .badge-falha{background:#fee2e2!important;color:#991b1b!important}
-  .badge-warn{background:#fef9c3!important;color:#854d0e!important}
+  /* badges de status
+     Mesma correção do bloco de linhas acima: as classes escritas aqui
+     (.badge-status/.badge-sucesso/.badge-falha/.badge-warn) não existem —
+     badgeStatus() em js/painel-logs.js gera .spill + .sp-ok/.sp-erro/.sp-warn. */
+  .spill{border-radius:3px!important;font-size:.6rem!important;font-weight:700!important;padding:2px 6px!important}
+  .sp-ok{background:#dcfce7!important;color:#166534!important}
+  .sp-erro{background:#fee2e2!important;color:#991b1b!important}
+  .sp-warn{background:#fef9c3!important;color:#854d0e!important}
 
-  /* rodapé automático com data */
-  .card::after{
-    content:'Gerado em: 'attr(data-print-date);
-    display:block;text-align:right;
-    font-size:.6rem;color:#718096;
-    padding:6px 12px 8px;border-top:1px solid #e2e8f0
-  }
+  /* DEAD-04: havia aqui um `.card::after` com
+     `content:'Gerado em: ' attr(data-print-date)`. O atributo
+     data-print-date nunca é definido em lugar nenhum do projeto (conferido
+     em todo html/ e js/), então o rodapé saía como "Gerado em: " seco.
+     Removido junto com as classes órfãs acima. */
 }
 
 /* ═══════════════════════════════════════════════════

@@ -7,7 +7,7 @@
 import { SB_URL, SB_KEY } from './supabase-config.js';
 import { dsosConfirm } from './dsos-ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
-import { sair } from './ui.js';
+import { sair, escapeHtml } from './ui.js';
 import { initSessionGuard } from './session-guard.js';
 
 const CFG = {
@@ -199,7 +199,11 @@ function toggleTema() {
   const html = document.documentElement;
   const dark = html.getAttribute('data-theme') !== 'light';
   html.setAttribute('data-theme', dark ? 'light' : 'dark');
-  localStorage.setItem('dsos-tema', dark ? 'light' : 'dark');
+  // DUP-04: esta página gravava em 'dsos-tema', enquanto ui.js, auth.js,
+  // painel-ti.js e painel-pc.js usam 'dsos_tema_login'. Não era só
+  // duplicação — era um bug de UX real: quem ajustava o tema no painel T.I.
+  // e abria o painel de logs via o tema "voltar atrás", e vice-versa.
+  localStorage.setItem('dsos_tema_login', dark ? 'light' : 'dark');
   const ico = document.getElementById('ico-tema');
   if (ico) {
     ico.innerHTML = dark
@@ -209,7 +213,7 @@ function toggleTema() {
 }
 
 (function restaurarTema() {
-  const t = localStorage.getItem('dsos-tema');
+  const t = localStorage.getItem('dsos_tema_login');
   if (t) {
     document.documentElement.setAttribute('data-theme', t);
     if (t === 'light') {
@@ -543,9 +547,10 @@ function hl(text, term) {
   return escaped.replace(new RegExp(`(${escapedTerm})`, 'gi'), '<mark class="hl">$1</mark>');
 }
 
-function _getSearchTerm(aba, fieldSuffix) {
-  const el = document.getElementById(fieldSuffix) || document.getElementById(`${aba}-${fieldSuffix}`);
-  return el?.value?.trim() || '';
+// DEAD-05: todo call site passa o id completo do campo, então o fallback
+// `${aba}-${fieldSuffix}` que existia aqui nunca era alcançado.
+function _getSearchTerm(aba, fieldId) {
+  return document.getElementById(fieldId)?.value?.trim() || '';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1127,12 +1132,12 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-function e(v) {
-  if (v === null || v === undefined) return '';
-  return String(v)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
+// DUP-02: este arquivo era o único que reimplementava o escape em vez de
+// importar de ui.js (painel-pc.js e painel-ti.js já importavam). A cópia era
+// idêntica, e foi justamente essa divergência de origem que deixou o esc()
+// logo abaixo sair do padrão do projeto sem ninguém notar (INJ-02).
+// Mantido o nome curto `e` porque é usado em ~50 pontos de template string.
+const e = escapeHtml;
 
 function esc(obj) {
   return JSON.stringify(obj).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -1678,7 +1683,9 @@ async function carregarDashboard() {
   const semAnt    = diasAnt.map(dia => tickets.filter(t => diaLocalDe(t.aberto_em) === dia).length);
   const c5 = document.getElementById('chart-semanas')?.getContext('2d');
   if (c5) {
-    _dashCharts.sem?.destroy();
+    // DEAD-06: havia um `_dashCharts.sem?.destroy()` aqui, sem efeito — todos
+    // os charts já são destruídos e o objeto é zerado (`_dashCharts = {}`) no
+    // início desta mesma função, então `.sem` é sempre undefined neste ponto.
     _dashCharts.sem = new Chart(c5, {
       type: 'line',
       data: {
@@ -1734,10 +1741,12 @@ async function carregarAvaliacoes() {
   listEl.innerHTML  = '<div class="loading"><div class="spinner"></div> Carregando…</div>';
   statsEl.innerHTML = '';
   try {
-    const { SUPABASE_URL: SB, SUPABASE_HEADERS: H } = await import('./supabase-config.js');
+    // DEAD-07: aqui havia um `await import('./supabase-config.js')` dinâmico
+    // que redefinia SB/H localmente, redundante — o módulo já é importado
+    // estaticamente no topo. Passa a usar CFG/headers() como o resto do arquivo.
     const res = await fetch(
-      `${SB}/rest/v1/ticket?avaliacao=not.is.null&order=resolvido_em.desc&select=id,laboratorio,avaliacao,avaliacao_comentario,resolvido_em,tecnico_responsavel,ti:usuario_ti!ticket_tecnico_responsavel_fkey(nome)`,
-      { headers: H }
+      `${CFG.SB_URL}/rest/v1/ticket?avaliacao=not.is.null&order=resolvido_em.desc&select=id,laboratorio,avaliacao,avaliacao_comentario,resolvido_em,tecnico_responsavel,ti:usuario_ti!ticket_tecnico_responsavel_fkey(nome)`,
+      { headers: headers() }
     );
     _avaliacoesData = await res.json().then(d => Array.isArray(d) ? d : []);
   } catch(e) {
@@ -2112,11 +2121,3 @@ window.fecharRelatorioIA = function() {
   document.getElementById('modal-relatorio-ia')?.classList.remove('open');
 };
 
-window.dashAba = function(id) {
-  document.querySelectorAll('.dash-subtab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.dst-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('dst-btn-'+id)?.classList.add('active');
-  document.getElementById('dst-'+id)?.classList.add('active');
-  // Re-renderiza charts pois o canvas pode ter sido oculto
-  Object.values(_dashCharts).forEach(c => { try { c?.resize(); } catch(_) {} });
-};

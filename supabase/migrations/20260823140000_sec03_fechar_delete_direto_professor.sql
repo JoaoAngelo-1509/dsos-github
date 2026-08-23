@@ -1,0 +1,31 @@
+-- SEC-03 (auditoria DSos): qualquer pessoa com a anon key podia apagar
+-- qualquer professor via REST direto.
+--
+-- A policy professor_delete estava com roles {anon,authenticated} e
+-- qual: true — ou seja, sem verificar absolutamente nada. Um
+-- DELETE /rest/v1/professor?id=eq.1 funcionava para qualquer visitante do
+-- site, sem nunca ter feito login. Como o sistema não usa Supabase Auth (a
+-- anon key é a mesma para aluno, professor e T.I.), não há como escrever uma
+-- condição de policy que distinga quem está chamando: a única forma de
+-- validar autorização é passar por uma RPC SECURITY DEFINER, padrão que o
+-- projeto já usa em rpc_login_ti, rpc_deletar_pc e rpc_deletar_ti.
+--
+-- rpc_deletar_professor já existia no banco (desde a migration
+-- l6_rpc_deletar_professor) e ainda recusa a exclusão se o professor tiver
+-- chamados em aberto — o frontend é que continuava fazendo DELETE direto no
+-- PostgREST e passando por cima dela. O painel-ti.js foi ajustado no mesmo
+-- commit para chamar a RPC (atenção: o parâmetro é p_professor_id, não p_id).
+--
+-- Removida a policy: sem policy de DELETE, a RLS nega DELETE direto por
+-- padrão, e a RPC (que roda como owner) segue funcionando normalmente.
+--
+-- Testado em transação com ROLLBACK antes de aplicar, com um professor
+-- descartável, e reconferido em produção via REST real depois de aplicar:
+-- DELETE /rest/v1/professor?id=eq.4 devolve 42501 "permission denied for
+-- table professor" e o registro continua existindo.
+
+DROP POLICY IF EXISTS professor_delete ON public.professor;
+
+-- Validação (rodar manualmente, não faz parte da migration):
+--   curl -X DELETE "$SB/rest/v1/professor?id=eq.<id>" -H "apikey: $ANON" ...
+--     -> deve devolver 42501, e o professor deve continuar no SELECT

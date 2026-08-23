@@ -5,6 +5,7 @@ import { escapeHtml } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 import { initEasterEgg } from './easter-egg.js';
+import { logger } from './logging.js';
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -14,19 +15,17 @@ let session=null, tickets=[], respondidos=[], descarteFila=[], ocultados=new Set
 let descarteAtual = { pcId: null, ticketId: null };
 
 // ─────────────────────────────────────────────────────────────────────────
-// LOGGING: Função auxiliar para registrar eventos (fail-safe)
+// LOGGING: delega para o logger central (fail-safe)
 // ─────────────────────────────────────────────────────────────────────────
+// DUP-05: este arquivo mantinha um _logEvent próprio — um fetch cru para
+// /rpc/<nome> — em vez de usar o singleton de logging.js. Além da
+// duplicação, aquele caminho NÃO injetava p_ip_address (o fingerprint de
+// dispositivo/navegador que todo o resto do sistema grava), então as ~8
+// chamadas de log feitas daqui saíam sem esse campo, apesar do cabeçalho do
+// arquivo anunciar "com Logging Completo". Delegando para logger.logEvento,
+// o fingerprint e o id de sessão passam a entrar automaticamente.
 async function _logEvent(rpcName, params = {}) {
-  try {
-    await fetch(`${SB}/rest/v1/rpc/${rpcName}`, {
-      method: 'POST',
-      headers: H,
-      body: JSON.stringify(params)
-    });
-  } catch (e) {
-    // Falhas de logging não afetam operação do usuário
-    console.warn(`[DSos Logging] Erro ao registrar ${rpcName}:`, e.message);
-  }
+  return logger.logEvento(rpcName, params);
 }
 
 const SVG={
@@ -1153,7 +1152,19 @@ function renderPCs(){
     return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${(pc.tag||'').replace(/'/g,"\\'")}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
   }).join('');
 }
-window.deletarPC=async function(id,tag,e){e.stopPropagation();if(!await dsosConfirm({msg:`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`,tipo:'danger',titulo:'Remover PC'}))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`PC ${tag} removido.`);await carregarPCs();}catch(e){notif('Erro ao remover.')}};
+window.deletarPC=async function(id,tag,e){
+  e.stopPropagation();
+  if(!await dsosConfirm({msg:`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`,tipo:'danger',titulo:'Remover PC'}))return;
+  try{
+    await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});
+    // LOG-01: exclusão de PC é permanente e cascateia (remove os chamados
+    // vinculados), mas não gerava nenhum registro de auditoria — logDeletarPC
+    // e a RPC rpc_log_deletar_pc já existiam, só nunca eram chamadas.
+    logger.logDeletarPC(session?.id,session?.tipo||'ti',session?.login||'',session?.nome||'',id,tag);
+    notif(`PC ${tag} removido.`);
+    await carregarPCs();
+  }catch(err){console.error('[deletarPC]',err);notif('Erro ao remover.')}
+};
 window.abrirModalPC=function(id){
   const numericId=id!=null?Number(id):null;pcEditandoId=numericId;const editando=numericId!=null;
   document.getElementById('mpc-title').textContent=editando?'Editar Computador':'Cadastrar Computador';
@@ -1312,7 +1323,17 @@ window.salvarTI=async function(){
     }catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarTI=async function(id,nome){if(!await dsosConfirm({msg:`Remover "${nome}"?`,tipo:'danger',titulo:'Remover T.I.'}))return;try{await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});notif(`${nome} removido.`);await carregarTIs();}catch(e){notif('Erro.')}};
+window.deletarTI=async function(id,nome){
+  if(!await dsosConfirm({msg:`Remover "${nome}"?`,tipo:'danger',titulo:'Remover T.I.'}))return;
+  try{
+    await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});
+    // LOG-01: idem deletarPC — logDeletarUsuarioTI existia e nunca era chamado
+    const alvo=todosOsTIs.find(u=>String(u.id)===String(id));
+    logger.logDeletarUsuarioTI(session?.id,session?.tipo||'ti',session?.login||'',session?.nome||'',id,alvo?.login||nome);
+    notif(`${nome} removido.`);
+    await carregarTIs();
+  }catch(err){console.error('[deletarTI]',err);notif('Erro.')}
+};
 
 /* PROFESSORES */
 let todosOsProfs=[],profEditandoId=null;
@@ -1358,7 +1379,29 @@ window.salvarProf=async function(){
     }catch(e){notif('Erro ao atualizar.')}
   }
 };
-window.deletarProf=async function(id,nome){if(!await dsosConfirm({msg:`Remover prof. "${nome}"?`,tipo:'danger',titulo:'Remover professor'}))return;try{await fetch(`${SB}/rest/v1/professor?id=eq.${id}`,{method:'DELETE',headers:H});notif(`Prof. ${nome} removido.`);await carregarProfs();}catch(e){notif('Erro.')}};
+window.deletarProf=async function(id,nome){
+  if(!await dsosConfirm({msg:`Remover prof. "${nome}"?`,tipo:'danger',titulo:'Remover professor'}))return;
+  try{
+    // SEC-03: passa a excluir via RPC SECURITY DEFINER (rpc_deletar_professor,
+    // que já existia no banco) em vez de DELETE direto no PostgREST. Isso é o
+    // que permite fechar a policy professor_delete, que aceitava DELETE de
+    // qualquer visitante com a anon key, sem nenhuma verificação.
+    const r=await fetch(`${SB}/rest/v1/rpc/rpc_deletar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_professor_id:id})});
+    if(!r.ok){
+      const t=await r.text().catch(()=>'');
+      // a RPC recusa a exclusão se o professor tiver chamados em aberto —
+      // mostra esse motivo em vez de um erro genérico
+      let msg='Erro ao remover professor.';
+      try{const j=JSON.parse(t);if(j?.message)msg=j.message;}catch(_){}
+      throw new Error(msg);
+    }
+    // LOG-01: idem deletarPC/deletarTI — logDeletarProfessor nunca era chamado
+    const alvo=todosOsProfs.find(u=>String(u.id)===String(id));
+    logger.logDeletarProfessor(session?.id,session?.tipo||'ti',session?.login||'',session?.nome||'',id,alvo?.login||nome);
+    notif(`Prof. ${nome} removido.`);
+    await carregarProfs();
+  }catch(err){console.error('[deletarProf]',err);notif(err.message||'Erro ao remover professor.')}
+};
 
 /* BUSCA DEBOUNCED */
 let _bTimers={};

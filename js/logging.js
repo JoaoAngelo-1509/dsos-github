@@ -301,6 +301,27 @@ class DSosLogger {
       p_imagens_deletadas:     imagensDeletadas,
     });
   }
+
+  // ═══════════════════════════════════════════════════════
+  // ESCAPE HATCH
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Chama uma RPC de log que ainda não tem método dedicado nesta classe.
+   *
+   * Existe para painel-ti.js, que mantinha um `_logEvent` próprio (um fetch
+   * cru para /rpc/<nome>) em vez de usar este logger. O problema não era só
+   * a duplicação: aquele caminho não injetava `p_ip_address` — o fingerprint
+   * de dispositivo/navegador que todo o resto do sistema grava — então uma
+   * fatia relevante da trilha de auditoria ficava sem esse campo, apesar do
+   * cabeçalho do arquivo anunciar "com Logging Completo" (DUP-05).
+   *
+   * Passando por aqui, o fingerprint e o id de sessão entram automaticamente,
+   * igual a qualquer outro log.
+   */
+  async logEvento(rpcName, params = {}) {
+    return this._callRPC(rpcName, params);
+  }
 }
 
 // Exporta instância singleton
