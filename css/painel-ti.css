@@ -143,7 +143,7 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-
 .kpi-clock{
   font-size:.72rem;font-weight:700;letter-spacing:.06em;
   font-family:'Courier New',Courier,monospace;
-  color:var(--muted2);background:var(--glass);
+  color:#ff0025;background:var(--glass);
   border:1px solid var(--glass-b);border-radius:6px;
   padding:10px 14px;text-align:center;white-space:nowrap;
   flex-shrink:0;min-width:72px;
