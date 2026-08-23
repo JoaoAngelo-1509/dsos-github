@@ -233,6 +233,30 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-
   padding:6px 12px 6px 10px;cursor:pointer;transition:all .12s;
   font-size:.68rem;color:var(--text);gap:0;min-width:0
 }
+
+/* ── RESP-01: tabelas em telas estreitas ────────────────────────────────
+   As colunas destas tabelas são definidas em px por style="" inline (tanto
+   no HTML dos cabeçalhos quanto no JS que gera as linhas), e a mais larga
+   soma ~790px — bem acima dos 375px de um celular. Como são inline, media
+   query nenhuma consegue sobrescrevê-las sem !important.
+
+   Em vez de brigar com a especificidade ou reescrever o layout das 6 abas,
+   o scroll horizontal é contido AQUI: o container passa a rolar
+   lateralmente e as linhas ganham uma largura mínima, de modo que as
+   colunas não se espremem até ficarem ilegíveis. O resultado é que a
+   PÁGINA não rola de lado — só a tabela, que é o comportamento esperado
+   para dado tabular denso.
+
+   Não resolve a leitura em 375px por completo (isso pediria um layout de
+   cards empilhados, registrado como pendência), mas elimina o overflow
+   horizontal da página inteira, que é o sintoma que atrapalha o uso. */
+@media (max-width: 900px){
+  .logs-table{overflow-x:auto}
+  .table-header,
+  .table-row{min-width:760px}
+  /* a rolagem vertical continua nas linhas; a horizontal é do container */
+  .table-rows{overflow-x:visible}
+}
 .table-row:hover{
   background:var(--row-hover);border-color:rgba(255,255,255,.12);
   border-left-color:var(--red);
@@ -621,6 +645,13 @@ mark.hl{background:rgba(245,208,0,.28);color:inherit;border-radius:2px;padding:0
   .notif{width:90vw;font-size:.65rem}
 }
 @media(max-width:480px){
+  /* RESP-01: em 375px os 5 botões de ação + o badge de usuário somavam ~290px
+     e empurravam a topbar além da largura da tela, fazendo a PÁGINA INTEIRA
+     rolar de lado (medido: scrollWidth 390 contra clientWidth 375). Deixar a
+     faixa quebrar em duas linhas resolve sem esconder nenhum controle — que
+     seria a alternativa, mas tiraria acesso a imprimir/buscar/tema. */
+  .topbar{flex-wrap:wrap;row-gap:6px}
+  .topbar-right{min-width:0;flex-wrap:wrap;justify-content:flex-end}
   .topbar-logo{height:22px}
   .topbar-title{font-size:.76rem}
   .topbar-user{padding:2px 7px;font-size:.58rem}
