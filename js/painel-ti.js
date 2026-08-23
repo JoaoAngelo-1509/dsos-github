@@ -179,7 +179,17 @@ window.addEventListener('DOMContentLoaded',async()=>{
       if(payload.new?.remetente==='PC')(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();
     })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem'},()=>carregarNaoLidas())
+    // Equipe T.I.: presença/edição (UPDATE) já eram refletidas; INSERT/DELETE
+    // faltavam — sem eles, um técnico cadastrado ou removido por um admin só
+    // aparecia/sumia da lista (e do tecNome() nas linhas de chamado) após F5.
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'usuario_ti'},()=>carregarTIs())
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
+    // Professores: nenhum evento era escutado antes — cadastro/edição/remoção
+    // só refletia em outros painéis T.I. abertos após reload.
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'professor'},()=>carregarProfs())
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'professor'},()=>carregarProfs())
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'professor'},()=>carregarProfs())
     .subscribe(rtStatusHandler('tickets-realtime'));
 
   let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);
@@ -1185,7 +1195,15 @@ window.salvarPC=async function(){
 /* EQUIPE TI */
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
-  try{const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];document.getElementById('badge-ti').textContent=todosOsTIs.length;document.getElementById('ti-count').textContent=todosOsTIs.length;}catch(e){todosOsTIs=[];}
+  try{
+    const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});
+    todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];
+    // mantém tiMap (usado por tecNome() nas linhas de chamado) sincronizado
+    // com a mesma resposta, para que técnicos novos/removidos apareçam sem F5
+    todosOsTIs.forEach(u=>{tiMap[u.id]=u});
+    document.getElementById('badge-ti').textContent=todosOsTIs.length;
+    document.getElementById('ti-count').textContent=todosOsTIs.length;
+  }catch(e){todosOsTIs=[];}
   renderTIs();
 }
 function renderTIs(){
