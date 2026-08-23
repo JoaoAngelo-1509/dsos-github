@@ -273,7 +273,10 @@
         <span class="last-update" id="lu-atividades" style="margin-left:auto"></span>
       </div>
       <div class="logs-table">
-        <div class="table-header" style="grid-template-columns:150px 110px 90px 80px 1fr 70px">
+        <!-- AÇÃO era 80px e IMPACTO 70px, estreitos demais para valores como
+             "ALTERAR_STATUS" e "alteracao_status"; a diferença sai do 1fr da
+             descrição, que é a coluna com folga -->
+        <div class="table-header" style="grid-template-columns:150px 110px 90px 120px 1fr 120px">
           <span>Data/Hora</span><span>Usuário</span><span>Módulo</span><span>Ação</span><span>Descrição</span><span>Impacto</span>
         </div>
         <div class="table-rows" id="rows-atividades">

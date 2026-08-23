@@ -267,6 +267,20 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-
 .table-row.row-critical{border-left-color:var(--red);background:rgba(192,23,26,.09)}
 .table-row.row-error:hover,.table-row.row-critical:hover{background:rgba(192,23,26,.12)}
 
+/* Toda célula é contida na sua coluna. Sem isto, um valor mais largo que a
+   coluna (o caso clássico é "ALTERAR_STATUS" numa coluna de 80px, ou
+   "alteracao_status" no impacto) vaza para fora e fica ESCRITO POR CIMA da
+   coluna vizinha — o texto da descrição aparecia cortado pela metade
+   ("...mado #9 mudou" em vez de "Chamado #9 mudou").
+
+   As classes .cell-user e .cell-trunc já faziam isso individualmente; o
+   problema estava justamente nas células sem classe (ação e impacto). Aqui a
+   regra passa a valer para qualquer filho direto da linha, então nenhuma
+   coluna nova nasce com o mesmo defeito. min-width:0 é necessário porque
+   item de grid não encolhe abaixo do conteúdo por padrão. */
+.table-header > *,
+.table-row > *{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 .cell-date{color:var(--muted);white-space:nowrap;font-size:.63rem;font-variant-numeric:tabular-nums}
 .cell-user{color:var(--text2);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cell-trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.64rem}

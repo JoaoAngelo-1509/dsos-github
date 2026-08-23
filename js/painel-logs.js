@@ -616,13 +616,13 @@ const RENDER = {
   atividades(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
     el.innerHTML = data.map(r => `
-      <div class="table-row" style="grid-template-columns:150px 110px 90px 80px 1fr 70px"
+      <div class="table-row" style="grid-template-columns:150px 110px 90px 120px 1fr 120px"
            onclick='abrirModal("atividades",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_nome || r.usuario_login)}</span>
-        <span class="cell-mono">${e(r.modulo)}</span>
-        <span>${e(r.acao)}</span>
-        <span class="cell-trunc">${e(r.descricao_amigavel)}</span>
+        <span class="cell-mono" title="${e(r.modulo)}">${e(r.modulo)}</span>
+        <span title="${e(r.acao)}">${e(r.acao)}</span>
+        <span class="cell-trunc" title="${e(r.descricao_amigavel)}">${e(r.descricao_amigavel)}</span>
         <span>${badgeImpacto(r.impacto)}</span>
       </div>`).join('');
   },
@@ -2174,7 +2174,32 @@ window.gerarRelatorioIA = async function() {
     ]);
     const dados = await r1.json();
     if (!Array.isArray(dados) || !dados.length) {
-      conteudo.innerHTML = '<p style="color:var(--muted)">Nenhum chamado encontrado no período de 7 dias.</p>';
+      // A mensagem antiga ("Nenhum chamado encontrado no período de 7 dias")
+      // confundia: quem tem chamados EM ABERTO na tela, só que abertos há
+      // mais de uma semana, lia aquilo como "o relatório não funcionou".
+      // Aqui a explicação vem junto: quantos chamados existem fora da janela
+      // e quando foi o mais recente.
+      let extra = '';
+      try {
+        const rTot = await fetch(
+          `${CFG.SB_URL}/rest/v1/ticket?select=aberto_em&order=aberto_em.desc&limit=1`,
+          { headers: { ...H7, Prefer: 'count=exact' } }
+        );
+        const totalGeral = parseInt(rTot.headers.get('content-range')?.split('/')[1] || '0', 10);
+        const [maisRecente] = await rTot.json();
+        if (totalGeral > 0 && maisRecente?.aberto_em) {
+          const dias = Math.floor((Date.now() - new Date(maisRecente.aberto_em)) / 86400000);
+          extra = `<p style="color:var(--muted);font-size:.66rem;margin-top:8px">
+            Existem ${totalGeral} chamado(s) no sistema, mas o mais recente foi aberto
+            há ${dias} dia(s) — fora da janela de 7 dias deste relatório.
+            Para analisar um período maior, use o <strong>Dashboard</strong>, que aceita
+            data inicial e final.</p>`;
+        }
+      } catch (err) {
+        console.error('[relatorioSemanal] falha ao contar chamados fora da janela', err);
+      }
+      conteudo.innerHTML =
+        `<p style="color:var(--muted)">Nenhum chamado <strong>aberto entre ${de} e ${ate}</strong>.</p>${extra}`;
       if (btnGerar) { btnGerar.disabled = false; btnGerar.textContent = 'Gerar relatório'; }
       return;
     }
