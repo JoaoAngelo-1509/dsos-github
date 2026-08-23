@@ -1,0 +1,32 @@
+-- SEC-05, fechamento: remove as policies que permitiam UPDATE direto e
+-- irrestrito em ticket e pc.
+--
+-- authenticated_update_ticket era UPDATE ... USING(true) WITH CHECK(true)
+-- para anon/authenticated: qualquer visitante podia, com um PATCH no
+-- PostgREST, alterar QUALQUER campo de QUALQUER chamado — status, técnico
+-- responsável, nota interna, avaliação — sem nunca ter feito login.
+-- pc_update tinha o mesmo problema para status_pc/laboratorio/lado.
+--
+-- Toda a escrita legítima já foi migrada para as RPCs validadas por token
+-- (parte 3). Elas são SECURITY DEFINER, então seguem funcionando sem policy
+-- de UPDATE — é esse o ponto: a escrita passa a ter um caminho único e
+-- verificado.
+--
+-- Comportamento a saber: sem policy de UPDATE o Postgres NÃO levanta erro —
+-- ele não encontra linha para atualizar, e o PATCH devolve 200 tendo
+-- alterado ZERO linhas. Por isso a validação checa ROW_COUNT e o valor do
+-- dado, não a ocorrência de exceção.
+--
+-- Verificado em produção via REST depois de aplicar:
+--   PATCH /ticket?id=eq.9 {"status":"resolvido"}     -> [] e dado intacto
+--   PATCH /pc?id=eq.2     {"status_pc":"descartado"} -> [] e dado intacto
+--   login + rpc_ti_atualizar_ticket                  -> 204 e dado gravado
+--
+-- LIMITAÇÃO CONHECIDA: SELECT continua aberto (ticket_select/pc_select/
+-- mensagem_select USING true) e INSERT de ticket/mensagem segue pelas
+-- policies existentes. Fechar a LEITURA exige identificar o solicitante em
+-- toda consulta, o que só faz sentido junto com a migração para Supabase
+-- Auth (rota "a" da auditoria). Registrado em WORKFLOW.md.
+
+DROP POLICY IF EXISTS authenticated_update_ticket ON public.ticket;
+DROP POLICY IF EXISTS pc_update ON public.pc;

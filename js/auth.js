@@ -221,7 +221,12 @@ window.entrar = async function () {
         tipo: 'ti',
         id: ti.id,
         login: ti.login,
-        nome: ti.nome || nome
+        nome: ti.nome || nome,
+        // SEC-05: token de sessão emitido pelo banco no login. É o que prova
+        // ao servidor QUEM está chamando nas escritas sensíveis — o resto da
+        // sessão (id/login/tipo) é editável pelo próprio usuário e por isso
+        // não serve como autorização.
+        token: ti.token
       }));
       await logger.logLogin(ti.id, 'ti', ti.login, ti.nome || nome);
       window.location.href = 'painel-ti.html';
@@ -245,7 +250,8 @@ window.entrar = async function () {
         tag: pc.tag,
         laboratorio: pc.laboratorio,
         lado: pc.lado,
-        nome
+        nome,
+        token: pc.token   // SEC-05
       }));
       // Log de login bem-sucedido
       await logger.logLogin(pc.id, 'pc', pc.tag, nome);
@@ -269,7 +275,8 @@ window.entrar = async function () {
         tipo: 'professor',
         id: prof.id,
         login: prof.login,
-        nome: prof.nome || nome
+        nome: prof.nome || nome,
+        token: prof.token   // SEC-05
       }));
       // Log de login bem-sucedido
       await logger.logLogin(prof.id, 'professor', prof.login, prof.nome || nome);
@@ -305,7 +312,8 @@ window.escolherTipo = async function (tipo) {
       id: ti.id,
       login: ti.login,
       nome: ti.nome || nome,
-      professor_id: ti.professor_id || null
+      professor_id: ti.professor_id || null,
+      token: ti.token   // SEC-05
     }));
     await logger.logLogin(ti.id, 'ti', ti.login, nome);
     window.location.href = 'painel-ti.html';
@@ -314,7 +322,12 @@ window.escolherTipo = async function (tipo) {
       tipo: 'professor',
       id: ti.professor_id,
       login: ti.login,
-      nome: ti.nome || nome
+      nome: ti.nome || nome,
+      // SEC-05: mantém o token emitido por rpc_login_ti. Quem chega aqui é um
+      // T.I. que também é professor e escolheu entrar como professor — o
+      // token continua provando um login legítimo, e as RPCs de escrita de
+      // professor aceitam tanto 'professor' quanto 'ti' justamente por isso.
+      token: ti.token
     }));
     await logger.logLogin(ti.professor_id, 'professor', ti.login, ti.nome || nome);
     window.location.href = 'painel-pc.html';

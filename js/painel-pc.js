@@ -833,11 +833,25 @@ window.enviarAvaliacao=async function(){
   window.fecharAvaliacao();
   if(!_avaliacaoTicketId)return;
   try{
-    await fetch(`${SB_URL}/rest/v1/ticket?id=eq.${_avaliacaoTicketId}`,{
-      method:'PATCH',
+    // SEC-05: era um PATCH direto em ticket. Como a policy de UPDATE era
+    // USING(true), a mesma chamada dava para escrever qualquer coluna de
+    // qualquer chamado. Agora vai por RPC validada pelo token da sessão, que
+    // só aceita nota de 1 a 5 em chamado já encerrado.
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/rpc_avaliar_ticket`,{
+      method:'POST',
       headers:{...H,'Content-Type':'application/json'},
-      body:JSON.stringify({avaliacao:_avaliacaoNota,...(comentario?{avaliacao_comentario:comentario}:{})}),
+      body:JSON.stringify({
+        p_token: session?.token,
+        p_ticket_id: _avaliacaoTicketId,
+        p_nota: _avaliacaoNota,
+        p_comentario: comentario||null
+      }),
     });
+    if(!r.ok){
+      const t=await r.text().catch(()=>'');
+      console.error('[enviarAvaliacao]',r.status,t);
+      toast('Não foi possível registrar sua avaliação.','err');
+    }
   }catch(e){console.error('[enviarAvaliacao]',e)}
 };
 

@@ -28,6 +28,37 @@ async function _logEvent(rpcName, params = {}) {
   return logger.logEvento(rpcName, params);
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// SEC-05: escrita em ticket/pc passa por RPC validada, não por PATCH direto
+// ─────────────────────────────────────────────────────────────────────────
+// Antes, cada botão do painel fazia PATCH direto no PostgREST. Como a anon
+// key é a mesma para todo mundo e as policies eram USING(true), qualquer
+// pessoa reproduzia essas chamadas pelo console sem nunca ter feito login —
+// os botões "só o T.I. pode" eram cosméticos. Agora a autorização acontece no
+// banco, a partir do token emitido no login (ver sessao_token).
+async function _rpcEscrita(nome, params) {
+  const r = await fetch(`${SB}/rest/v1/rpc/${nome}`, {
+    method: 'POST', headers: H,
+    body: JSON.stringify({ p_token: session?.token, ...params })
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    let msg = `Falha em ${nome}`;
+    try { const j = JSON.parse(t); if (j?.message) msg = j.message; } catch (_) {}
+    console.error(`[${nome}]`, r.status, t);
+    // sessão expirada/inválida: manda refazer login em vez de falhar em silêncio
+    if (/sessao (invalida|ausente)/i.test(msg)) {
+      notif('Sua sessão expirou. Faça login novamente.');
+      setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+    }
+    throw new Error(msg);
+  }
+  return r;
+}
+
+const _patchTicket   = (ticketId, patch) => _rpcEscrita('rpc_ti_atualizar_ticket', { p_ticket_id: ticketId, p_patch: patch });
+const _patchPC       = (pcId, patch)     => _rpcEscrita('rpc_ti_atualizar_pc',     { p_pc_id: pcId,        p_patch: patch });
+
 const SVG={
   hardware:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
   software:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
@@ -710,7 +741,7 @@ window.setStatus=async function(s){
   const body={status:s,tecnico_responsavel:session.id};
   if(s==='falso_alarme')body.resolvido_em=new Date().toISOString();
   try{
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${selectedId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
+    await _patchTicket(selectedId,body);
     
     // ━━ LOGGING (alterar status) ━━
     _logEvent('rpc_log_alterar_status_chamado', {
@@ -747,8 +778,8 @@ window.confirmarEnvioFila=async function(){
   if(!_descarteTicket)return;
   const t=_descarteTicket;window.fecharMiniModalDescarte();
   try{
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${t.id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'descartado',resolucao:'descarte',resolvido_em:new Date().toISOString(),tecnico_responsavel:session.id,item_descartado:item})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${t.pc_problema}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'em_manutencao'})});
+    await _patchTicket(t.id,{status:'descartado',resolucao:'descarte',resolvido_em:new Date().toISOString(),tecnico_responsavel:session.id,item_descartado:item});
+    await _patchPC(t.pc_problema,{status_pc:'em_manutencao'});
     
     // ━━ LOGGING (envio fila) ━━
     _logEvent('rpc_log_descarte_equipment', {
@@ -826,7 +857,7 @@ window.salvarNotaInterna=async function(){
   if(!modalTicketId)return;
   const nota=document.getElementById('m-nota-interna').value.trim();
   try{
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${modalTicketId}`,{method:'PATCH',headers:H,body:JSON.stringify({nota_interna:nota||null})});
+    await _patchTicket(modalTicketId,{nota_interna:nota||null});
     const t=tickets.find(x=>x.id===modalTicketId)||respondidos.find(x=>x.id===modalTicketId);
     if(t)t.nota_interna=nota||null;
     const el=document.getElementById('m-nota-salva');
@@ -837,7 +868,7 @@ window.salvarNotaInterna=async function(){
 /* PRIORIDADE */
 window.salvarPrioridade=async function(){
   if(!modalTicketId)return;
-  await fetch(`${SB}/rest/v1/ticket?id=eq.${modalTicketId}`,{method:'PATCH',headers:H,body:JSON.stringify({prioridade:document.getElementById('m-prio').value})});
+  await _patchTicket(modalTicketId,{prioridade:document.getElementById('m-prio').value});
   notif('Prioridade atualizada');await carregarTickets();
 };
 
@@ -866,11 +897,15 @@ window.confirmarResolucao=async function(){
     if(!await dsosConfirm({msg:`Confirmar "${rotulo}" para chamado #${t.id}?${descRes?'\nResumo: '+descRes:''}`,tipo:'info',titulo:'Resolver chamado'}))return;
   }
   try{
-    const r=await fetch(`${SB}/rest/v1/ticket?id=eq.${modalTicketId}`,{method:'PATCH',headers:H,body:JSON.stringify(body)});
-    const updated=await r.json();
-    const pcId=Array.isArray(updated)&&updated[0]?updated[0].pc_problema:null;
+    await _patchTicket(modalTicketId,body);
+    // O PATCH direto devolvia a representação do ticket, e o pc_problema era
+    // lido de lá. A RPC retorna void, então o id vem do ticket que já está em
+    // memória (com fallback nas duas listas, porque um chamado em andamento
+    // pode estar em qualquer uma).
+    const tAlvo=t||tickets.find(x=>x.id===modalTicketId)||respondidos.find(x=>x.id===modalTicketId);
+    const pcId=tAlvo?.pc_problema||null;
     if(pcId&&pcStatusMap[tipo])
-      await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:pcStatusMap[tipo]})});
+      await _patchPC(pcId,{status_pc:pcStatusMap[tipo]});
     
     // ━━ LOGGING (confirmar resolução) ━━
     _logEvent('rpc_log_alterar_status_chamado', {
@@ -919,8 +954,8 @@ window.confirmarDescarteFisico=async function(){
     if(como)linhas.push(`Meio: ${como}`);
     if(pcCompleto)linhas.push(`PC marcado como descartado.`);
     linhas.push(`Registrado em: ${new Date().toLocaleString('pt-BR')}`,`Técnico: ${session.nome||session.login}`);
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({descricao_resolucao:linhas.join('\n'),tecnico_responsavel:session.id})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:pcCompleto?'descartado':'ativo'})});
+    await _patchTicket(ticketId,{descricao_resolucao:linhas.join('\n'),tecnico_responsavel:session.id});
+    await _patchPC(pcId,{status_pc:pcCompleto?'descartado':'ativo'});
     
     // ━━ LOGGING (descarte físico) ━━
     _logEvent('rpc_log_descarte_equipment', {
@@ -949,8 +984,8 @@ window.reabrirTicket=async function(id,e){
   try{
     const tr=await fetch(`${SB}/rest/v1/ticket?id=eq.${id}&select=pc_problema`,{headers:H});
     const td=await tr.json();const pcId=Array.isArray(td)&&td[0]?td[0].pc_problema:null;
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${id}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,tecnico_responsavel:null,descricao_resolucao:null})});
-    if(pcId)await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
+    await _patchTicket(id,{status:'aberto',resolucao:null,resolvido_em:null,tecnico_responsavel:null,descricao_resolucao:null});
+    if(pcId)await _patchPC(pcId,{status_pc:'ativo'});
     notif('Chamado #'+id+' reaberto');
     ocultados.add(id);respondidos=respondidos.filter(r=>r.id!==id);
     await Promise.all([carregarTickets(),carregarKPIs(true)]);mudarAba('abertos');
@@ -965,8 +1000,8 @@ window.cancelarItemDescarte=async function(ticketId,pcId,e){
   if(e)e.stopPropagation();
   if(!await dsosConfirm({msg:'Cancelar descarte?\nChamado volta para ABERTO e PC para ATIVO.',tipo:'warning',titulo:'Cancelar descarte'}))return;
   try{
-    await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,item_descartado:null,tecnico_responsavel:null,descricao_resolucao:null})});
-    await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
+    await _patchTicket(ticketId,{status:'aberto',resolucao:null,resolvido_em:null,item_descartado:null,tecnico_responsavel:null,descricao_resolucao:null});
+    await _patchPC(pcId,{status_pc:'ativo'});
     notif('Descarte cancelado — chamado reaberto');
     await Promise.all([carregarTickets(),carregarKPIs(true),carregarPCs()]);
   }catch(err){notif('Erro ao cancelar descarte.')}
@@ -1252,7 +1287,7 @@ window.salvarPC=async function(){
   }else{
     try{
       await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});
-      await fetch(`${SB}/rest/v1/pc?id=eq.${pcEditandoId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({laboratorio:lab,lado:lado})});
+      await _patchPC(pcEditandoId,{laboratorio:lab,lado:lado});
       
       // ━━ LOGGING (alterar status PC) ━━
       const pcAntigo=todosOsPCs.find(p=>p.id===pcEditandoId);
