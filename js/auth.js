@@ -109,7 +109,11 @@ async function validarNome(nome) {
     const payload = {
       model: 'openai/gpt-oss-20b',
       temperature: 0,
-      max_tokens: 200,
+      // gpt-oss-20b é um modelo de raciocínio: gasta tokens "pensando" antes
+      // de escrever a resposta final. Com 200 tokens ele estourava o limite
+      // ainda no raciocínio (~198 tokens) e nunca chegava a escrever
+      // SIM/NÃO — sempre caía no fallback de "resposta ambígua".
+      max_tokens: 600,
       messages: [
         {
           role: 'system',
