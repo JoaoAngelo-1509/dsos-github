@@ -1351,10 +1351,13 @@ window.abrirModalTI=function(id){
     document.getElementById('mti-nome').value=u.nome||'';
     document.getElementById('mti-login').value=u.login||'';
     document.getElementById('mti-senha').value='';
+    // FEAT-01: o campo de e-mail também nunca era preenchido ao editar nem
+    // limpo entre aberturas do modal, então mostrava o valor da vez anterior
+    const em=document.getElementById('mti-email'); if(em) em.value=u.email||'';
     const cb=document.getElementById('mti-is-professor');
     if(cb){cb.checked=!!u.is_professor;cb.disabled=true;}
   }else{
-    ['mti-nome','mti-login','mti-senha'].forEach(i=>document.getElementById(i).value='');
+    ['mti-nome','mti-login','mti-senha','mti-email'].forEach(i=>{const el=document.getElementById(i); if(el) el.value='';});
     document.getElementById('mti-login').disabled=false;
     const cb=document.getElementById('mti-is-professor');
     if(cb){cb.checked=false;cb.disabled=false;}
@@ -1376,12 +1379,16 @@ window.salvarTI=async function(){
   const senha=document.getElementById('mti-senha').value;
   const isProf=document.getElementById('mti-is-professor')?.checked||false;
   const disciplina=document.getElementById('mti-disciplina')?.value.trim()||null;
+  // FEAT-01: o campo existia na tela mas nunca era lido — nem no cadastro nem
+  // na edição —, então o e-mail digitado simplesmente se perdia. rpc_cadastrar_ti
+  // já aceitava p_email desde a migration add_email_to_usuario_ti.
+  const email=document.getElementById('mti-email')?.value.trim()||null;
   if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){
     if(!login){notif('Informe o login.');return}
     if(!senha||senha.length<4){notif('Senha: mínimo 4 caracteres.');return}
     try{
-      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_is_professor:isProf,p_disciplina:disciplina})});
+      const r=await fetch(`${SB}/rest/v1/rpc/rpc_cadastrar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_login:login,p_nome:nome,p_senha:senha,p_email:email,p_is_professor:isProf,p_disciplina:disciplina})});
       if(!r.ok){const e=await r.json();throw new Error(e.message||'Erro')}
       
       // ━━ LOGGING (cadastrar T.I.) ━━
@@ -1399,7 +1406,8 @@ window.salvarTI=async function(){
     }catch(e){notif('Erro: '+(e.message.includes('duplicate')?'login já existe.':e.message))}
   }else{
     try{
-      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null})});
+      // FEAT-01: p_email também já era aceito pela RPC e nunca era enviado
+      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null,p_email:email})});
       notif('Atualizado!');window.fecharModalTI();await carregarTIs();
     }catch(e){notif('Erro ao atualizar.')}
   }

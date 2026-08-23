@@ -1,11 +1,60 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-08-23 — Auditoria técnica: correções aplicadas
+
+Lote de correções a partir da auditoria de ponta a ponta do projeto.
+Backup do estado anterior em [docs/BACKUP-20260823.md](docs/BACKUP-20260823.md).
+
+### Segurança
+- **`pc.senha` e `professor.senha_hash` deixaram de ser legíveis via REST.**
+  Os dois hashes estavam expostos a qualquer pessoa com a anon key. Em `pc` a
+  correção exigiu mover a coluna para uma tabela separada (`pc_senha`) — com a
+  senha na mesma tabela, era impossível esconder a coluna e manter o `UPDATE`
+  de `status_pc` funcionando ao mesmo tempo.
+- **Autorização real no banco (SEC-05).** A escrita em chamados e computadores
+  passou a exigir um token de sessão emitido no login: antes, qualquer pessoa
+  podia fechar chamados de terceiros, reatribuir técnicos e editar notas
+  internas com um `fetch()` no console, sem nunca ter logado. A **leitura**
+  ainda é aberta — ver limitações em [WORKFLOW.md](WORKFLOW.md).
+- **Exclusão de professor** deixou de aceitar `DELETE` direto via REST.
+- **XSS armazenado** corrigido em todos os pontos de renderização de texto de
+  aluno/professor (sino de notificações, avaliações, fila de descarte, painel
+  de logs) e **injeção de fórmula** bloqueada nas exportações CSV.
+- Logout automático por inatividade ativado nas três páginas autenticadas
+  (o módulo existia pronto e nunca havia sido importado).
+- Painel de logs passou a exigir sessão de T.I.
+- CDNs com versão fixa e `integrity` (SRI); `search_path` fixado em todas as
+  funções do banco; views voltaram a ser `SECURITY INVOKER`.
+
+### Correções
+- **Busca de chamados voltou a funcionar**: o filtro usava `ilike` sobre uma
+  coluna `enum`, o que derrubava a query inteira (HTTP 404) e esvaziava as
+  listas — bug que não estava na auditoria, encontrado durante as correções.
+- **Exclusão de logs** deixou de apagar além do que o diálogo informava.
+- KPIs do painel de logs passaram a refletir o conjunto filtrado inteiro, não
+  só a página visível; datas passaram a usar fuso local em vez de UTC.
+- Impressão/PDF do Dashboard deixou de sair vazia.
+- Corridas entre poll e realtime, e entre as duas caixas de busca, resolvidas.
+- Texto do chat deixou de se perder quando o upload de imagem falha.
+- Limites de tokens da IA ajustados (resumo 256→512, relatório 800→2000).
+- Easter egg dos 5 cliques corrigido no painel de logs e unificado num módulo.
+- Som de login corrigido (`login.wav` → `login.mp3`) e IDs duplicados no HTML.
+
+### Nota sobre o 2FA
+O campo "E-mail para verificação em 2 etapas" no cadastro de T.I. **nunca
+ativou 2FA** — não era sequer salvo. Foi reetiquetado como "E-mail de contato"
+e passou a ser gravado de fato. O que falta para o 2FA real está descrito em
+[WORKFLOW.md](WORKFLOW.md).
+
 ## 2026-08-22 — Deploy e correção de modelo de IA
 
 - **Deploy migrado para Netlify**: `vercel.json` substituído por `netlify.toml` (mesmos rewrites de URL e headers de segurança)
 - **Migração de modelo Groq**: `llama-3.3-70b-versatile` (descontinuado, retornava respostas vazias por excesso de reasoning) completamente substituído por `openai/gpt-oss-20b` em `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e no default do `groq-proxy` — **todos os 5 pontos sincronizados**
 - Prompts otimizados para responder sempre em português brasileiro e evitar reasoning desnecessário
 - Limites de tokens aumentados: auth (200), painel-pc (2048), painel-ti-resumo (256), painel-ti-sugestao (512), painel-logs (800)
+  > Estes números são os de 22/08 e já não valem — foram ajustados de novo em
+  > 23/08 (auth 1000, resumo 512, relatório 2000). A tabela sempre atual está
+  > em [WORKFLOW.md](WORKFLOW.md).
 
 ## v2.0 (Junho 2026)
 

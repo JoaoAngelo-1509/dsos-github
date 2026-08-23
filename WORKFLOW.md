@@ -33,7 +33,49 @@ A função `supabase/functions/groq-proxy` roda com a chave `GROQ_KEY` armazenad
 4. Deploy no projeto de PRODUÇÃO: supabase functions deploy groq-proxy --project-ref <PROD_PROJECT_ID>
 ```
 
-> Ao trocar o modelo Groq usado (`model` no payload), mantenha consistência entre `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e o default do `groq-proxy`. Atualmente todos usam `openai/gpt-oss-20b` com tokens ajustados: auth (600 — `gpt-oss-20b` é um modelo de raciocínio e pode gastar 300+ tokens "pensando" antes da resposta final; com 200 o raciocínio sozinho estourava o limite e a resposta nunca saía), painel-pc (2048), painel-ti-resumo (256), painel-ti-sugestao (512), painel-logs (800). `painel-ti-resumo` tem o mesmo risco de estourar por ser baixo — não confirmado quebrado, mas vale testar se for mexer nele. Confirme os cinco pontos antes de fechar a mudança.
+> Ao trocar o modelo Groq usado (`model` no payload), mantenha consistência entre `auth.js`, `painel-pc.js`, `painel-ti.js`, `painel-logs.js` e o default do `groq-proxy`. Todos usam `openai/gpt-oss-20b`.
+>
+> `gpt-oss-20b` é um modelo de **raciocínio**: gasta centenas de tokens "pensando" antes de escrever a resposta, e esse consumo entra no mesmo `max_tokens`. Um teto apertado não produz resposta curta — produz resposta **vazia ou truncada**, em silêncio. Foi o que aconteceu em `auth.js` (200 → 600 → 1000) e o que motivou os ajustes de agosto/2026 em `painel-ti` e `painel-logs`.
+>
+> Valores em vigor (conferidos no código):
+>
+> | Ponto | Arquivo | `max_tokens` |
+> |---|---|---|
+> | Validação de nome no login | `js/auth.js:118` | 1000 |
+> | Classificação de chamado | `js/painel-pc.js:59` (default de `_groqCall`) | 2048 |
+> | Resumo do chamado (T.I.) | `js/painel-ti.js` (chamada de `_groqTI`) | 512 |
+> | Sugestão de resposta (T.I.) | `js/painel-ti.js` (chamada de `_groqTI`) | 512 |
+> | Relatório semanal | `js/painel-logs.js:2211` | 2000 |
+> | Default do proxy | `supabase/functions/groq-proxy/index.ts:71` | 1024 |
+>
+> Confirme os cinco pontos do frontend antes de fechar a mudança.
+
+## Limitações conhecidas / dívida em aberto
+
+Itens levantados na auditoria técnica de 23/08/2026 que **não** foram fechados,
+e o motivo:
+
+- **FEAT-01 — verificação em 2 etapas (2FA) não existe.** O banco tem a
+  infraestrutura (`otp_ti`, `rpc_gerar_otp_ti`, `rpc_verificar_otp_ti`,
+  `usuario_ti.email`), mas ela não está ligada e **não pode ser ligada como
+  está**: (1) não existe edge function de envio de e-mail no projeto — só a
+  `groq-proxy`; (2) `rpc_gerar_otp_ti` **devolve o código no próprio JSON**,
+  então, chamada pelo cliente, entregaria o código a quem já tem a senha,
+  anulando o propósito do 2FA. Para completar seria preciso uma edge function
+  que envie o e-mail e passe a ser a única a enxergar o código. Até lá, o campo
+  na tela de cadastro de T.I. foi reetiquetado como "E-mail de contato" — antes
+  ele anunciava 2FA e sequer era salvo, o que dava ao administrador a impressão
+  falsa de ter protegido a conta.
+- **SEC-05 — leitura ainda é aberta.** A escrita em `ticket`/`pc` passou a
+  exigir token de sessão (ver migrations `sec05_*`), mas `ticket_select`,
+  `pc_select` e `mensagem_select` continuam `USING (true)`: qualquer pessoa com
+  a anon key ainda **lê** todos os chamados, o chat e as notas internas.
+  Fechar a leitura exige identificar o solicitante em toda consulta, o que só
+  faz sentido junto com a migração para Supabase Auth.
+- **DB-01 — migrations legadas não versionadas.** As migrations criadas a
+  partir de 23/08/2026 estão em `supabase/migrations/`, mas as ~91 anteriores
+  existem só no histórico interno do Supabase. Rodar `supabase db pull` para
+  gerar um baseline versionado continua pendente.
 
 ## Estrutura de arquivos
 
@@ -64,7 +106,8 @@ dsos/
 │   ├── painel-pc.js                ← lógica painel aluno/professor
 │   ├── painel-ti.js                 ← lógica painel TI
 │   ├── painel-logs.js                ← lógica painel de logs/dashboard
-│   └── session-guard.js               ← módulo de logout por inatividade (não importado por nenhuma página atualmente)
+│   ├── easter-egg.js                  ← easter egg dos 5 cliques (fonte única das 4 páginas)
+│   └── session-guard.js               ← logout por inatividade (ativo em painel-pc, painel-ti e painel-logs)
 ├── supabase/
 │   ├── functions/groq-proxy/     ← proxy da API Groq
 │   └── migrations/                ← migrations SQL
