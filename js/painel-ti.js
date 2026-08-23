@@ -167,13 +167,13 @@ window.addEventListener('DOMContentLoaded',async()=>{
   // ─────────────────────────────────────────────────────────────────────
   sbClient.channel('tickets-realtime')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},payload=>{
-      carregarTickets();carregarKPIs();
+      _scheduleTicketsKPIRefresh();
       const _emerg=payload.new?.chamado_emergencia;
       if(_emerg){notif('⚡ CHAMADO DE EMERGÊNCIA!');(_cfg.sons!==false)&&window._dsosSom?.emergencia?.();}
       else{notif('Novo chamado recebido!');(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();}
       _browserNotif(_emerg?'⚡ EMERGÊNCIA DSos':'🔔 Novo Chamado',payload.new?.descricao?.slice(0,80)||'Chamado aberto no sistema');
     })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},()=>{carregarTickets();carregarKPIs();})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},()=>{_scheduleTicketsKPIRefresh();})
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem'},payload=>{
       carregarNaoLidas();
       if(payload.new?.remetente==='PC')(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();
@@ -182,10 +182,10 @@ window.addEventListener('DOMContentLoaded',async()=>{
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'usuario_ti'},()=>carregarTIs())
     .subscribe(rtStatusHandler('tickets-realtime'));
 
-  let _pollTI=setInterval(()=>{carregarTickets();carregarKPIs();carregarPCs();carregarNaoLidas();},30000);
+  let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){clearInterval(_pollTI);_pollTI=null;}
-    else{carregarTickets();carregarKPIs();carregarPCs();carregarNaoLidas();_pollTI=setInterval(()=>{carregarTickets();carregarKPIs();carregarPCs();carregarNaoLidas();},30000);}
+    else{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();},30000);}
   });
   window.addEventListener('beforeunload',()=>{
     if(session?.id)navigator.sendBeacon(`${SB}/rest/v1/rpc/rpc_set_presenca?apikey=${SB_KEY}`,new Blob([JSON.stringify({p_id:session.id,p_presenca:'ausente'})],{type:'application/json'}));
@@ -271,8 +271,33 @@ document.addEventListener('click',e=>{
   if(_bellOpen&&!document.getElementById('bell-wrap')?.contains(e.target))fecharBellPanel();
 });
 
+// ─────────────────────────────────────────────────────────────────────
+// COALESCE de refresh tickets+KPIs (realtime + poll de 30s)
+// Sem isso, dois eventos próximos (ex: dois técnicos agindo quase ao mesmo
+// tempo, ou um evento realtime chegando junto com o poll) disparavam fetches
+// sobrepostos — e como não há garantia de ordem de resposta, o fetch mais
+// lento podia sobrescrever a tela com dados já desatualizados. Aqui, chamadas
+// próximas são agrupadas (debounce de 300ms) e, se um refresh já está em
+// andamento, a próxima é apenas enfileirada (no máx. 1 pendente) em vez de
+// disparar em paralelo.
+// ─────────────────────────────────────────────────────────────────────
+let _tkRefreshTimer=null,_tkRefreshInFlight=false,_tkRefreshQueued=false;
+function _scheduleTicketsKPIRefresh(){
+  clearTimeout(_tkRefreshTimer);
+  _tkRefreshTimer=setTimeout(_runTicketsKPIRefresh,300);
+}
+async function _runTicketsKPIRefresh(){
+  if(_tkRefreshInFlight){_tkRefreshQueued=true;return}
+  _tkRefreshInFlight=true;
+  try{await Promise.all([carregarTickets(),carregarKPIs(true)]);}
+  finally{
+    _tkRefreshInFlight=false;
+    if(_tkRefreshQueued){_tkRefreshQueued=false;_runTicketsKPIRefresh();}
+  }
+}
+
 /* KPIs */
-async function carregarKPIs(){
+async function carregarKPIs(pulse=false){
   try{
     const hoje=new Date().toISOString().split('T')[0];
     const ontem=new Date(Date.now()-86400000).toISOString().split('T')[0];
@@ -287,12 +312,24 @@ async function carregarKPIs(){
     const resolvidosOntem=arr(ontemAll).filter(t=>t.status==='resolvido'||t.status==='descartado').length;
     const abertosHoje=arr(all).length;
     const abertosOntem=arr(ontemAll).length;
-    document.getElementById('kpi-pendentes').textContent=arr(pend).length;
-    document.getElementById('kpi-resolvidos').textContent=resolvidosHoje;
-    document.getElementById('kpi-hoje').textContent=abertosHoje;
+    _setKpiValor('kpi-pendentes',arr(pend).length,pulse);
+    _setKpiValor('kpi-resolvidos',resolvidosHoje,pulse);
+    _setKpiValor('kpi-hoje',abertosHoje,pulse);
     _setTrend('kpi-trend-resolvidos',resolvidosHoje,resolvidosOntem,true);
     _setTrend('kpi-trend-hoje',abertosHoje,abertosOntem,false);
   }catch(e){console.error(e)}
+}
+// Atualiza o número e, se mudou e pulse=true (refresh vindo de realtime/poll,
+// não da carga inicial), dispara uma animação curta para sinalizar "ao vivo".
+function _setKpiValor(id,val,pulse){
+  const el=document.getElementById(id);if(!el)return;
+  const changed=el.textContent!==String(val);
+  el.textContent=val;
+  if(pulse&&changed){
+    el.classList.remove('kpi-pulse');
+    void el.offsetWidth;
+    el.classList.add('kpi-pulse');
+  }
 }
 function _setTrend(elId,hoje,ontem,upIsGood){
   const el=document.getElementById(elId);if(!el)return;
@@ -625,7 +662,7 @@ window.setStatus=async function(s){
     notif(statusLabel(s)+' — atualizado');
     if(['resolvido','descartado','falso_alarme'].includes(s))(_cfg.sons!==false)&&window._dsosSom?.chamadoResolvido?.();
     selectedId=null;
-    await Promise.all([carregarTickets(),carregarKPIs()]);
+    await Promise.all([carregarTickets(),carregarKPIs(true)]);
   }catch(e){notif('Erro ao atualizar chamado.')}
 };
 window.abrirResolucao=function(){if(!selectedId)return;const t=tickets.find(x=>x.id===selectedId);if(t)abrirModal(t,true)};
@@ -662,7 +699,7 @@ window.confirmarEnvioFila=async function(){
     });
 
     notif('Enviado para fila de descarte');selectedId=null;
-    await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
+    await Promise.all([carregarTickets(),carregarKPIs(true),carregarPCs()]);
   }catch(e){notif('Erro ao enviar para fila.')}
 };
 document.getElementById('mini-modal-descarte')?.addEventListener('click',e=>{if(e.target===document.getElementById('mini-modal-descarte'))window.fecharMiniModalDescarte()});
@@ -785,7 +822,7 @@ window.confirmarResolucao=async function(){
     notif('Chamado resolvido!');(_cfg.sons!==false)&&window._dsosSom?.chamadoResolvido?.();
     if(selectedId===modalTicketId)selectedId=null;
     window.fecharModal();
-    await Promise.all([carregarTickets(),carregarKPIs()]);
+    await Promise.all([carregarTickets(),carregarKPIs(true)]);
   }catch(e){notif('Erro ao resolver chamado.')}
 };
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -852,7 +889,7 @@ window.reabrirTicket=async function(id,e){
     if(pcId)await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
     notif('Chamado #'+id+' reaberto');
     ocultados.add(id);respondidos=respondidos.filter(r=>r.id!==id);
-    await Promise.all([carregarTickets(),carregarKPIs()]);mudarAba('abertos');
+    await Promise.all([carregarTickets(),carregarKPIs(true)]);mudarAba('abertos');
   }catch(e){notif('Erro ao reabrir chamado.')}
 };
 window.limparRespondidos=async function(){
@@ -867,7 +904,7 @@ window.cancelarItemDescarte=async function(ticketId,pcId,e){
     await fetch(`${SB}/rest/v1/ticket?id=eq.${ticketId}`,{method:'PATCH',headers:H,body:JSON.stringify({status:'aberto',resolucao:null,resolvido_em:null,item_descartado:null,tecnico_responsavel:null,descricao_resolucao:null})});
     await fetch(`${SB}/rest/v1/pc?id=eq.${pcId}`,{method:'PATCH',headers:{...H,Prefer:'return=minimal'},body:JSON.stringify({status_pc:'ativo'})});
     notif('Descarte cancelado — chamado reaberto');
-    await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs()]);
+    await Promise.all([carregarTickets(),carregarKPIs(true),carregarPCs()]);
   }catch(err){notif('Erro ao cancelar descarte.')}
 };
 
@@ -938,7 +975,7 @@ window.executarLimpeza=async function(){
 
     _limpezaPreviewOk=false;resetAbaManutencao();
     notif(`Limpeza: ${d.tickets_deletados} tickets, ${d.imagens_deletadas} imgs, ${d.mb_liberados}MB`);
-    await Promise.all([carregarTickets(),carregarKPIs()]);
+    await Promise.all([carregarTickets(),carregarKPIs(true)]);
   }catch(err){
     notif('Erro: '+err.message);btn.disabled=false;
     btn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg> Limpar agora`;

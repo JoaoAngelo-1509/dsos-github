@@ -135,12 +135,15 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-
 .kpi-n.red{color:var(--kpi-red);text-shadow:0 0 14px var(--kpi-red-sh)}
 .kpi-n.green{color:var(--kpi-green);text-shadow:0 0 14px var(--kpi-green-sh)}
 .kpi-n.yellow{color:var(--kpi-yellow);text-shadow:0 0 14px var(--kpi-yellow-sh)}
+/* pulso curto quando um KPI muda via realtime/poll (sinaliza "ao vivo") */
+@keyframes kpi-flash{0%{transform:scale(1.16)}100%{transform:scale(1)}}
+.kpi-n.kpi-pulse{animation:kpi-flash .5s cubic-bezier(.22,1,.36,1)}
 .kpi-l{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);font-weight:600}
 /* relógio HUD */
 .kpi-clock{
   font-size:.72rem;font-weight:700;letter-spacing:.06em;
   font-family:'Courier New',Courier,monospace;
-  color:#ff0025;background:var(--glass);
+  color:var(--muted2);background:var(--glass);
   border:1px solid var(--glass-b);border-radius:6px;
   padding:10px 14px;text-align:center;white-space:nowrap;
   flex-shrink:0;min-width:72px;
