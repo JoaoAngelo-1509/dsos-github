@@ -11,7 +11,7 @@ instalarHeaderSessao();
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
 
-let session=null, tipo=null, emergAtivo=false, tickets=[], chatTicketId=null;
+let session=null, tipo=null, emergAtivo=false, normalAtivo=false, tickets=[], chatTicketId=null;
 
 // ─────────────────────────────────────────────────────────────────────────
 // LOGGING: Função auxiliar para registrar eventos (fail-safe)
@@ -293,7 +293,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('info-lado').textContent  = '—';
     document.getElementById('footer-lab').textContent = '—';
     document.getElementById('footer-lado').textContent= '—';
-    window.toggleEmerg();
+    document.getElementById('divisor-txt').textContent = 'escolha o tipo de chamado';
+    window.toggleNormal();
     await carregarChamados();
     _iniciarPollPC();
     return;
@@ -305,7 +306,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('info-lado').textContent    = session.lado || '—';
   document.getElementById('footer-lab').textContent   = session.laboratorio || '—';
   document.getElementById('footer-lado').textContent  = session.lado || '—';
-  document.getElementById('emerg').style.display      = 'none';
+  document.getElementById('emerg').style.display        = 'none';
+  document.getElementById('emerg-normal').style.display  = 'none';
   document.querySelector('.divisor').style.display    = 'none';
 
   try {
@@ -642,19 +644,36 @@ window.pickTipo = function(opt) {
 };
 document.addEventListener('click',e=>{ const w=document.getElementById('sel-wrap');if(!w.contains(e.target))w.classList.remove('open'); });
 window.toggleEmerg = function() {
-  emergAtivo=!emergAtivo;document.getElementById('emerg').classList.toggle('on',emergAtivo);
-  document.getElementById('epill').textContent=emergAtivo?'ATIVO':'ATIVAR';
-  if(!emergAtivo)document.getElementById('emerg-pc').value='';
+  emergAtivo=true;normalAtivo=false;
+  document.getElementById('emerg').classList.add('on');
+  document.getElementById('epill').textContent='ATIVO';
+  document.getElementById('emerg-normal').classList.remove('on');
+  document.getElementById('npill').textContent='ATIVAR';
+  document.getElementById('normal-pc').value='';
 };
+window.toggleNormal = function() {
+  normalAtivo=true;emergAtivo=false;
+  document.getElementById('emerg-normal').classList.add('on');
+  document.getElementById('npill').textContent='ATIVO';
+  document.getElementById('emerg').classList.remove('on');
+  document.getElementById('epill').textContent='ATIVAR';
+  document.getElementById('emerg-pc').value='';
+};
+
+async function _resolverPcPorTag(tag){
+  const rpc=await fetch(`${SB_URL}/rest/v1/pc?tag=eq.${encodeURIComponent(tag)}&select=id,laboratorio,lado`,{headers:H});
+  const pcs=await rpc.json();
+  return Array.isArray(pcs)&&pcs.length?pcs[0]:null;
+}
 
 window.abrirChamado = async function() {
   if(!tipo){toast('Selecione o tipo de problema.','err');return}
   const desc=document.getElementById('descricao').value.trim();
   if(!desc){toast('Adicione uma descrição do problema.','err');return}
-  if(session.tipo==='professor'&&!emergAtivo){toast('Professores só podem abrir chamados de emergência.','err');return}
+  if(session.tipo==='professor'&&!emergAtivo&&!normalAtivo){toast('Selecione o tipo de chamado.','err');return}
 
-  // Emergências (emergAtivo ou professor) pulam o rate limit
-  const ehEmergencia = emergAtivo || session.tipo === 'professor';
+  // Emergências pulam o rate limit
+  const ehEmergencia = emergAtivo;
   if (!ehEmergencia) {
     const rl = await _checkTicketRateLimit();
     if (rl?.bloqueado) {
@@ -667,13 +686,17 @@ window.abrirChamado = async function() {
   if(emergAtivo){
     const epTag=document.getElementById('emerg-pc').value.trim();
     if(!epTag){toast('Informe a tag do PC com problema.','err');return}
-    try{
-      const rpc=await fetch(`${SB_URL}/rest/v1/pc?tag=eq.${encodeURIComponent(epTag)}&select=id,laboratorio,lado`,{headers:H});
-      const pcs=await rpc.json();
-      if(!Array.isArray(pcs)||!pcs.length){toast('Tag do PC não encontrada.','err');return}
-      pcProblemaId=pcs[0].id;
-      if(session.tipo==='professor'){pcOrigemId=pcs[0].id;session.laboratorio=pcs[0].laboratorio;session.lado=pcs[0].lado;document.getElementById('footer-lab').textContent=pcs[0].laboratorio||'—';document.getElementById('footer-lado').textContent=pcs[0].lado||'—';}
-    }catch(e){toast('Erro ao buscar PC.','err');return}
+    const pc=await _resolverPcPorTag(epTag).catch(()=>null);
+    if(!pc){toast('Tag do PC não encontrada.','err');return}
+    pcProblemaId=pc.id;
+    if(session.tipo==='professor'){pcOrigemId=pc.id;session.laboratorio=pc.laboratorio;session.lado=pc.lado;document.getElementById('footer-lab').textContent=pc.laboratorio||'—';document.getElementById('footer-lado').textContent=pc.lado||'—';}
+  }else if(normalAtivo){
+    const npTag=document.getElementById('normal-pc').value.trim();
+    if(!npTag){toast('Informe a tag do PC com problema.','err');return}
+    const pc=await _resolverPcPorTag(npTag).catch(()=>null);
+    if(!pc){toast('Tag do PC não encontrada.','err');return}
+    pcProblemaId=pc.id;pcOrigemId=pc.id;session.laboratorio=pc.laboratorio;session.lado=pc.lado;
+    document.getElementById('footer-lab').textContent=pc.laboratorio||'—';document.getElementById('footer-lado').textContent=pc.lado||'—';
   }
   const btn=document.getElementById('btn-submit');btn.classList.add('loading');
 
@@ -748,9 +771,10 @@ window.resetForm = function() {
   document.querySelectorAll('.sel-t-icon').forEach(i=>i.style.display='none');
   document.getElementById('sel-val').textContent='';document.getElementById('sel-trigger').classList.remove('valued');
   document.getElementById('descricao').value='';document.getElementById('dc').textContent='0';
-  if(session.tipo==='professor'){if(!emergAtivo)window.toggleEmerg();}
+  if(session.tipo==='professor'){window.toggleNormal();}
   else{emergAtivo=false;document.getElementById('emerg').classList.remove('on');document.getElementById('epill').textContent='ATIVAR';}
   document.getElementById('emerg-pc').value='';
+  document.getElementById('normal-pc').value='';
   document.getElementById('ai-prioridade-badge').className='ai-badge hidden';
   _fecharSugestao();
   _aiUltimaDesc='';_aiUltimoResultado=null;

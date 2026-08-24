@@ -129,7 +129,36 @@
             <div class="ai-badge hidden" id="ai-prioridade-badge"></div>
           </div>
 
-          <div class="divisor"><span>opcional</span></div>
+          <div class="divisor"><span id="divisor-txt">opcional</span></div>
+
+          <!-- CHAMADO NORMAL (professor) -->
+          <div class="emerg emerg-ok" id="emerg-normal">
+            <button class="emerg-btn" type="button" onclick="toggleNormal()">
+              <div class="emerg-bolt">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+              </div>
+              <div class="emerg-text">
+                <span class="emerg-title">Chamado Normal</span>
+                <span class="emerg-hint">Abrir chamado comum para um PC do laboratório</span>
+              </div>
+              <span class="emerg-pill" id="npill">ATIVAR</span>
+            </button>
+            <div class="emerg-body">
+              <div class="emerg-body-label">Tag do PC com problema</div>
+              <input class="emerg-input" id="normal-pc" type="text"
+                placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
+                oninput="this.value=this.value.toUpperCase()" />
+              <div class="emerg-warn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="var(--green-dark)"/>
+                </svg>
+                Sem urgência. O PC informado ficará registrado como origem do chamado.
+              </div>
+            </div>
+          </div>
 
           <!-- EMERGÊNCIA -->
           <div class="emerg" id="emerg">
