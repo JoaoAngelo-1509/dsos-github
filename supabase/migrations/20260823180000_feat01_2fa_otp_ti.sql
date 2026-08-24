@@ -1,3 +1,25 @@
+-- ############################################################################
+-- ##  NAO APLIQUE ESTA MIGRATION AINDA  ######################################
+-- ############################################################################
+--
+-- Falta a Edge Function de envio de e-mail. Sem ela, esta migration deixa o
+-- login pela metade: rpc_login_ti passa a devolver um DESAFIO em vez do token
+-- quando o usuario tem e-mail cadastrado, e quem entrega o codigo ao usuario
+-- seria justamente a Edge Function que ainda nao existe. Resultado pratico:
+-- todo T.I. com e-mail cadastrado fica TRANCADO FORA do sistema.
+--
+-- Hoje o risco esta latente porque nenhum dos 6 usuarios de T.I. tem e-mail —
+-- mas basta alguem cadastrar um para o login daquela conta parar.
+--
+-- O que ja foi aplicado em producao, por ser seguro e independente:
+--   supabase/migrations/<feat01_revoga_geracao_otp_do_cliente>
+--   tira do cliente o EXECUTE de rpc_gerar_otp_ti, fechando o vazamento do
+--   codigo (a RPC devolve o codigo no JSON e era chamavel por anon).
+--
+-- Para concluir o FEAT-01, ver o passo a passo em WORKFLOW.md
+-- (secao "Limitacoes conhecidas" -> FEAT-01).
+-- ############################################################################
+
 -- FEAT-01 — verificação em 2 etapas (2FA) do T.I., de fato ligada.
 --
 -- ════════════════════════════════════════════════════════════════════════

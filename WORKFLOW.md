@@ -55,27 +55,50 @@ A função `supabase/functions/groq-proxy` roda com a chave `GROQ_KEY` armazenad
 Itens levantados na auditoria técnica de 23/08/2026 que **não** foram fechados,
 e o motivo:
 
-- **FEAT-01 — verificação em 2 etapas (2FA) não existe.** O banco tem a
-  infraestrutura (`otp_ti`, `rpc_gerar_otp_ti`, `rpc_verificar_otp_ti`,
-  `usuario_ti.email`), mas ela não está ligada e **não pode ser ligada como
-  está**: (1) não existe edge function de envio de e-mail no projeto — só a
-  `groq-proxy`; (2) `rpc_gerar_otp_ti` **devolve o código no próprio JSON**,
-  então, chamada pelo cliente, entregaria o código a quem já tem a senha,
-  anulando o propósito do 2FA. Para completar seria preciso uma edge function
-  que envie o e-mail e passe a ser a única a enxergar o código. Até lá, o campo
-  na tela de cadastro de T.I. foi reetiquetado como "E-mail de contato" — antes
-  ele anunciava 2FA e sequer era salvo, o que dava ao administrador a impressão
-  falsa de ter protegido a conta.
-- **SEC-05 — leitura ainda é aberta.** A escrita em `ticket`/`pc` passou a
-  exigir token de sessão (ver migrations `sec05_*`), mas `ticket_select`,
-  `pc_select` e `mensagem_select` continuam `USING (true)`: qualquer pessoa com
-  a anon key ainda **lê** todos os chamados, o chat e as notas internas.
-  Fechar a leitura exige identificar o solicitante em toda consulta, o que só
-  faz sentido junto com a migração para Supabase Auth.
-- **DB-01 — migrations legadas não versionadas.** As migrations criadas a
-  partir de 23/08/2026 estão em `supabase/migrations/`, mas as ~91 anteriores
-  existem só no histórico interno do Supabase. Rodar `supabase db pull` para
-  gerar um baseline versionado continua pendente (exige a CLI do Supabase).
+- **FEAT-01 — 2FA preparado, mas NÃO ativado.** O vazamento mais grave já foi
+  fechado: `rpc_gerar_otp_ti` devolvia o código OTP no próprio JSON e era
+  chamável por `anon`, de modo que quem já tivesse a senha obteria o segundo
+  fator junto (comprovado: a chamada respondia `{"ok":true,...,"codigo":"345280"}`).
+  O `EXECUTE` foi revogado do cliente — nada quebrou, porque o frontend nunca
+  chamou essa RPC e nenhum T.I. tem e-mail cadastrado.
+
+  O resto do recurso está pronto em
+  `supabase/migrations/20260823180000_feat01_2fa_otp_ti.sql`, **que não deve
+  ser aplicada ainda** (o arquivo abre com esse aviso). Falta a Edge Function
+  de e-mail: sem ela, `rpc_login_ti` passa a devolver um desafio em vez do
+  token e ninguém entrega o código ao usuário — quem tiver e-mail cadastrado
+  fica trancado fora.
+
+  Para concluir:
+  1. criar conta em um provedor de e-mail (Resend é o padrão com Supabase) e
+     verificar um domínio remetente;
+  2. `supabase secrets set RESEND_API_KEY=<chave> --project-ref <PROD>`;
+  3. escrever a Edge Function em `supabase/functions/enviar-otp/` (padrão da
+     `groq-proxy`): valida a credencial, chama `rpc_gerar_otp_ti` com a
+     service_role key, envia o e-mail e devolve só "enviado: sim/não" — nunca
+     o código;
+  4. `supabase functions deploy enviar-otp --project-ref <PROD>`;
+  5. aplicar a migration acima e ajustar `js/auth.js` + `html/login.html` para
+     a etapa do código;
+  6. testar com `tests/dois-fatores.test.js`.
+- **SEC-05 — resolvido, com uma ressalva.** A leitura de `ticket`, `mensagem`,
+  `pc`, `usuario_ti` e `professor` passou a exigir token de sessão, enviado no
+  header `X-Sessao-Token` (ver `sec05b_fechar_leitura`). A ressalva é o
+  **Supabase Realtime**: ele avalia a RLS sem `request.headers`, então parou de
+  entregar eventos de `ticket`/`mensagem`. As listas já eram cobertas pelo poll
+  de 30s existente e o chat ganhou poll de 5s; os canais seguem inscritos, e
+  voltam a funcionar sozinhos se um dia a leitura for visível ao Realtime.
+  Continua em aberto: o vínculo professor⇄chamado é por `nome_solicitante`
+  (o schema não tem `ticket.professor_id`), o que é mais fraco que casar por
+  id — um aluno que digite o nome de um professor cria um chamado que aquele
+  professor passa a enxergar.
+- **DB-01 — resolvido.** `supabase/migrations/20260101000000_baseline_schema.sql`
+  tem o retrato do schema de produção: 17 tabelas, 98 funções, 34 policies, 42
+  índices, RLS e grants. Foi extraído do catálogo do próprio Postgres (o
+  `db pull` da CLI exige a senha do banco, que não estava disponível) e reflete
+  o estado *depois* das correções desta auditoria. Daqui pra frente, toda
+  mudança de schema deve nascer como migration versionada — inclusive as
+  aplicadas manualmente pelo painel do Supabase.
 - **A11Y-03 — tabelas de log ainda são `<div>` + CSS grid**, não `<table>`
   semântica. Migrar toca a estrutura DOM que o JS gera nas 6 abas; foi
   deixado de fora para não acumular risco com as demais mudanças de
