@@ -315,3 +315,42 @@ DROP FUNCTION IF EXISTS public._diag_headers();
 -- As funções fn_sessao_* e rpc_medias_resolucao podem ficar: são aditivas e
 -- ninguém mais depende delas depois do rollback.
 -- ============================================================================
+
+
+-- ============================================================================
+-- CORREÇÃO APLICADA DEPOIS (mesma leva): bypass por RPC SECURITY DEFINER
+-- ----------------------------------------------------------------------------
+-- A suíte tests/leitura.test.js pegou o que fechar policy NÃO resolve:
+-- rpc_nao_lidas_por_ticket é SECURITY DEFINER, roda como dono e enxergava
+-- todos os chamados abertos — devolvia ids e volume de conversa de terceiros
+-- para qualquer um, inclusive sem token. Menor que o vazamento do SELECT
+-- aberto, mas ainda é vazamento.
+--
+-- Fica como lembrete: ao fechar leitura por RLS, revisar TODA função
+-- SECURITY DEFINER que devolva dado derivado das tabelas fechadas.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.rpc_nao_lidas_por_ticket()
+RETURNS TABLE(ticket_id integer, nao_lidas_ti bigint, nao_lidas_pc bigint)
+LANGUAGE sql SECURITY DEFINER SET search_path TO 'public','extensions','pg_temp'
+AS $function$
+  SELECT
+    m.ticket_id,
+    COUNT(*) FILTER (WHERE m.remetente = 'PC' AND m.lido_ti = false) AS nao_lidas_ti,
+    COUNT(*) FILTER (WHERE m.remetente = 'TI' AND m.lido_pc = false) AS nao_lidas_pc
+  FROM public.mensagem m
+  WHERE m.ticket_id IN (
+    SELECT t.id
+      FROM public.ticket t
+     WHERE t.status IN ('aberto', 'em_andamento', 'aguardando_peca')
+       AND (
+             public.fn_sessao_tipo() = 'ti'
+         OR (public.fn_sessao_tipo() = 'pc'
+             AND public.fn_sessao_uid() IN (t.pc_origem, t.pc_problema))
+         OR (public.fn_sessao_tipo() = 'professor'
+             AND t.nome_solicitante IS NOT NULL
+             AND t.nome_solicitante = public.fn_sessao_nome())
+       )
+  )
+  GROUP BY m.ticket_id;
+$function$;
