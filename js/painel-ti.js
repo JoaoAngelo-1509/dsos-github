@@ -6,6 +6,9 @@ import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 import { initEasterEgg } from './easter-egg.js';
 import { logger } from './logging.js';
+// SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
+import { instalarHeaderSessao } from './sessao-header.js';
+instalarHeaderSessao();
 
 const sbClient = supabase.createClient(SB, SB_KEY);
 let realtimeChannel = null;
@@ -863,6 +866,7 @@ window.fecharModal=function(){
   document.getElementById('modal').classList.remove('open');
   modalTicketId=null;
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
+  _pararPollChatTi();   // SEC-05b: não deixa o poll do chat rodando com o modal fechado
 };
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))window.fecharModal()});
 
@@ -1119,6 +1123,32 @@ async function iniciarChat(ticketId,ativo){
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>{carregarMsgsTi(ticketId);marcarLidoTi(ticketId);})
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>carregarMsgsTi(ticketId))
     .subscribe(rtStatusHandler(`chat-ti-${ticketId}`));
+
+  _iniciarPollChatTi(ticketId);
+}
+
+// SEC-05b: com a leitura de `mensagem` fechada por RLS, o Realtime parou de
+// entregar eventos desta tabela — ele avalia a policy sem `request.headers`
+// (o token vai no header HTTP do PostgREST, e o WebSocket não carrega header),
+// então a policy nega e o evento não chega. Verificado na prática: o canal
+// fica SUBSCRIBED e simplesmente não recebe nada.
+//
+// O canal acima foi mantido de propósito: se um dia a leitura do chat voltar a
+// ser visível para o Realtime, ele volta a funcionar sozinho — e enquanto isso
+// não custa nada além da inscrição. Este poll é a rede de segurança que faz o
+// chat continuar "ao vivo" para o usuário. 5s é um meio-termo entre parecer
+// instantâneo e não martelar o banco; só roda com o modal aberto.
+let _pollChatTi=null;
+function _iniciarPollChatTi(ticketId){
+  _pararPollChatTi();
+  _pollChatTi=setInterval(()=>{
+    if(document.hidden)return;                 // aba em segundo plano: não gasta requisição
+    if(modalTicketId!==ticketId){_pararPollChatTi();return;}
+    carregarMsgsTi(ticketId);
+  },5000);
+}
+function _pararPollChatTi(){
+  if(_pollChatTi){clearInterval(_pollChatTi);_pollChatTi=null;}
 }
 async function carregarMsgsTi(ticketId){
   try{

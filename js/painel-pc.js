@@ -4,6 +4,9 @@ import { dsosAlert } from './dsos-ui.js';
 import { escapeHtml, tipoIcon, statusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
+// SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
+import { instalarHeaderSessao } from './sessao-header.js';
+instalarHeaderSessao();
 
 const sbClient = supabase.createClient(SB_URL, SB_KEY);
 let realtimeChannel = null;
@@ -514,12 +517,38 @@ function _iniciarRealtime(ticketId) {
       carregarChamados();carregarMsgs(ticketId);
     })
     .subscribe(rtStatusHandler(`chat-pc-${ticketId}`));
+
+  _iniciarPollChatPc(ticketId);
+}
+
+// SEC-05b: com a leitura de `mensagem` fechada por RLS, o Realtime deixou de
+// entregar eventos dessa tabela — ele avalia a policy sem `request.headers`
+// (o token viaja no header HTTP do PostgREST; o WebSocket não carrega header),
+// então a policy nega e o evento não chega. Verificado na prática: o canal
+// fica SUBSCRIBED e não recebe nada.
+//
+// O canal acima segue inscrito de propósito — se um dia o chat voltar a ser
+// visível para o Realtime, volta a funcionar sozinho. Este poll é o que
+// mantém o chat "ao vivo" enquanto isso. Só roda com o modal aberto e para
+// quando a aba vai para segundo plano.
+let _pollChatPc=null;
+function _iniciarPollChatPc(ticketId){
+  _pararPollChatPc();
+  _pollChatPc=setInterval(()=>{
+    if(document.hidden)return;
+    if(chatTicketId!==ticketId){_pararPollChatPc();return;}
+    carregarMsgs(ticketId);
+  },5000);
+}
+function _pararPollChatPc(){
+  if(_pollChatPc){clearInterval(_pollChatPc);_pollChatPc=null;}
 }
 
 window.fecharChat = function() {
   document.getElementById('modal-chat').classList.remove('open');
   chatTicketId=null;
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
+  _pararPollChatPc();
 };
 document.getElementById('modal-chat').addEventListener('click',e=>{if(e.target===document.getElementById('modal-chat'))window.fecharChat()});
 

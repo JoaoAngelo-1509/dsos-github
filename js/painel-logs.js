@@ -9,6 +9,9 @@ import { dsosConfirm } from './dsos-ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { sair, escapeHtml } from './ui.js';
 import { initSessionGuard } from './session-guard.js';
+// SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
+import { instalarHeaderSessao } from './sessao-header.js';
+instalarHeaderSessao();
 
 const CFG = {
   SB_URL,

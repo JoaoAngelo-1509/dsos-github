@@ -4,6 +4,9 @@ import { SUPABASE_URL, SUPABASE_HEADERS as headers } from './supabase-config.js'
 import { applyTheme, updateTemaIcon, toggleTema } from './ui.js';
 import { dsosAlert } from './dsos-ui.js';
 import { logger } from './logging.js';
+// SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
+import { instalarHeaderSessao } from './sessao-header.js';
+instalarHeaderSessao();
 
 // Expõe toggleTema globalmente para o onclick no HTML
 window.toggleTema = toggleTema;
