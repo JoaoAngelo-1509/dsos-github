@@ -39,7 +39,7 @@
 -- O QUE ELE **NAO** COBRE
 -- -----------------------
 --   * Dados. Nenhuma linha de nenhuma tabela — inclusive nenhum hash de
---     senha, token de sessao ou codigo OTP.
+--     senha ou token de sessao.
 --   * Segredos. `GROQ_KEY`, chaves de API, connection strings, service
 --     role key: nada disso esta aqui nem deve estar.
 --   * Configuracao do projeto Supabase: Auth (providers, templates de
@@ -175,14 +175,6 @@ CREATE TABLE IF NOT EXISTS public.operacoes_massa_log (
   resultado_resumo text,
   status text);
 
-CREATE TABLE IF NOT EXISTS public.otp_ti (
-  id integer NOT NULL DEFAULT nextval('otp_ti_id_seq'::regclass),
-  ti_id integer NOT NULL,
-  codigo text NOT NULL,
-  criado_em timestamp with time zone NOT NULL DEFAULT now(),
-  expira_em timestamp with time zone NOT NULL DEFAULT (now() + '00:10:00'::interval),
-  usado boolean NOT NULL DEFAULT false);
-
 CREATE TABLE IF NOT EXISTS public.pc (
   id integer NOT NULL DEFAULT nextval('pc_id_seq'::regclass),
   laboratorio text NOT NULL,
@@ -264,8 +256,6 @@ ALTER TABLE public.mensagem ADD CONSTRAINT mensagem_pkey PRIMARY KEY (id);
 ALTER TABLE public.mensagem ADD CONSTRAINT mensagem_remetente_check CHECK ((remetente = ANY (ARRAY['PC'::text, 'TI'::text])));
 ALTER TABLE public.mensagem ADD CONSTRAINT mensagem_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES ticket(id) ON DELETE CASCADE;
 ALTER TABLE public.operacoes_massa_log ADD CONSTRAINT operacoes_massa_log_pkey PRIMARY KEY (id);
-ALTER TABLE public.otp_ti ADD CONSTRAINT otp_ti_pkey PRIMARY KEY (id);
-ALTER TABLE public.otp_ti ADD CONSTRAINT otp_ti_ti_id_fkey FOREIGN KEY (ti_id) REFERENCES usuario_ti(id) ON DELETE CASCADE;
 ALTER TABLE public.pc ADD CONSTRAINT pc_lado_check CHECK ((lado = ANY (ARRAY['A'::bpchar, 'B'::bpchar])));
 ALTER TABLE public.pc ADD CONSTRAINT pc_pkey PRIMARY KEY (id);
 ALTER TABLE public.pc ADD CONSTRAINT pc_status_pc_check CHECK ((status_pc = ANY (ARRAY['ativo'::text, 'em_manutencao'::text, 'descartado'::text])));
@@ -321,7 +311,6 @@ CREATE INDEX idx_audit_log_usuario_id ON public.audit_log USING btree (usuario_i
 CREATE INDEX idx_login_tentativas_chave_tempo ON public.login_tentativas USING btree (chave, tentou_em DESC);
 CREATE INDEX idx_mensagem_ticket_id ON public.mensagem USING btree (ticket_id);
 CREATE INDEX idx_operacoes_timestamp ON public.operacoes_massa_log USING btree ("timestamp" DESC);
-CREATE INDEX idx_otp_ti_ti_id ON public.otp_ti USING btree (ti_id);
 CREATE INDEX idx_professor_ti_id ON public.professor USING btree (ti_id);
 CREATE INDEX idx_sessao_token_expira ON public.sessao_token USING btree (expira_em);
 CREATE INDEX idx_ticket_nome_solicitante ON public.ticket USING btree (nome_solicitante);
@@ -481,95 +470,6 @@ CREATE OR REPLACE VIEW public.v_usuarios_mais_ativos WITH (security_invoker=true
  LIMIT 50;
 
 -- ============ FUNCOES E RPCs ============
-
-CREATE OR REPLACE FUNCTION public._exportar_ddl_baseline()
- RETURNS text
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
-AS $function$
-WITH
-tabelas AS (
-  SELECT string_agg(
-    format('CREATE TABLE IF NOT EXISTS public.%I (%s);', c.relname,
-      (SELECT string_agg(format(E'\n  %I %s%s%s', a.attname,
-              format_type(a.atttypid,a.atttypmod),
-              CASE WHEN a.attnotnull THEN ' NOT NULL' ELSE '' END,
-              CASE WHEN d.adbin IS NOT NULL THEN ' DEFAULT '||pg_get_expr(d.adbin,d.adrelid) ELSE '' END),
-              ',' ORDER BY a.attnum)
-         FROM pg_attribute a
-         LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
-        WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped)
-    ), E'\n\n' ORDER BY c.relname) AS s
-  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='public' AND c.relkind='r'
-),
-constraints AS (
-  SELECT string_agg(format('ALTER TABLE public.%I ADD CONSTRAINT %I %s;',
-           c.conrelid::regclass::text, c.conname, pg_get_constraintdef(c.oid)), E'\n' ORDER BY c.conrelid::regclass::text, c.conname) AS s
-  FROM pg_constraint c WHERE c.connamespace='public'::regnamespace
-),
-indices AS (
-  SELECT string_agg(i.indexdef||';', E'\n' ORDER BY i.indexname) AS s
-  FROM pg_indexes i WHERE i.schemaname='public'
-    AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conname=i.indexname AND c.connamespace='public'::regnamespace)
-),
-views AS (
-  SELECT string_agg(format('CREATE OR REPLACE VIEW public.%I%s AS%s',
-           c.relname,
-           CASE WHEN EXISTS (SELECT 1 FROM unnest(coalesce(c.reloptions,'{}')) o WHERE o LIKE 'security_invoker%')
-                THEN ' WITH (security_invoker=true)' ELSE '' END,
-           E'\n'||pg_get_viewdef(c.oid,true)), E'\n\n' ORDER BY c.relname) AS s
-  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='v'
-),
-funcoes AS (
-  SELECT string_agg(pg_get_functiondef(p.oid)||';', E'\n\n' ORDER BY p.proname, p.oid) AS s
-  FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-  WHERE n.nspname='public' AND p.prokind IN ('f','p')
-),
-triggers AS (
-  SELECT string_agg(pg_get_triggerdef(t.oid)||';', E'\n' ORDER BY t.tgname) AS s
-  FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='public' AND NOT t.tgisinternal
-),
-rls AS (
-  SELECT string_agg(format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', c.relname), E'\n' ORDER BY c.relname) AS s
-  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity
-),
-policies AS (
-  SELECT string_agg(format('CREATE POLICY %I ON public.%I AS %s FOR %s TO %s%s%s;',
-           p.policyname,p.tablename,p.permissive,p.cmd,array_to_string(p.roles,', '),
-           coalesce(E'\n  USING ('||p.qual||')',''),
-           coalesce(E'\n  WITH CHECK ('||p.with_check||')','')), E'\n\n' ORDER BY p.tablename,p.policyname) AS s
-  FROM pg_policies p WHERE p.schemaname='public'
-),
-grants_tab AS (
-  SELECT string_agg(format('GRANT %s ON public.%I TO %I;', privilege_type, table_name, grantee), E'\n' ORDER BY table_name, grantee, privilege_type) AS s
-  FROM information_schema.table_privileges
-  WHERE table_schema='public' AND grantee IN ('anon','authenticated')
-),
-grants_col AS (
-  SELECT string_agg(format('GRANT %s (%I) ON public.%I TO %I;', privilege_type, column_name, table_name, grantee), E'\n' ORDER BY table_name, column_name, grantee) AS s
-  FROM information_schema.column_privileges
-  WHERE table_schema='public' AND grantee IN ('anon','authenticated')
-    AND table_name NOT IN (SELECT table_name FROM information_schema.table_privileges
-                            WHERE table_schema='public' AND grantee IN ('anon','authenticated') AND privilege_type='SELECT')
-)
-SELECT concat_ws(E'\n\n',
- '-- ============ TABELAS ============', (SELECT s FROM tabelas),
- '-- ============ CONSTRAINTS ============', (SELECT s FROM constraints),
- '-- ============ INDICES ============', (SELECT s FROM indices),
- '-- ============ VIEWS ============', (SELECT s FROM views),
- '-- ============ FUNCOES E RPCs ============', (SELECT s FROM funcoes),
- '-- ============ TRIGGERS ============', (SELECT s FROM triggers),
- '-- ============ RLS ============', (SELECT s FROM rls),
- '-- ============ POLICIES ============', (SELECT s FROM policies),
- '-- ============ GRANTS DE TABELA ============', (SELECT s FROM grants_tab),
- '-- ============ GRANTS DE COLUNA ============', (SELECT s FROM grants_col)
-);
-$function$
-;
 
 CREATE OR REPLACE FUNCTION public.fn_check_login_unico()
  RETURNS trigger
@@ -887,28 +787,6 @@ END;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.rpc_atualizar_ti(p_id integer, p_nome text, p_nova_senha text DEFAULT NULL::text, p_email text DEFAULT NULL::text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-BEGIN
-  UPDATE public.usuario_ti SET nome = p_nome WHERE id = p_id;
-
-  IF p_email IS NOT NULL THEN
-    UPDATE public.usuario_ti SET email = NULLIF(trim(p_email), '') WHERE id = p_id;
-  END IF;
-
-  IF p_nova_senha IS NOT NULL AND length(trim(p_nova_senha)) >= 4 THEN
-    UPDATE public.usuario_ti
-      SET senha = extensions.crypt(p_nova_senha, extensions.gen_salt('bf', 10))
-      WHERE id = p_id;
-  END IF;
-END;
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.rpc_atualizar_ti(p_id integer, p_nome text, p_nova_senha text DEFAULT NULL::text, p_email text DEFAULT NULL::text, p_is_professor boolean DEFAULT NULL::boolean, p_disciplina text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -955,40 +833,6 @@ BEGIN
         SET nome = p_nome,
             disciplina = COALESCE(p_disciplina, disciplina)
       WHERE ti_id = p_id;
-    END IF;
-  END IF;
-END;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.rpc_atualizar_ti(p_id integer, p_nome text, p_nova_senha text DEFAULT NULL::text)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'pg_temp'
-AS $function$
-DECLARE
-  v_is_prof BOOLEAN;
-  v_prof_id BIGINT;
-BEGIN
-  SELECT is_professor, professor_id INTO v_is_prof, v_prof_id
-  FROM public.usuario_ti WHERE id = p_id;
-
-  IF p_nova_senha IS NOT NULL AND p_nova_senha <> '' THEN
-    UPDATE public.usuario_ti
-      SET nome = p_nome,
-          senha = extensions.crypt(p_nova_senha, extensions.gen_salt('bf', 10))
-      WHERE id = p_id;
-    IF v_is_prof AND v_prof_id IS NOT NULL THEN
-      UPDATE public.professor
-        SET nome = p_nome,
-            senha_hash = extensions.crypt(p_nova_senha, extensions.gen_salt('bf', 10))
-        WHERE id = v_prof_id;
-    END IF;
-  ELSE
-    UPDATE public.usuario_ti SET nome = p_nome WHERE id = p_id;
-    IF v_is_prof AND v_prof_id IS NOT NULL THEN
-      UPDATE public.professor SET nome = p_nome WHERE id = v_prof_id;
     END IF;
   END IF;
 END;
@@ -1083,24 +927,21 @@ CREATE OR REPLACE FUNCTION public.rpc_cadastrar_ti(p_login text, p_nome text, p_
  SECURITY DEFINER
  SET search_path TO 'public', 'extensions', 'pg_temp'
 AS $function$
-DECLARE
-  v_ti_id   INT;
-  v_prof_id BIGINT;
+DECLARE v_ti_id INT; v_prof_id BIGINT;
 BEGIN
-  INSERT INTO public.usuario_ti(login, nome, senha, is_professor)
-  VALUES (p_login, p_nome, extensions.crypt(p_senha, extensions.gen_salt('bf', 10)), p_is_professor)
+  INSERT INTO public.usuario_ti(login, nome, senha, email, is_professor)
+  VALUES (p_login, p_nome, extensions.crypt(p_senha, extensions.gen_salt('bf', 10)),
+          NULLIF(btrim(COALESCE(p_email,'')), ''), p_is_professor)
   RETURNING public.usuario_ti.id INTO v_ti_id;
 
   IF p_is_professor THEN
     INSERT INTO public.professor(login, nome, senha_hash, disciplina)
     VALUES (p_login, p_nome, extensions.crypt(p_senha, extensions.gen_salt('bf', 10)), p_disciplina)
     RETURNING public.professor.id INTO v_prof_id;
-
     UPDATE public.usuario_ti SET professor_id = v_prof_id WHERE public.usuario_ti.id = v_ti_id;
   END IF;
 
-  RETURN QUERY
-    SELECT u.id, u.login, u.nome, u.is_professor, u.professor_id
+  RETURN QUERY SELECT u.id, u.login, u.nome, u.is_professor, u.professor_id
     FROM public.usuario_ti u WHERE u.id = v_ti_id;
 END;
 $function$
@@ -1398,51 +1239,6 @@ BEGIN
   ) SELECT COUNT(*) INTO v_n_tickets FROM del;
 
   RETURN QUERY SELECT v_n_tickets, v_n_msgs, COALESCE(v_imgs, '{}');
-END;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.rpc_gerar_otp_ti(p_ti_id integer)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'pg_temp'
-AS $function$
-DECLARE
-  v_email   text;
-  v_nome    text;
-  v_codigo  text;
-BEGIN
-  -- Busca email do técnico
-  SELECT email, nome INTO v_email, v_nome
-  FROM public.usuario_ti
-  WHERE id = p_ti_id;
-
-  IF v_email IS NULL OR v_email = '' THEN
-    RETURN json_build_object('ok', false, 'erro', 'sem_email');
-  END IF;
-
-  -- Invalida OTPs anteriores não usados deste técnico
-  UPDATE public.otp_ti
-  SET usado = true
-  WHERE ti_id = p_ti_id AND usado = false;
-
-  -- Limpa OTPs expirados de todos (limpeza oportunística)
-  DELETE FROM public.otp_ti WHERE expira_em < now();
-
-  -- Gera código de 6 dígitos
-  v_codigo := lpad((floor(random() * 1000000))::text, 6, '0');
-
-  -- Insere novo OTP
-  INSERT INTO public.otp_ti (ti_id, codigo, criado_em, expira_em, usado)
-  VALUES (p_ti_id, v_codigo, now(), now() + interval '10 minutes', false);
-
-  RETURN json_build_object(
-    'ok',     true,
-    'email',  v_email,
-    'nome',   v_nome,
-    'codigo', v_codigo  -- retornado para a Edge Function enviar por email
-  );
 END;
 $function$
 ;
@@ -2615,47 +2411,6 @@ BEGIN
 END $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.rpc_verificar_otp_ti(p_ti_id integer, p_codigo text)
- RETURNS json
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'pg_temp'
-AS $function$
-DECLARE
-  v_otp record;
-BEGIN
-  -- Busca OTP mais recente não usado para este técnico
-  SELECT * INTO v_otp
-  FROM public.otp_ti
-  WHERE ti_id = p_ti_id
-    AND usado = false
-  ORDER BY criado_em DESC
-  LIMIT 1;
-
-  -- Não encontrou OTP ativo
-  IF NOT FOUND THEN
-    RETURN json_build_object('ok', false, 'erro', 'invalido');
-  END IF;
-
-  -- Código expirado
-  IF v_otp.expira_em < now() THEN
-    UPDATE public.otp_ti SET usado = true WHERE id = v_otp.id;
-    RETURN json_build_object('ok', false, 'erro', 'expirado');
-  END IF;
-
-  -- Código incorreto
-  IF v_otp.codigo != p_codigo THEN
-    RETURN json_build_object('ok', false, 'erro', 'invalido');
-  END IF;
-
-  -- Código correto — marca como usado
-  UPDATE public.otp_ti SET usado = true WHERE id = v_otp.id;
-
-  RETURN json_build_object('ok', true);
-END;
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.rpc_verificar_pc(p_pc_id bigint)
  RETURNS json
  LANGUAGE plpgsql
@@ -3040,7 +2795,6 @@ ALTER TABLE public.auditoria_ti ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.login_tentativas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mensagem ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.operacoes_massa_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.otp_ti ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pc ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pc_senha ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.professor ENABLE ROW LEVEL SECURITY;
@@ -3129,9 +2883,6 @@ CREATE POLICY operacoes_massa_no_update ON public.operacoes_massa_log AS PERMISS
 
 CREATE POLICY operacoes_massa_select_all ON public.operacoes_massa_log AS PERMISSIVE FOR SELECT TO public
   USING (true);
-
-CREATE POLICY sem_acesso_direto ON public.otp_ti AS RESTRICTIVE FOR ALL TO anon, authenticated
-  USING (false);
 
 CREATE POLICY pc_insert ON public.pc AS PERMISSIVE FOR INSERT TO public
   WITH CHECK (false);
@@ -3268,20 +3019,6 @@ GRANT SELECT ON public.operacoes_massa_log TO authenticated;
 GRANT TRIGGER ON public.operacoes_massa_log TO authenticated;
 GRANT TRUNCATE ON public.operacoes_massa_log TO authenticated;
 GRANT UPDATE ON public.operacoes_massa_log TO authenticated;
-GRANT DELETE ON public.otp_ti TO anon;
-GRANT INSERT ON public.otp_ti TO anon;
-GRANT REFERENCES ON public.otp_ti TO anon;
-GRANT SELECT ON public.otp_ti TO anon;
-GRANT TRIGGER ON public.otp_ti TO anon;
-GRANT TRUNCATE ON public.otp_ti TO anon;
-GRANT UPDATE ON public.otp_ti TO anon;
-GRANT DELETE ON public.otp_ti TO authenticated;
-GRANT INSERT ON public.otp_ti TO authenticated;
-GRANT REFERENCES ON public.otp_ti TO authenticated;
-GRANT SELECT ON public.otp_ti TO authenticated;
-GRANT TRIGGER ON public.otp_ti TO authenticated;
-GRANT TRUNCATE ON public.otp_ti TO authenticated;
-GRANT UPDATE ON public.otp_ti TO authenticated;
 GRANT DELETE ON public.pc TO anon;
 GRANT INSERT ON public.pc TO anon;
 GRANT REFERENCES ON public.pc TO anon;

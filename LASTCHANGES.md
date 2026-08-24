@@ -40,11 +40,20 @@ Backup do estado anterior em [docs/BACKUP-20260823.md](docs/BACKUP-20260823.md).
 - Easter egg dos 5 cliques corrigido no painel de logs e unificado num módulo.
 - Som de login corrigido (`login.wav` → `login.mp3`) e IDs duplicados no HTML.
 
-### Nota sobre o 2FA
+### Verificação em duas etapas (2FA) removida
 O campo "E-mail para verificação em 2 etapas" no cadastro de T.I. **nunca
-ativou 2FA** — não era sequer salvo. Foi reetiquetado como "E-mail de contato"
-e passou a ser gravado de fato. O que falta para o 2FA real está descrito em
-[WORKFLOW.md](WORKFLOW.md).
+ativou 2FA** — não era sequer salvo, e a RPC que gerava o código o devolvia
+no próprio JSON, entregando o segundo fator a quem já tivesse a senha.
+
+O recurso foi **removido por completo**: saíram a tabela `otp_ti`, as RPCs
+`rpc_gerar_otp_ti`/`rpc_verificar_otp_ti` e todas as referências na tela. A
+coluna `usuario_ti.email` ficou, agora apenas como **e-mail de contato**, e
+passou a ser gravada de fato — o `rpc_cadastrar_ti` aceitava o parâmetro e
+não o usava no INSERT, então o e-mail digitado no cadastro se perdia.
+
+Junto saiu uma **regressão que quebrava a edição de usuário T.I.**: existiam
+três sobrecargas de `rpc_atualizar_ti`, e a chamada do painel casava com duas
+delas, fazendo o PostgREST responder `PGRST203`. Ficou só a versão completa.
 
 ## 2026-08-22 — Deploy e correção de modelo de IA
 

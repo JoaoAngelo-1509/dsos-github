@@ -109,7 +109,7 @@ evento chegar pelo WebSocket em <1s):
 ## Por que equipe T.I./professores não são realtime
 
 `usuario_ti` tem coluna `senha` e `professor` tem `senha_hash` (e `usuario_ti`
-também tem `email`, usado no 2FA). O Postgres Realtime (Postgres Changes)
+também tem `email`, de contato). O Postgres Realtime (Postgres Changes)
 transmite **a linha inteira** — todas as colunas, sem filtro — para qualquer
 cliente com uma subscription ativa na tabela, independente de quais colunas o
 app realmente usa no `select=`. A anon key usada por esses clientes é pública

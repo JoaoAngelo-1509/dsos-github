@@ -437,21 +437,11 @@
         <input class="mpc-input" id="mti-login" placeholder="Ex: joao.silva" autocomplete="off" />
       </div>
 
-      <!-- E-mail de contato.
-           FEAT-01: este campo anunciava "verificação em 2 etapas" com um badge
-           2FA e dizia que o código de login seria enviado por e-mail. Nada
-           disso acontecia: o campo nunca era lido pelo JS, não existe edge
-           function de envio de e-mail no projeto (só a groq-proxy), e a
-           rpc_gerar_otp_ti DEVOLVE o código no próprio JSON — se fosse
-           chamada pelo cliente, quem soubesse a senha receberia o código
-           junto, o que anula o propósito do 2FA. Era, portanto, uma promessa
-           de segurança falsa: um admin preenchia o campo acreditando ter
-           ativado 2FA numa conta nova. O rótulo agora descreve o que o campo
-           de fato faz, e o valor passou a ser realmente salvo. -->
+      <!-- E-mail de contato do técnico (opcional). -->
       <div class="mpc-field">
         <label class="mpc-label" for="mti-email">E-mail de contato</label>
         <input class="mpc-input" id="mti-email" type="email" placeholder="Ex: joao@escola.sp.gov.br" autocomplete="off" />
-        <div class="mpc-hint">Usado para contato com o técnico. A verificação em 2 etapas ainda não está disponível — ver FEAT-01 em WORKFLOW.md.</div>
+        <div class="mpc-hint">Opcional. Usado apenas para contato com o técnico.</div>
       </div>
 
       <!-- Senha -->

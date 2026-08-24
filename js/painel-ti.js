@@ -1423,9 +1423,9 @@ window.salvarTI=async function(){
   const senha=document.getElementById('mti-senha').value;
   const isProf=document.getElementById('mti-is-professor')?.checked||false;
   const disciplina=document.getElementById('mti-disciplina')?.value.trim()||null;
-  // FEAT-01: o campo existia na tela mas nunca era lido — nem no cadastro nem
-  // na edição —, então o e-mail digitado simplesmente se perdia. rpc_cadastrar_ti
-  // já aceitava p_email desde a migration add_email_to_usuario_ti.
+  // E-mail de contato do técnico (opcional). O campo já existia na tela mas
+  // nunca era lido, então o valor digitado se perdia; hoje é enviado no
+  // cadastro e na edição.
   const email=document.getElementById('mti-email')?.value.trim()||null;
   if(!nome){notif('Informe o nome.');return}
   if(tiEditandoId===null){

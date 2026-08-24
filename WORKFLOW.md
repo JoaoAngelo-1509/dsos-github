@@ -55,32 +55,17 @@ A função `supabase/functions/groq-proxy` roda com a chave `GROQ_KEY` armazenad
 Itens levantados na auditoria técnica de 23/08/2026 que **não** foram fechados,
 e o motivo:
 
-- **FEAT-01 — 2FA preparado, mas NÃO ativado.** O vazamento mais grave já foi
-  fechado: `rpc_gerar_otp_ti` devolvia o código OTP no próprio JSON e era
-  chamável por `anon`, de modo que quem já tivesse a senha obteria o segundo
-  fator junto (comprovado: a chamada respondia `{"ok":true,...,"codigo":"345280"}`).
-  O `EXECUTE` foi revogado do cliente — nada quebrou, porque o frontend nunca
-  chamou essa RPC e nenhum T.I. tem e-mail cadastrado.
+- **FEAT-01 — 2FA REMOVIDO do projeto.** Não é mais uma pendência: a
+  verificação em duas etapas foi retirada por completo, a pedido. Saíram a
+  tabela `otp_ti`, as RPCs `rpc_gerar_otp_ti`/`rpc_verificar_otp_ti`, a
+  migration que preparava o recurso e a suíte `tests/dois-fatores.test.js`.
+  A tela de cadastro de T.I. não menciona mais 2FA.
 
-  O resto do recurso está pronto em
-  `supabase/migrations/20260823180000_feat01_2fa_otp_ti.sql`, **que não deve
-  ser aplicada ainda** (o arquivo abre com esse aviso). Falta a Edge Function
-  de e-mail: sem ela, `rpc_login_ti` passa a devolver um desafio em vez do
-  token e ninguém entrega o código ao usuário — quem tiver e-mail cadastrado
-  fica trancado fora.
-
-  Para concluir:
-  1. criar conta em um provedor de e-mail (Resend é o padrão com Supabase) e
-     verificar um domínio remetente;
-  2. `supabase secrets set RESEND_API_KEY=<chave> --project-ref <PROD>`;
-  3. escrever a Edge Function em `supabase/functions/enviar-otp/` (padrão da
-     `groq-proxy`): valida a credencial, chama `rpc_gerar_otp_ti` com a
-     service_role key, envia o e-mail e devolve só "enviado: sim/não" — nunca
-     o código;
-  4. `supabase functions deploy enviar-otp --project-ref <PROD>`;
-  5. aplicar a migration acima e ajustar `js/auth.js` + `html/login.html` para
-     a etapa do código;
-  6. testar com `tests/dois-fatores.test.js`.
+  A coluna `usuario_ti.email` **permanece**, agora só como e-mail de contato —
+  é dado útil e independente do recurso removido. Se um dia o 2FA voltar,
+  precisará de uma Edge Function que envie o código e seja a única a
+  enxergá-lo: o desenho antigo devolvia o código no próprio JSON da RPC, o
+  que entregava o segundo fator a quem já tivesse a senha.
 - **SEC-05 — resolvido, com uma ressalva.** A leitura de `ticket`, `mensagem`,
   `pc`, `usuario_ti` e `professor` passou a exigir token de sessão, enviado no
   header `X-Sessao-Token` (ver `sec05b_fechar_leitura`). A ressalva é o
