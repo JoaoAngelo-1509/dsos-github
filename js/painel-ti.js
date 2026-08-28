@@ -204,32 +204,45 @@ window.addEventListener('DOMContentLoaded',async()=>{
 
   // ─────────────────────────────────────────────────────────────────────
   // REALTIME — canal principal do painel T.I. (vive por toda a sessão da página)
-  // Tabela `ticket`:
-  //   INSERT → novo chamado aberto por aluno/professor: recarrega lista+KPIs,
-  //            toca som e dispara notificação (emergência tem som/label distintos)
-  //   UPDATE → chamado mudou de status/prioridade em qualquer origem: recarrega
-  //            lista+KPIs para refletir a mudança em todos os painéis T.I. abertos
-  // Tabela `mensagem`:
-  //   INSERT → nova mensagem (de PC ou de outro TI): recarrega contagem de não lidas
-  //            e toca som se veio do PC
-  //   UPDATE → mensagem marcada como lida em outra aba/sessão: recarrega não lidas
-  // (usuario_ti/professor propositalmente NÃO estão neste canal — ver bloco abaixo)
+  //
+  // Desde o SEC-05b o Realtime não enxerga mais `ticket`/`mensagem` (avalia a
+  // RLS sem o header de sessão). Este canal escuta a tabela-espelho
+  // `realtime_sinal` (migration 20260828120000), que só carrega metadado não
+  // sensível — canal ('ticket'|'mensagem'), ref_id (id do ticket) e evento — e
+  // por isso pode ter SELECT aberto. O conteúdo real vem sempre do re-fetch
+  // REST abaixo, que continua filtrado pelo token.
+  //
+  //   sinal canal='ticket'   → recarrega lista+KPIs; se for INSERT, busca só
+  //                            emergência/descrição daquele ticket (o T.I. vê
+  //                            todos) para escolher som/label da notificação
+  //   sinal canal='mensagem' → recarrega contagem de não lidas; toca som se a
+  //                            contagem de não lidas do T.I. subiu (mensagem
+  //                            nova de PC), sem precisar do corpo da mensagem
+  //
+  // (usuario_ti/professor propositalmente NÃO têm sinal — ver bloco abaixo)
   // Quem recebe: todos os técnicos T.I. com o painel aberto (sem filtro por usuário).
   // ─────────────────────────────────────────────────────────────────────
   sbClient.channel('tickets-realtime')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'ticket'},payload=>{
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:'canal=eq.ticket'},async ({new:s})=>{
       _scheduleTicketsKPIRefresh();
-      const _emerg=payload.new?.chamado_emergencia;
-      if(_emerg){notif('⚡ CHAMADO DE EMERGÊNCIA!');(_cfg.sons!==false)&&window._dsosSom?.emergencia?.();}
+      if(s?.evento!=='INSERT')return;
+      let emerg=false,desc='';
+      try{
+        const r=await fetch(`${SB}/rest/v1/ticket?id=eq.${s.ref_id}&select=chamado_emergencia,descricao`,{headers:H});
+        const j=await r.json();
+        if(Array.isArray(j)&&j[0]){emerg=!!j[0].chamado_emergencia;desc=j[0].descricao||'';}
+      }catch(_){}
+      if(emerg){notif('⚡ CHAMADO DE EMERGÊNCIA!');(_cfg.sons!==false)&&window._dsosSom?.emergencia?.();}
       else{notif('Novo chamado recebido!');(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();}
-      _browserNotif(_emerg?'⚡ EMERGÊNCIA DSos':'🔔 Novo Chamado',payload.new?.descricao?.slice(0,80)||'Chamado aberto no sistema');
+      _browserNotif(emerg?'⚡ EMERGÊNCIA DSos':'🔔 Novo Chamado',desc.slice(0,80)||'Chamado aberto no sistema');
     })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket'},()=>{_scheduleTicketsKPIRefresh();})
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem'},payload=>{
-      carregarNaoLidas();
-      if(payload.new?.remetente==='PC')(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:'canal=eq.mensagem'},({new:s})=>{
+      const antes=naoLidasMap[s?.ref_id]?.ti||0;
+      Promise.resolve(carregarNaoLidas()).then(()=>{
+        const depois=naoLidasMap[s?.ref_id]?.ti||0;
+        if(s?.evento==='INSERT'&&depois>antes)(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();
+      });
     })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem'},()=>carregarNaoLidas())
     .subscribe(rtStatusHandler('tickets-realtime','rt-dot'));
 
   // ─────────────────────────────────────────────────────────────────────
@@ -1116,28 +1129,27 @@ async function iniciarChat(ticketId,ativo){
   await carregarMsgsTi(ticketId);
   // ── REALTIME — canal de chat do modal, escopado a este ticket ──
   // Substitui o canal anterior (se o TI trocou de chamado sem fechar o modal)
-  // e é desinscrito em fecharModal(). INSERT/UPDATE em `mensagem` filtrados
-  // por ticket_id=eq.{ticketId}: recebe só o que pertence a este chamado.
+  // e é desinscrito em fecharModal(). Escuta `realtime_sinal` filtrado por
+  // ref_id=eq.{ticketId} (o SEC-05b tirou `mensagem` do alcance do Realtime —
+  // ver bloco do canal principal e docs/REALTIME.md). Qualquer sinal de
+  // mensagem deste chamado dispara o re-fetch REST; se for INSERT, marca lido.
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   realtimeChannel=sbClient.channel(`chat-ti-${ticketId}`)
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>{carregarMsgsTi(ticketId);marcarLidoTi(ticketId);})
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>carregarMsgsTi(ticketId))
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:`ref_id=eq.${ticketId}`},({new:s})=>{
+      if(s?.canal!=='mensagem')return;
+      carregarMsgsTi(ticketId);
+      if(s?.evento==='INSERT')marcarLidoTi(ticketId);
+    })
     .subscribe(rtStatusHandler(`chat-ti-${ticketId}`));
 
   _iniciarPollChatTi(ticketId);
 }
 
-// SEC-05b: com a leitura de `mensagem` fechada por RLS, o Realtime parou de
-// entregar eventos desta tabela — ele avalia a policy sem `request.headers`
-// (o token vai no header HTTP do PostgREST, e o WebSocket não carrega header),
-// então a policy nega e o evento não chega. Verificado na prática: o canal
-// fica SUBSCRIBED e simplesmente não recebe nada.
-//
-// O canal acima foi mantido de propósito: se um dia a leitura do chat voltar a
-// ser visível para o Realtime, ele volta a funcionar sozinho — e enquanto isso
-// não custa nada além da inscrição. Este poll é a rede de segurança que faz o
-// chat continuar "ao vivo" para o usuário. 5s é um meio-termo entre parecer
-// instantâneo e não martelar o banco; só roda com o modal aberto.
+// Rede de segurança para queda de WebSocket: o canal `chat-ti-*` acima já
+// recebe os sinais de `realtime_sinal` e atualiza o chat na hora. Este poll só
+// cobre o intervalo em que o WebSocket estiver fora do ar; por isso passou de
+// 5s para 15s (com o realtime funcionando, ninguém percebe a diferença). Só
+// roda com o modal aberto e para quando a aba vai para segundo plano.
 let _pollChatTi=null;
 function _iniciarPollChatTi(ticketId){
   _pararPollChatTi();
@@ -1145,7 +1157,7 @@ function _iniciarPollChatTi(ticketId){
     if(document.hidden)return;                 // aba em segundo plano: não gasta requisição
     if(modalTicketId!==ticketId){_pararPollChatTi();return;}
     carregarMsgsTi(ticketId);
-  },5000);
+  },15000);
 }
 function _pararPollChatTi(){
   if(_pollChatTi){clearInterval(_pollChatTi);_pollChatTi=null;}

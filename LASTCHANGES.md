@@ -1,5 +1,27 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-08-28 — Realtime de volta ao "ao vivo" via tabela de sinal
+
+- **Chamados e chat voltaram a atualizar sozinhos.** Desde o SEC-05b o Supabase
+  Realtime não entregava mais eventos de `ticket`/`mensagem` (ele avalia a RLS
+  sem o header de sessão), e os painéis dependiam só de poll — 30s nas listas,
+  5s no chat. Agora uma tabela-espelho `realtime_sinal` carrega só metadado não
+  sensível (canal, id do ticket, tipo do evento); triggers em `ticket`/
+  `mensagem` a alimentam, ela entra na publicação do Realtime, e o front
+  re-busca o conteúdo real via REST — que continua filtrado pelo token. Nada
+  sensível trafega pelo WebSocket.
+  - Migration `20260828120000_realtime_sinal_recupera_ao_vivo` (com ROLLBACK).
+    Também tira `ticket` e `mensagem` da publicação do Realtime — pós-SEC-05b
+    elas não entregavam mais nada. Aplicada em produção e no banco de teste.
+  - Canais ajustados em `painel-ti.js` (`tickets-realtime`, `chat-ti-*`) e
+    `painel-pc.js` (`chat-pc-*`); som/label de emergência e de "mensagem do TI"
+    preservados com um GET pontual do campo necessário.
+  - Poll de chat baixou de 5s para 15s (agora é só rede de segurança para
+    queda de WebSocket); polls de lista seguem em 30s.
+  - Nova suíte `tests/realtime-sinal.test.js`: triggers, shape da tabela
+    (trava regressão de vazamento) e escrita fechada.
+  - `docs/REALTIME.md` reescrito para a nova arquitetura.
+
 ## 2026-08-23 — Auditoria técnica: correções aplicadas
 
 Lote de correções a partir da auditoria de ponta a ponta do projeto.

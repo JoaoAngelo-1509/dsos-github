@@ -68,11 +68,15 @@ e o motivo:
   que entregava o segundo fator a quem já tivesse a senha.
 - **SEC-05 — resolvido, com uma ressalva.** A leitura de `ticket`, `mensagem`,
   `pc`, `usuario_ti` e `professor` passou a exigir token de sessão, enviado no
-  header `X-Sessao-Token` (ver `sec05b_fechar_leitura`). A ressalva é o
-  **Supabase Realtime**: ele avalia a RLS sem `request.headers`, então parou de
-  entregar eventos de `ticket`/`mensagem`. As listas já eram cobertas pelo poll
-  de 30s existente e o chat ganhou poll de 5s; os canais seguem inscritos, e
-  voltam a funcionar sozinhos se um dia a leitura for visível ao Realtime.
+  header `X-Sessao-Token` (ver `sec05b_fechar_leitura`). O **Supabase Realtime**
+  avalia a RLS sem `request.headers`, então deixou de entregar eventos de
+  `ticket`/`mensagem`. **Recuperado** pela migration
+  `20260828120000_realtime_sinal_recupera_ao_vivo`: uma tabela-espelho
+  `realtime_sinal` (só metadado não sensível — canal/ref_id/evento, SELECT
+  aberto, escrita só por trigger) entra na publication e o front re-busca via
+  REST ao receber o sinal. Polls de chat baixaram de 5s para 15s e viraram só
+  rede de segurança. Ver [docs/REALTIME.md](docs/REALTIME.md) e
+  `tests/realtime-sinal.test.js`.
   Continua em aberto: o vínculo professor⇄chamado é por `nome_solicitante`
   (o schema não tem `ticket.professor_id`), o que é mais fraco que casar por
   id — um aluno que digite o nome de um professor cria um chamado que aquele

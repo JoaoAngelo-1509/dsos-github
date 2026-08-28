@@ -1,171 +1,174 @@
 # DSos — Arquitetura de Realtime
 
-Este documento descreve como o realtime (Supabase Postgres Changes) funciona no
-DSos: quais canais existem, o que cada um escuta, como diagnosticar problemas
-e o que foi deliberadamente deixado fora do escopo.
+Este documento descreve como o realtime funciona no DSos: por que ele passa
+hoje por uma **tabela de sinal** (`public.realtime_sinal`), quais canais
+existem, o que cada um dispara, como diagnosticar e o que ficou de fora.
 
-## Visão geral
+## Por que uma tabela de sinal
 
-Todo o realtime do projeto usa **Supabase Realtime — Postgres Changes**
-(`.channel(...).on('postgres_changes', {...}, cb).subscribe(...)`), sem
-nenhuma infraestrutura própria de WebSocket. Cada painel abre seu(s) canal(is)
-ao carregar a página (ou ao abrir um modal, no caso do chat) e usa o SDK
-`@supabase/supabase-js` já carregado via CDN em cada HTML.
+Historicamente os painéis assinavam `postgres_changes` direto em `ticket` e
+`mensagem`. O **SEC-05b** (`20260823170000_sec05b_fechar_leitura`) fechou o
+SELECT dessas tabelas: agora a RLS exige o token de sessão no header HTTP
+`X-Sessao-Token`. O Supabase Realtime avalia a RLS em `realtime.apply_rls()`
+**sem `request.headers`** (o header viaja na requisição do PostgREST; o
+WebSocket não carrega header), então as policies passaram a devolver `false`
+dentro do Realtime e os canais de `ticket`/`mensagem` **pararam de entregar
+eventos** — sem erro, só silêncio.
 
-`js/realtime-manager.js` centraliza o diagnóstico: `rtStatusHandler(label, dotElId?)`
-retorna um callback para `.subscribe(cb)` que:
-- loga no console (`[realtime:<label>] conectado/falhou/fechado às HH:MM:SS`);
-- opcionalmente atualiza a cor de um elemento no DOM (`dotElId`) — verde
-  (`SUBSCRIBED`), vermelho (`CHANNEL_ERROR`/`TIMED_OUT`), amarelo (demais
-  estados, ex: conectando).
+A migration `20260828120000_realtime_sinal_recupera_ao_vivo` recupera o
+"ao vivo" sem reabrir a leitura:
+
+- **`public.realtime_sinal`** guarda só metadado **não sensível**:
+  `canal` (`'ticket'` | `'mensagem'`), `ref_id` (id do ticket; para
+  `mensagem` é o `ticket_id`), `evento` (`'INSERT'` | `'UPDATE'`), `em`.
+- Triggers `AFTER INSERT OR UPDATE` em `ticket` e `mensagem`
+  (`fn_emitir_sinal_realtime`, SECURITY DEFINER) gravam uma linha a cada
+  mudança e podam linhas com mais de 10 min.
+- A tabela tem SELECT `USING (true)` — é o que o Realtime enxerga — e entra na
+  publication `supabase_realtime`. Escrita é fechada (sem policy de
+  INSERT/UPDATE/DELETE + `REVOKE`): só os triggers escrevem.
+- A mesma migration **tira `ticket` e `mensagem` da publication**: pós-SEC-05b
+  elas não entregam nada (a RLS nega sem o header), então continuar
+  publicando-as só gastava decodificação de WAL e confundia diagnóstico.
+- O front assina `realtime_sinal`; ao receber o sinal, **refaz o fetch pelo
+  caminho REST normal**, que continua filtrado pelo token. O dado sensível
+  nunca passa pelo WebSocket — só o aviso "o ticket X mudou".
+
+Deixar `USING (true)` é seguro porque nenhuma coluna sensível trafega (sem
+corpo de mensagem, nome de solicitante, nota interna ou status). Um anônimo
+com a anon key vê apenas ritmo de atividade e ids de ticket — aceitável no
+modelo do projeto (um banco por instituição, poucos usuários simultâneos).
+
+> ⚠️ **Nunca adicione a `realtime_sinal` uma coluna derivada de dado fechado
+> por RLS.** `tests/realtime-sinal.test.js` trava o shape da tabela
+> (`{id, canal, ref_id, evento, em}`) por isso.
+
+`js/realtime-manager.js` continua centralizando o diagnóstico:
+`rtStatusHandler(label, dotElId?)` loga no console
+(`[realtime:<label>] conectado/falhou/fechado às HH:MM:SS`) e opcionalmente
+pinta uma bolinha no DOM — verde (`SUBSCRIBED`), vermelho
+(`CHANNEL_ERROR`/`TIMED_OUT`), amarelo (demais estados).
 
 ## Canais por painel
 
+Todos assinam `realtime_sinal` via `postgres_changes` (evento `INSERT`, que é
+o único que a tabela recebe).
+
 ### `painel-ti.js`
 
-**Canal `tickets-realtime`** (aberto uma vez, vive por toda a sessão da
-página; indicador visual "AO VIVO" na topbar usa `rt-dot`):
+**Canal `tickets-realtime`** (aberto uma vez; vive por toda a sessão da
+página; bolinha "AO VIVO" na topbar usa `rt-dot`):
 
-| Tabela | Evento | Efeito |
-|---|---|---|
-| `ticket` | INSERT | Novo chamado → `_scheduleTicketsKPIRefresh()`, som, notif, notificação do browser |
-| `ticket` | UPDATE | Chamado mudou de status/prioridade → `_scheduleTicketsKPIRefresh()` |
-| `mensagem` | INSERT | Nova mensagem → `carregarNaoLidas()`, som se veio do PC |
-| `mensagem` | UPDATE | Mensagem lida em outra sessão → `carregarNaoLidas()` |
+| Filtro do sinal | Efeito |
+|---|---|
+| `canal=eq.ticket` | `_scheduleTicketsKPIRefresh()`. Se `evento='INSERT'`: um GET pontual em `ticket?id=eq.{ref_id}&select=chamado_emergencia,descricao` (o T.I. vê todos) decide som/label/notificação do browser — emergência x normal |
+| `canal=eq.mensagem` | `carregarNaoLidas()`; se a contagem de não lidas do T.I. **subiu** para aquele `ref_id` e o evento é `INSERT`, toca o som de mensagem nova (sem precisar do corpo) |
 
-`usuario_ti` e `professor` **não estão neste canal, de propósito** — ver
-"Por que equipe T.I./professores não são realtime" abaixo.
-`carregarTIs()`/`carregarProfs()` (equipe T.I./professores, incl. presença e
-`tiMap` usado por `tecNome()`) são cobertos pelo poll de 30s (`_pollEquipe()`).
-
-`_scheduleTicketsKPIRefresh()` faz **debounce de 300ms + coalescing**: eventos
-próximos (dois técnicos agindo quase ao mesmo tempo, ou um evento coincidindo
-com o poll de 30s) são agrupados em uma única chamada a
-`carregarTickets()+carregarKPIs()`, e se um refresh já está em andamento o
-próximo é apenas enfileirado (máx. 1 pendente) — evita fetches sobrepostos
-que poderiam renderizar dados obsoletos por cima de dados novos.
+`_scheduleTicketsKPIRefresh()` mantém o **debounce de 300 ms + coalescing**
+(eventos próximos viram uma única chamada a `carregarTickets()+carregarKPIs()`;
+no máximo 1 refresh enfileirado).
 
 **Canal `chat-ti-{ticketId}`** (aberto ao abrir o modal de um chamado,
 desinscrito em `fecharModal()`):
 
-| Tabela | Evento | Efeito |
-|---|---|---|
-| `mensagem` (filtro `ticket_id=eq.{id}`) | INSERT | `carregarMsgsTi()` + `marcarLidoTi()` |
-| `mensagem` (filtro `ticket_id=eq.{id}`) | UPDATE | `carregarMsgsTi()` (ex: PC marcou como lida — atualiza o tick ✓✓) |
+| Filtro do sinal | Efeito |
+|---|---|
+| `ref_id=eq.{ticketId}` + `canal='mensagem'` | `carregarMsgsTi()`; se `evento='INSERT'`, `marcarLidoTi()` |
+
+`usuario_ti` e `professor` **continuam sem sinal, de propósito** — ver
+"Por que equipe T.I./professores não são realtime". `carregarTIs()` /
+`carregarProfs()` seguem no poll de 30 s (`_pollEquipe()`).
 
 ### `painel-pc.js`
 
 **Canal `chat-pc-{ticketId}`** (aberto ao abrir o modal de chat, desinscrito
-em `fecharChat()`):
+em `fecharChat()`), filtro `ref_id=eq.{ticketId}`:
 
-| Tabela | Evento | Efeito |
-|---|---|---|
-| `mensagem` (filtro `ticket_id=eq.{id}`) | INSERT | `carregarMsgs()`, `_marcarLidoPC()`, som se veio do TI |
-| `mensagem` (filtro `ticket_id=eq.{id}`) | UPDATE | `carregarMsgs()` (ex: TI marcou como lida) |
-| `ticket` (filtro `id=eq.{id}`) | UPDATE | Chamado encerrado → som, `carregarChamados()` + `carregarMsgs()` |
+| `canal` / `evento` do sinal | Efeito |
+|---|---|
+| `mensagem` (qualquer) | `carregarMsgs()`, `_marcarLidoPC()` |
+| `mensagem` + `INSERT` | GET pontual do `remetente` da última mensagem do ticket → som se veio do TI |
+| `ticket` + `UPDATE` | GET pontual do `status` do chamado (o PC vê o seu) → som se encerrado; `carregarChamados()` + `carregarMsgs()` |
 
-Fora do modal de chat, a lista de chamados do PC/professor não tem canal
-próprio — depende do poll de 30s (`_iniciarPollPC`). Isso é intencional: um
-canal por PC logado para a lista inteira teria custo de conexão desproporcional
-ao ganho (o aluno normalmente está com o chat aberto quando importa acompanhar
-em tempo real).
+Fora do modal de chat, a lista de chamados do PC/professor **não tem canal
+próprio** — depende do poll de 30 s (`_iniciarPollPC`). Intencional: o aluno
+normalmente está com o chat aberto quando importa acompanhar em tempo real.
 
 ### `painel-logs.js`
 
-**Canal `logs-realtime-all`** (aberto uma vez; indicador "AO VIVO" usa
-`rt-dot`, mesmo padrão do painel T.I.):
+**Não mudou.** O canal `logs-realtime-all` assina as tabelas `*_log` e
+`sessao_ativa` diretamente — elas continuam com SELECT aberto, então o
+Realtime as entrega normalmente. Ver a versão anterior deste documento no
+histórico do git para a tabela detalhada de eventos de log.
 
-| Tabela | Evento | Efeito |
+## Fallback por poll
+
+Mesmo com `realtime_sinal` entregando, os polls continuam como **rede de
+segurança para queda de WebSocket**:
+
+| Poll | Intervalo | Observação |
 |---|---|---|
-| `auditoria_ti`, `audit_log`, `atividades_log`, `acesso_log`, `alteracoes_criticas_log` | INSERT | Se a aba correspondente está ativa e na página 0 → recarrega silenciosamente (`_recarregarSilencioso`, com flash verde na primeira linha); senão incrementa o badge "novos" da aba |
-| `acesso_log` | UPDATE | Captura `duracao_sessao` preenchida no logout — recarrega se a aba "acessos" está ativa e na página 0 |
-| `sessao_ativa` | INSERT/UPDATE/DELETE | Sincroniza o `Set` local `_sessoesAtivas` e re-marca as células "duração ao vivo" no DOM **sem refazer fetch** — evita resetar a lista a cada heartbeat de 30s de outro usuário logado |
+| Listas do painel T.I. (`_pollTI`) | 30 s | também cobre equipe/PCs, que não têm sinal |
+| Lista do painel do PC (`_iniciarPollPC`) | 30 s | único caminho "ao vivo" da lista fora do chat |
+| Chat T.I. (`_iniciarPollChatTi`) | 15 s | era 5 s; com o sinal funcionando ninguém nota |
+| Chat PC (`_iniciarPollChatPc`) | 15 s | idem; só roda com o modal aberto |
 
-## Já existente e frequentemente confundido com "faltando"
-
-Isto **já era realtime antes deste trabalho**, confirmado empiricamente (teste
-com INSERT/UPDATE reais contra o banco de produção, via script, observando o
-evento chegar pelo WebSocket em <1s):
-
-- **Confirmação de leitura de mensagens** (`lido_ti` / `lido_pc` na tabela
-  `mensagem`, ticks ✓/✓✓ no chat de ambos os painéis) — já existia e já
-  atualiza via os canais `chat-ti-*` / `chat-pc-*` acima.
-- **Chamados e mensagens** (`ticket`, `mensagem`) — ambas as tabelas estão na
-  publicação `supabase_realtime` do Postgres com política de SELECT
-  permissiva (`qual: true` para `public`), então os eventos são entregues
-  corretamente.
-
-> Presença online/ausente de técnicos **não** era realtime, apesar de o
-> código ter um listener de UPDATE em `usuario_ti` desde antes — o listener
-> nunca disparava porque a tabela nunca esteve na publicação
-> `supabase_realtime` (confirmado consultando `pg_publication_tables`).
-> Ou seja: a presença de um colega de equipe só atualizava em outro painel
-> aberto quando aquele painel fizesse algo que disparasse `carregarTIs()` por
-> conta própria (ex: editar seu próprio cadastro) — não espontaneamente.
-> A lição: a presença de um `.on('postgres_changes', ...)` no código **não
-> garante** que o evento seja entregue — é preciso confirmar a tabela na
-> publicação e a RLS, não só ler o JS.
+Todos param quando a aba vai para segundo plano (`document.hidden`).
 
 ## Por que equipe T.I./professores não são realtime
 
 `usuario_ti` tem coluna `senha` e `professor` tem `senha_hash` (e `usuario_ti`
-também tem `email`, de contato). O Postgres Realtime (Postgres Changes)
-transmite **a linha inteira** — todas as colunas, sem filtro — para qualquer
-cliente com uma subscription ativa na tabela, independente de quais colunas o
-app realmente usa no `select=`. A anon key usada por esses clientes é pública
-(está no bundle JS do site).
-
-Isso significa que publicar `usuario_ti`/`professor` no Realtime **vazaria
-hash de senha e e-mail** de toda a equipe para qualquer pessoa que abrisse o
-DevTools e se inscrevesse no canal com a mesma anon key — mesmo sem estar
-logada. Por isso essas duas tabelas nunca foram (e não devem ser) adicionadas
-à publicação `supabase_realtime`.
-
-Hoje a lista de equipe T.I. e professores atualiza via **poll de 30s**
-(`_pollEquipe()` em `painel-ti.js`, chamado junto do poll de tickets) — seguro,
-só um pouco mais lento que realtime.
-
-Se no futuro isso precisar ser instantâneo, a forma seguravel de fazer é via
-**Realtime Broadcast** (não Postgres Changes): um trigger no Postgres que
-publica manualmente só os campos seguros (`id`, `nome`, `login`, `presenca`,
-`is_professor`) num canal de broadcast, em vez de expor a tabela inteira via
-replicação. Isso é trabalho novo, não implementado aqui.
+também tem `email`). O Postgres Realtime transmite **a linha inteira** para
+qualquer cliente inscrito, sem filtro de coluna. Publicar essas tabelas
+vazaria hash de senha e e-mail para qualquer um com a anon key. Por isso elas
+nunca entraram na publication `supabase_realtime`, e a mesma regra vale para a
+tabela de sinal: `realtime_sinal` só existe porque **não** carrega nada
+sensível. Equipe T.I./professores atualizam via poll de 30 s.
 
 ## Diagnosticando problemas
 
-1. **Console do navegador**: toda subscription loga via `rtStatusHandler`,
-   ex: `[realtime:tickets-realtime] conectado às 14:32:01`. Se aparecer
-   `falhou (CHANNEL_ERROR)` ou `falhou (TIMED_OUT)`, o canal caiu.
-2. **Indicador visual "AO VIVO"** (painel T.I. e painel de logs): bolinha
-   verde = conectado, vermelha = erro/timeout, amarela = conectando/outro
-   estado.
-3. **DevTools → Network → WS**: procure a conexão para
-   `wss://<projeto>.supabase.co/realtime/v1/websocket`. Mensagens `phx_reply`
-   com `"status":"ok"` confirmam que o canal está recebendo eventos.
-4. **Fallback por poll**: mesmo com o realtime totalmente fora do ar, o
-   painel T.I. (30s) e o painel do PC (30s) continuam sincronizando via poll
-   — os dados nunca ficam presos indefinidamente, só mais lentos.
-5. **Antes de suspeitar de bug no código: confirme que o deploy está
-   atualizado.** `git log origin/main -1` local vs. `git log -1` — se
-   divergirem, o site publicado está rodando código antigo e nenhuma mudança
-   de JS vai aparecer até o push + deploy acontecerem. Esse foi exatamente o
-   motivo de "precisa dar F5" reportado durante o desenvolvimento deste
-   documento: o código estava correto e testado, mas nunca tinha sido enviado
-   ao GitHub/Netlify.
+1. **Console do navegador**: toda subscription loga via `rtStatusHandler`
+   (`[realtime:tickets-realtime] conectado às 14:32:01`). `falhou
+   (CHANNEL_ERROR)` / `falhou (TIMED_OUT)` = canal caiu.
+2. **Indicador "AO VIVO"** (painel T.I. e de logs): verde = conectado,
+   vermelho = erro/timeout, amarelo = conectando.
+3. **A tabela de sinal está viva?** Com qualquer client (a anon key basta):
+   `select * from realtime_sinal order by id desc limit 20;` — deve crescer a
+   cada chamado aberto ou mensagem enviada. Se não cresce, o problema está nos
+   **triggers** (`trg_sinal_ticket` / `trg_sinal_mensagem`), não no front.
+4. **A publicação inclui a tabela?**
+   `select * from pg_publication_tables where pubname='supabase_realtime' and
+   tablename='realtime_sinal';` — uma linha esperada.
+5. **DevTools → Network → WS**: procure `wss://<projeto>.supabase.co/realtime/
+   v1/websocket`; `phx_reply` com `"status":"ok"` confirma o canal recebendo.
+6. **Fallback por poll**: mesmo com o Realtime todo fora do ar, os painéis
+   sincronizam pelos polls acima — dados nunca ficam presos, só mais lentos.
+7. **Antes de suspeitar do código: confirme que o deploy está atualizado.**
+   `git log origin/main -1` vs. `git log -1` — se divergirem, o site publicado
+   roda código antigo.
+
+## Testando
+
+- `tests/realtime-sinal.test.js` (runner nativo do Node, sem dependências)
+  cobre: os triggers geram o sinal certo para INSERT/UPDATE de ticket e
+  mensagem; a tabela é legível sem token mas só expõe
+  `{id, canal, ref_id, evento, em}`; escrita pela API é recusada (anon e T.I.).
+- O que os testes REST **não** cobrem: a entrega pelo WebSocket em si e o
+  re-render do painel. Verificação manual: abra dois navegadores, dispare um
+  evento num e observe o outro atualizar em < ~2 s.
 
 ## Fora do escopo (deliberadamente sem realtime)
 
-- **Dashboard do painel de logs** (gráficos Chart.js): atualização manual
-  (botão "Atualizar" / troca de período). Gráficos agregados não se
-  beneficiam de realtime por evento individual — recalcular a cada INSERT
-  seria caro e imperceptível visualmente na maioria dos casos.
-- **Grade de computadores** (`carregarPCs()`): cadastro/edição de PC é raro
-  e já é coberto pelo poll de 30s do painel T.I.
+- **Dashboard do painel de logs** (Chart.js): atualização manual.
+- **Grade de computadores** (`carregarPCs()`): coberta pelo poll de 30 s.
 - **Lista de chamados fora do modal de chat** (painel do PC): ver nota acima.
 
 ## Arquivos relevantes
 
+- `supabase/migrations/20260828120000_realtime_sinal_recupera_ao_vivo.sql` —
+  tabela de sinal, triggers, publicação
 - `js/realtime-manager.js` — `rtStatusHandler()`
-- `js/painel-ti.js` — canal `tickets-realtime` + `chat-ti-{id}`, coalescing de KPIs
+- `js/painel-ti.js` — canais `tickets-realtime` + `chat-ti-{id}`, coalescing
 - `js/painel-pc.js` — canal `chat-pc-{id}`
-- `js/painel-logs.js` — canal `logs-realtime-all`
+- `js/painel-logs.js` — canal `logs-realtime-all` (inalterado)
+- `tests/realtime-sinal.test.js` — regressão dos triggers e do shape da tabela
