@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+  <!-- DSos — 404.html (raiz: a Netlify serve este arquivo em qualquer rota inexistente) -->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+  <title>DSos — 404</title>
+  <meta name="robots" content="noindex" />
+  <link rel="shortcut icon" href="/images/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Sora:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/404.css" />
+</head>
+<body>
+
+<!-- ── camadas decorativas (todas aria-hidden) ─────────────────────────── -->
+<div class="chant" id="chant" aria-hidden="true"></div>
+
+<div class="marca" aria-hidden="true">404</div>
+
+<div class="grao" aria-hidden="true"></div>
+
+<!-- cena 3D: inimigo low-poly estilhaçado + bala. Tudo é desenhado em
+     js/404.js; o canvas cobre a viewport inteira para os cacos poderem
+     voar até as bordas da página. -->
+<canvas class="cena" id="cena" aria-hidden="true"></canvas>
+
+<!-- ── conteúdo (zona limpa, contraste garantido) ──────────────────────── -->
+<main class="conteudo">
+  <p class="destaque" aria-hidden="true">erro 404</p>
+  <h1>Essa rota não existe</h1>
+  <p class="subtitulo">O recurso que você procurou não está aqui. Nunca esteve.</p>
+  <a class="cta" href="/">Voltar ao início</a>
+  <a class="reporte" href="/login?origem=404">achou que essa página devia existir? reporte</a>
+</main>
+
+<aside class="crt" aria-hidden="true">
+  <p>&gt; localizando rota pedida</p>
+  <p id="crt-rota">&gt; ...</p>
+  <p>&gt; 0 resultados</p>
+  <p class="crt-cursor">&gt; retorne ao início</p>
+</aside>
+
+<script src="/js/404-inimigo.js"></script>
+<script src="/js/404.js"></script>
+</body>
+</html>

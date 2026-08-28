@@ -22,6 +22,13 @@
   to = "/html/painel-ti.html"
   status = 200
 
+# Qualquer rota inexistente cai na pagina 404 tematica (404.html na raiz do
+# publish). Fica por ultimo: regras anteriores e arquivos reais tem prioridade.
+[[redirects]]
+  from = "/*"
+  to = "/404.html"
+  status = 404
+
 [[headers]]
   for = "/*"
   [headers.values]

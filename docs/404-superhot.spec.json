@@ -1,0 +1,139 @@
+{
+  "$schema": "internal://spec/page-404-superhot/v1",
+  "meta": {
+    "id": "page-404-superhot",
+    "title": "Pagina 404 - tematica SUPERHOT",
+    "descricao": "Pagina de erro 404 propria do sistema de chamados, com cena estilizada inspirada em SUPERHOT: inimigo vermelho translucido (torso pra cima) estilhacado, cacos espalhados pela pagina com movimento leve em loop tipo scrub de tempo (indo e voltando).",
+    "status": "draft-antes-de-codar",
+    "stack": ["SVG inline", "CSS", "Web Animations API"],
+    "sem_dependencias": ["three.js", "lottie", "gsap", "canvas"]
+  },
+
+  "paleta": {
+    "fundo_base": "#f5f4f2",
+    "fundo_alt": "#ffffff",
+    "inimigo_corpo": "rgba(255, 26, 26, 0.78)",
+    "inimigo_aresta": "#c40000",
+    "caco_corpo": "rgba(255, 26, 26, 0.7)",
+    "caco_aresta": "#b00000",
+    "cenario_preto": "#0a0a0a",
+    "texto_404_fundo": "#0a0a0a",
+    "bala": "#0a0a0a",
+    "bala_rastro": "#ffffff",
+    "clarao_impacto": "#ffffff",
+    "texto_principal": "#0a0a0a",
+    "chant": "rgba(10,10,10,0.06)",
+    "regra": "acento vermelho unico; preto so como cenario/tipografia; sem gradiente colorido; tudo hard edge"
+  },
+
+  "layout": {
+    "viewport": "fullscreen, sem scroll",
+    "cena": {
+      "inimigo": "torso pra cima (peito, ombros, cabeca, bracos parciais), cortado na borda inferior / sumindo no 404 preto ou no chao",
+      "pose": "em passo ou queda, nunca parado em pe",
+      "ancoragem": "centro-esquerda; nunca 100% inteiro nem 100% desmontado no loop (oscila ~40%-85% remontado)"
+    },
+    "texto_404": {
+      "conteudo": "404",
+      "estilo": "sans condensada, pesada, uppercase, tracking largo, gigante, preto, atras do inimigo",
+      "chant_fundo": "PAGE NOT FOUND repetido preenchendo a tela em cinza claríssimo, aria-hidden"
+    },
+    "zona_limpa": "reservar area com contraste garantido para mensagem + botao; cacos sobre texto vao pra tras no z-index ou com opacidade menor",
+    "terminal_crt": {
+      "posicao": "canto inferior, pequeno",
+      "linhas": ["> localizando rota pedida", "> 0 resultados", "> retorne ao inicio"],
+      "estilo": "bloco preto, texto vermelho monoespacado, scanlines, leve flicker + chromatic aberration"
+    }
+  },
+
+  "conteudo": {
+    "titulo": "ESSA ROTA NAO EXISTE",
+    "destaque": "404",
+    "subtitulo": "O recurso que voce procurou nao esta aqui. Nunca esteve.",
+    "cta": {
+      "label": "VOLTAR AO INICIO",
+      "destino": "/",
+      "estilo": "retangulo preto, texto branco; hover inverte para vermelho"
+    },
+    "link_secundario": {
+      "label": "achou que essa pagina devia existir? reporte",
+      "destino": "acao:reportar-problema"
+    },
+    "idioma": "pt-BR",
+    "sem_audio": true
+  },
+
+  "cacos": {
+    "quantidade": { "desktop": 26, "mobile": 14 },
+    "forma": "triangulos/poligonos irregulares SVG, aresta vermelho-escura para recortar do fundo granulado",
+    "distribuicao": "espalhados pela pagina inteira, inclusive atras do texto e perto do botao; maiores perto do torso, menores nas bordas",
+    "cada_caco": {
+      "pos_repouso": "posicao espalhada na pagina",
+      "pos_montada": "encaixe correspondente no torso",
+      "rotacao_repouso_deg": "aleatorio -20..20"
+    }
+  },
+
+  "animacao": {
+    "conceito": "scrub de tempo indo e voltando sobre o instante do estilhacamento; cacos e torso oscilam entre espalhado e remontado",
+    "loop_principal": {
+      "propriedade_unica_animada": "transform (translate + rotate)",
+      "nunca_animar": ["top", "left", "width", "height", "filter", "baseFrequency", "seed"],
+      "direction": "alternate",
+      "duracao_ida_s": 5,
+      "ciclo_completo_s": 10,
+      "timing": "steps() ou keyframes tremidos (avanca, recua um tico, avanca) - picotado de proposito, sem easing suave",
+      "amplitude_px": [20, 60],
+      "amplitude_rotacao_caco_deg": [-8, 8],
+      "remontagem_torso_pct": [40, 85],
+      "escalonamento": "animation-delay por caco: cacos proximos do corpo remontam primeiro, bordas por ultimo (onda de succao)"
+    },
+    "grao_fundo": {
+      "camada": "separada, pointer-events none, atras do inimigo, mix-blend-mode multiply",
+      "opacidade": [0.03, 0.05],
+      "fps": [8, 12],
+      "tecnica": "sprite de ruido dessaturado com background-position em animation steps(6) ~0.5s infinite (preferida); alternativa: rect de feTurbulence 300x300 renderizado 1x, so translate em steps()",
+      "loop_s": [0.4, 0.6],
+      "colorido": false
+    },
+    "bala": {
+      "entrada": "0.0-0.3s pela borda, rastro branco que encurta",
+      "impacto": "0.3-0.5s no peito/cabeca, clarao branco pequeno some rapido",
+      "congela": "para no meio do caminho quando o mouse para"
+    }
+  },
+
+  "interacao": {
+    "mousemove_controla_tempo": {
+      "comportamento": "loop lento roda sozinho (sempre em camera lenta); mexer o mouse acelera/empurra o scrub",
+      "mapeamento": "velocidade do cursor -> animation.playbackRate ou currentTime (WAAPI)",
+      "mouse_parado": "volta ao loop lento (nao congela tudo)"
+    },
+    "parallax_cacos": "deslocamento leve seguindo o cursor, opcional",
+    "mobile": "sem controle por cursor; loop lento apenas; um toque pode disparar o flicker do terminal uma vez"
+  },
+
+  "acessibilidade": {
+    "prefers_reduced_motion": "para o ping-pong num quadro com cacos espalhados e torso ~60% montado; desliga flicker, glitch, grao fervendo (grao estatico permanece); cena 100% legivel e navegavel",
+    "contraste": "mensagem e botao devem passar WCAG AA contra o fundo base; chant, scanlines e grao sao decorativos com aria-hidden e contraste baixo proposital",
+    "semantica": ["h1 com a mensagem", "link de CTA real para /", "cena SVG com role img + aria-label ou aria-hidden se puramente decorativa"],
+    "foco": "CTA alcancavel e visivel via teclado; navegacao do sistema (rota pro inicio) sempre presente para nao prender o usuario",
+    "sem_autoplay_audio": true
+  },
+
+  "performance": {
+    "cacos": "cada um em camada propria (will-change: transform)",
+    "grao": "camada isolada, tamanho fixo esticado/tileado por CSS, nunca feTurbulence animado a 60fps",
+    "budget_poligonos_animados": { "desktop": 30, "mobile": 15 },
+    "teste_obrigatorio": ["note fraco: hitch e aquecimento", "bateria mobile", "repaint isolado da cena (nao deve repintar o resto)"],
+    "assets_externos": 0
+  },
+
+  "decisoes_abertas": [
+    "bala preta com rastro branco vs bala branca pura - testar as duas contra o inimigo vermelho + fundo claro",
+    "torso some no 404 preto vs some no chao low-poly",
+    "cacos invadem a pagina toda vs ficam contidos numa area",
+    "loop reinicia com cut seco (flicker preto 1 frame) vs so ping-pong continuo sem reinicio",
+    "grao: sprite steps() vs feTurbulence transladado"
+  ]
+}

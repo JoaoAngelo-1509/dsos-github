@@ -7,6 +7,7 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 ```
 /
 ├── index.html              ← Landing page de consentimento/aviso (fase de testes)
+├── 404.html                ← Página de erro 404 (cena temática SUPERHOT); fica na raiz porque é de lá que a Netlify a serve
 ├── netlify.toml              ← Rewrites de URL, headers de segurança (CSP) e cache-control do deploy
 ├── html/
 │   ├── login.html           ← Login (usuário do PC / professor / técnico T.I.)
@@ -19,7 +20,8 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 │   ├── login.css             ← Estilos exclusivos do login
 │   ├── painel-pc.css         ← Estilos do painel do aluno/professor
 │   ├── painel-ti.css         ← Estilos do painel T.I. (o mais extenso: inclui easter eggs)
-│   └── painel-logs.css       ← Estilos do painel de logs/dashboard (inclui layout de impressão)
+│   ├── painel-logs.css       ← Estilos do painel de logs/dashboard (inclui layout de impressão)
+│   └── 404.css               ← Estilos da página 404 (paleta própria; não usa base.css/tokens.css)
 ├── js/
 │   ├── supabase-config.js    ← Config do Supabase (URL + anon key) — NÃO versionado, ver SETUP.md
 │   ├── ui.js                 ← Utilitários compartilhados (tema, toast, escapeHtml, labels de status)
@@ -30,12 +32,15 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 │   ├── painel-pc.js            ← Lógica do painel do aluno/professor
 │   ├── painel-ti.js            ← Lógica do painel T.I. (o maior módulo do sistema)
 │   ├── painel-logs.js           ← Lógica do painel de logs/dashboard
-│   └── session-guard.js        ← Logout automático por inatividade (módulo pronto, hoje não importado por nenhuma página — ver nota abaixo)
+│   ├── session-guard.js        ← Logout automático por inatividade (módulo pronto, hoje não importado por nenhuma página — ver nota abaixo)
+│   ├── 404-inimigo.js          ← Geometria 3D do inimigo da página 404 — GERADO, ver scripts/gera-404-inimigo.js
+│   └── 404.js                  ← Renderizador 3D da cena da página 404 (canvas puro) + "scrub de tempo" controlado pelo cursor
 ├── supabase/
 │   ├── functions/groq-proxy/index.ts   ← Edge Function: proxy da API Groq (mantém a chave fora do cliente)
 │   └── migrations/                     ← Migrations SQL (privilégios de colunas sensíveis, etc.)
 ├── scripts/
-│   └── netlify-build.sh    ← Gera js/supabase-config.js no build da Netlify a partir de env vars
+│   ├── netlify-build.sh    ← Gera js/supabase-config.js no build da Netlify a partir de env vars
+│   └── gera-404-inimigo.js ← Baixa um base mesh humano CC0 e o converte na geometria da página 404 (rodado à mão, fora do build)
 ├── images/                  ← Logo, fundo (BG.svg/BG_dark_mode.svg), favicon
 └── sounds/                  ← Efeitos sonoros (notificação, login, minigame Skill Check)
 ```

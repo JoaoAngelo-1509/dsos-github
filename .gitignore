@@ -16,6 +16,10 @@ Thumbs.db
 .idea/
 *.swp
 
+# Download do modelo 3D base da pagina 404 (regeneravel via
+# scripts/gera-404-inimigo.js)
+.cache/
+
 # Claude Code
 .claude/
 supabase/.temp/
