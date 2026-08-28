@@ -9,14 +9,17 @@ Usa o test runner nativo do Node (18+) — **sem dependências**, porque o
 projeto é estático e não tem `package.json` de runtime.
 
 ```bash
-SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon key> node --test tests/seguranca.test.js
+SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon key> node --test 'tests/*.test.js'
 ```
 
 No Windows (PowerShell):
 
 ```bash
-$env:SUPABASE_URL="https://<ref>.supabase.co"; $env:SUPABASE_ANON_KEY="<anon key>"; node --test tests/seguranca.test.js
+$env:SUPABASE_URL="https://<ref>.supabase.co"; $env:SUPABASE_ANON_KEY="<anon key>"; node --test tests/seguranca.test.js tests/leitura.test.js tests/realtime-sinal.test.js
 ```
+
+Ou passe um único arquivo (`node --test tests/seguranca.test.js`) para rodar só
+uma suíte.
 
 > **Prefira o banco de TESTE.** O teste de SEC-03 precisa mirar uma linha real
 > para exercer a autorização — com um id inexistente o PostgREST responde 204
@@ -34,6 +37,8 @@ vem por variável de ambiente, como o resto das credenciais do projeto.
 | SEC-02 | `v_pc_pub`/`v_usuario_ti_pub` respondem e não vazam senha |
 | SEC-03 | `DELETE` direto em `professor` não apaga ninguém |
 | SEC-05 | `PATCH` direto em `ticket`/`pc` não altera nada; RPC recusa token forjado; `sessao_token` ilegível |
+| SEC-05b (leitura) | `ticket`/`mensagem` ilegíveis sem token; isolamento entre PCs; regra do professor; RPC `nao_lidas` não vaza id de terceiros (`leitura.test.js`) |
+| Realtime (sinal) | triggers geram `realtime_sinal` para INSERT/UPDATE de ticket/mensagem; a tabela só expõe `{id,canal,ref_id,evento,em}`; escrita pela API recusada (`realtime-sinal.test.js`) |
 | — | Login com credencial inválida devolve lista vazia, sem erro nem dado |
 
 ## Por que estes testes existem

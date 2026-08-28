@@ -498,41 +498,49 @@ async function carregarMsgs(ticketId) {
 
 // ── REALTIME — canal de chat do modal do PC/Professor, escopado a este ticket ──
 // Substitui o canal anterior ao trocar de chamado e é desinscrito em fecharChat().
-// Tabela `mensagem` (filtro ticket_id=eq.{ticketId}):
-//   INSERT → nova mensagem (própria ou do TI): recarrega o chat, marca como lida
-//            e toca som se veio do TI
-//   UPDATE → mensagem existente mudou (ex: marcada como lida pelo TI): recarrega
-// Tabela `ticket` (filtro id=eq.{ticketId}):
-//   UPDATE → chamado mudou de status: toca som se foi encerrado, recarrega lista
-//            de chamados e o chat (para refletir a resolução exibida no modal)
+//
+// O SEC-05b tirou `ticket`/`mensagem` do alcance do Realtime (a RLS deles exige
+// o header de sessão, que o WebSocket não carrega). Este canal escuta a
+// tabela-espelho `realtime_sinal` (migration 20260828120000), filtrada por
+// ref_id=eq.{ticketId} — só metadado não sensível trafega; o conteúdo vem do
+// re-fetch REST, ainda filtrado pelo token. Ver docs/REALTIME.md.
+//
+//   sinal canal='mensagem'          → recarrega o chat e marca como lida; se for
+//                                     INSERT, busca só o `remetente` da última
+//                                     mensagem para tocar som quando veio do TI
+//   sinal canal='ticket' evento=UP  → busca só o `status` do chamado (o PC vê o
+//                                     seu): som se encerrado, recarrega lista+chat
 function _iniciarRealtime(ticketId) {
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   realtimeChannel=sbClient.channel(`chat-pc-${ticketId}`)
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},payload=>{
-      carregarMsgs(ticketId);
-      _marcarLidoPC(ticketId);
-      if(payload.new?.remetente==='TI')window._dsosSom?.notificacao?.();
-    })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'mensagem',filter:`ticket_id=eq.${ticketId}`},()=>carregarMsgs(ticketId))
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'ticket',filter:`id=eq.${ticketId}`},payload=>{
-      if(['resolvido','descartado','falso_alarme'].includes(payload.new?.status))window._dsosSom?.notificacao?.();
-      carregarChamados();carregarMsgs(ticketId);
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:`ref_id=eq.${ticketId}`},async ({new:s})=>{
+      if(s?.canal==='mensagem'){
+        carregarMsgs(ticketId);
+        _marcarLidoPC(ticketId);
+        if(s?.evento==='INSERT'){
+          try{
+            const r=await fetch(`${SB_URL}/rest/v1/mensagem?ticket_id=eq.${ticketId}&select=remetente&order=enviado_em.desc&limit=1`,{headers:H});
+            const j=await r.json();
+            if(Array.isArray(j)&&j[0]?.remetente==='TI')window._dsosSom?.notificacao?.();
+          }catch(_){}
+        }
+      }else if(s?.canal==='ticket'&&s?.evento==='UPDATE'){
+        try{
+          const r=await fetch(`${SB_URL}/rest/v1/ticket?id=eq.${ticketId}&select=status`,{headers:H});
+          const j=await r.json();
+          if(Array.isArray(j)&&['resolvido','descartado','falso_alarme'].includes(j[0]?.status))window._dsosSom?.notificacao?.();
+        }catch(_){}
+        carregarChamados();carregarMsgs(ticketId);
+      }
     })
     .subscribe(rtStatusHandler(`chat-pc-${ticketId}`));
 
   _iniciarPollChatPc(ticketId);
 }
 
-// SEC-05b: com a leitura de `mensagem` fechada por RLS, o Realtime deixou de
-// entregar eventos dessa tabela — ele avalia a policy sem `request.headers`
-// (o token viaja no header HTTP do PostgREST; o WebSocket não carrega header),
-// então a policy nega e o evento não chega. Verificado na prática: o canal
-// fica SUBSCRIBED e não recebe nada.
-//
-// O canal acima segue inscrito de propósito — se um dia o chat voltar a ser
-// visível para o Realtime, volta a funcionar sozinho. Este poll é o que
-// mantém o chat "ao vivo" enquanto isso. Só roda com o modal aberto e para
-// quando a aba vai para segundo plano.
+// Fallback por poll: mesmo com `realtime_sinal` entregando, o poll continua
+// como rede de segurança para queda de WebSocket. Só roda com o modal aberto e
+// para quando a aba vai para segundo plano.
 let _pollChatPc=null;
 function _iniciarPollChatPc(ticketId){
   _pararPollChatPc();
@@ -540,7 +548,7 @@ function _iniciarPollChatPc(ticketId){
     if(document.hidden)return;
     if(chatTicketId!==ticketId){_pararPollChatPc();return;}
     carregarMsgs(ticketId);
-  },5000);
+  },15000);
 }
 function _pararPollChatPc(){
   if(_pollChatPc){clearInterval(_pollChatPc);_pollChatPc=null;}
