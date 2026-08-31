@@ -1500,3 +1500,115 @@ body{font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-
 .nota-interna-textarea:focus{outline:none;border-color:rgba(192,23,26,.5)}
 .btn-nota-salvar{background:rgba(192,23,26,.15);border:1px solid rgba(192,23,26,.35);border-radius:5px;color:var(--red,#c0171a);font-family:inherit;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:4px 12px;cursor:pointer;transition:background .15s}
 .btn-nota-salvar:hover{background:rgba(192,23,26,.25)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ABA REPORTES — triagem do canal "Reportar problema"
+   ─────────────────────────────────────────────────────────────────────────
+   A lista reaproveita .ticket-list / .tbl-head / .rf-btn das outras abas; o
+   que existe aqui é só o grid próprio da linha, a coluna de captura e o
+   modal de detalhe. As cores de status seguem os mesmos tokens usados nas
+   pílulas de chamado, para o técnico não ter que aprender uma paleta nova.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.rep-grid{grid-template-columns:34px minmax(0,1fr) minmax(96px,150px) 74px auto}
+
+.rep-row{
+  display:grid;grid-template-columns:34px minmax(0,1fr) minmax(96px,150px) 74px auto;
+  gap:16px;align-items:center;padding:7px 10px;border-radius:4px;cursor:pointer;
+  background:var(--row-bg);border:1px solid var(--row-b);border-left:2px solid transparent;
+  transition:background .15s,border-color .15s,transform .1s;
+}
+.rep-row:hover{background:var(--row-hover);border-left-color:rgba(255,255,255,.25);transform:translateX(2px)}
+.rep-row.rep-status-novo{border-left-color:var(--badge-unread)}
+.rep-row.rep-status-em_analise{border-left-color:var(--orange)}
+.rep-row.rep-status-resolvido{border-left-color:var(--green)}
+.rep-row.rep-status-descartado{opacity:.62}
+
+/* Miniatura da captura. O <img> nasce vazio e só recebe src quando a linha
+   entra no viewport (IntersectionObserver em painel-ti.js) — cada captura é
+   um data URI de 100–300 KB e baixar as 50 de uma página de uma vez seria
+   pior do que não ter miniatura nenhuma. */
+.rep-thumb-wrap{width:34px;height:34px;border-radius:4px;overflow:hidden;flex-shrink:0;
+  background:var(--input-bg);border:1px solid var(--glass-b);
+  display:flex;align-items:center;justify-content:center;color:var(--muted2);position:relative}
+.rep-thumb-wrap.sem-shot{border-style:dashed}
+.rep-thumb{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s}
+.rep-thumb.carregada{opacity:1}
+/* A ampliação no hover fica ancorada na própria célula: sai do fluxo, então
+   não empurra a linha, e o z-index vence as linhas seguintes da lista. */
+.rep-thumb-wrap:hover .rep-thumb.carregada{
+  position:absolute;left:0;top:0;width:240px;height:auto;max-height:170px;object-fit:contain;
+  z-index:60;border:1px solid var(--glass-b);border-radius:6px;background:#000;
+  box-shadow:0 12px 40px rgba(0,0,0,.65);pointer-events:none;
+}
+.rep-thumb-wrap:hover{overflow:visible;z-index:60}
+
+.rep-main{min-width:0}
+.rep-desc-linha{font-size:.72rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.rep-id{font-weight:700;color:var(--muted);flex-shrink:0}
+.rep-url{font-size:.6rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rep-quem{min-width:0}
+.rep-quem-nome{font-size:.68rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rep-papel{font-size:.55rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2);margin-top:1px}
+.rep-data{font-size:.62rem;color:var(--muted);white-space:nowrap}
+.rep-nota-tag{display:inline-flex;align-items:center;color:var(--muted2);flex-shrink:0}
+
+/* Pílulas de status */
+.rep-pill{display:inline-block;padding:2px 7px;border-radius:3px;font-size:.6rem;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.rp-novo{background:rgba(6,182,212,.12);color:var(--badge-unread);border:1px solid rgba(6,182,212,.28)}
+.rp-em_analise{background:rgba(249,115,22,.12);color:var(--orange);border:1px solid rgba(249,115,22,.28)}
+.rp-resolvido{background:var(--sp-res-bg);color:var(--sp-res-c);border:1px solid var(--sp-res-b)}
+.rp-descartado{background:var(--sp-desc-bg);color:var(--sp-desc-c);border:1px solid var(--sp-desc-b)}
+
+/* Rodapé com contagem e paginação */
+.rep-footer{padding:7px 10px;border-top:1px solid var(--glass-b2);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.rep-count{font-size:.62rem;color:var(--muted)}
+.rep-pager{display:flex;align-items:center;gap:7px}
+.rep-pagina{font-size:.62rem;color:var(--muted2)}
+.rep-pager .rf-btn:disabled{opacity:.3;cursor:not-allowed}
+.rep-pager .rf-btn:disabled:hover{background:none;border-color:var(--glass-b);color:var(--muted)}
+
+/* ── Modal de detalhe / triagem ── */
+.modal-rep-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:125;align-items:center;justify-content:center}
+.modal-rep-bg.open{display:flex;animation:fadeIn .15s ease}
+.modal-rep{background:var(--modal-bg);border:1px solid var(--modal-b);border-radius:10px;width:min(880px,96vw);max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:fadeUp .2s cubic-bezier(.22,1,.36,1) both;transition:background .3s}
+.modal-rep-head{padding:12px 16px;border-bottom:1px solid var(--glass-b);background:rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;flex-shrink:0}
+[data-theme="light"] .modal-rep-head{background:rgba(0,0,0,.05)}
+.modal-rep-icon{width:30px;height:30px;border-radius:6px;background:rgba(192,23,26,.12);border:1px solid rgba(192,23,26,.2);display:flex;align-items:center;justify-content:center;color:var(--red);flex-shrink:0}
+.modal-rep-title{font-size:.82rem;font-weight:700;color:var(--text)}
+.modal-rep-sub{font-size:.6rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modal-rep-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0;overflow-y:auto;min-height:0}
+.modal-rep-footer{padding:10px 16px;border-top:1px solid var(--glass-b);background:rgba(0,0,0,.15);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+[data-theme="light"] .modal-rep-footer{background:rgba(0,0,0,.03)}
+
+.rep-shot-col{padding:16px;border-right:1px solid var(--glass-b2);display:flex;flex-direction:column;gap:7px;min-width:0}
+.rep-shot-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2)}
+.rep-shot-box{flex:1;min-height:180px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:1px solid var(--glass-b);border-radius:6px;overflow:hidden;padding:6px}
+[data-theme="light"] .rep-shot-box{background:rgba(0,0,0,.05)}
+.rep-shot-img{max-width:100%;max-height:52vh;object-fit:contain;border-radius:4px;cursor:zoom-in;display:block}
+.rep-shot-vazio{font-size:.65rem;color:var(--muted);text-align:center;line-height:1.6;padding:20px}
+/* Aviso de privacidade: a captura é opt-in e pode conter dados de terceiros
+   (ver cabeçalho de js/reportar-problema.js). O lembrete fica na tela de quem
+   abre a imagem, não só na documentação. */
+.rep-shot-aviso{font-size:.58rem;color:var(--muted);line-height:1.5;display:flex;gap:6px;align-items:flex-start}
+.rep-shot-aviso svg{color:var(--orange);flex-shrink:0;margin-top:1px}
+
+.rep-info-col{padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.rep-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.rep-field-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2)}
+.rep-desc{background:var(--input-bg);border:1px solid var(--glass-b);border-radius:4px;padding:8px 10px;font-size:.72rem;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:170px;overflow-y:auto}
+.rep-ctx{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.rep-ctx li{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;align-items:baseline;font-size:.62rem}
+.rep-ctx li span{color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;font-size:.55rem}
+.rep-ctx li code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.62rem;color:var(--text2);word-break:break-all}
+.rep-nota{width:100%;box-sizing:border-box;background:var(--input-bg);border:1px solid var(--glass-b);border-radius:4px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:.72rem;line-height:1.55;resize:vertical;height:76px;outline:none;transition:border-color .2s}
+.rep-nota:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-dim)}
+.rep-nota::placeholder{color:var(--muted2)}
+
+@media(max-width:760px){
+  .rep-grid,.rep-row{grid-template-columns:34px minmax(0,1fr) auto;gap:10px}
+  .rep-grid span:nth-child(3),.rep-grid span:nth-child(4),
+  .rep-row .rep-quem,.rep-row .rep-data{display:none}
+  .modal-rep-body{grid-template-columns:minmax(0,1fr)}
+  .rep-shot-col{border-right:none;border-bottom:1px solid var(--glass-b2)}
+}

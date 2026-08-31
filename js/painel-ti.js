@@ -202,6 +202,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   setInterval(_tickClock,1000);
 
   await Promise.all([carregarTickets(),carregarKPIs(),carregarPCs(),carregarTIs(),carregarProfs(),carregarNaoLidas()]);
+  _atualizarBadgeReportes();   // só a contagem de "novo"; a lista espera a aba ser aberta
   _carregarLabsDisponiveis();
 
   // ─────────────────────────────────────────────────────────────────────
@@ -257,7 +258,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
   // (até 30s de atraso para um cadastro/remoção aparecer noutro painel).
   // Ver docs/REALTIME.md.
   // ─────────────────────────────────────────────────────────────────────
-  function _pollEquipe(){carregarTIs();carregarProfs();}
+  function _pollEquipe(){carregarTIs();carregarProfs();_atualizarBadgeReportes();}
   let _pollTI=setInterval(()=>{_scheduleTicketsKPIRefresh();carregarPCs();carregarNaoLidas();_pollEquipe();},30000);
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden){clearInterval(_pollTI);_pollTI=null;}
@@ -724,7 +725,7 @@ function renderDescarte(){
 
 /* ABAS */
 const _ultimaAba={chamados:'abertos',gestao:'pcs'};
-const _grupoDeAba={abertos:'chamados',respondidos:'chamados',descarte:'chamados',pcs:'gestao',ti:'gestao',professores:'gestao',manutencao:'gestao'};
+const _grupoDeAba={abertos:'chamados',respondidos:'chamados',descarte:'chamados',pcs:'gestao',ti:'gestao',professores:'gestao',reportes:'gestao',manutencao:'gestao'};
 window.mudarAba=function(aba){
   document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');if(t.hasAttribute('role'))t.setAttribute('aria-selected','false');});
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -735,6 +736,7 @@ window.mudarAba=function(aba){
   document.getElementById('panel-'+aba)?.classList.add('active');
   const grupo=_grupoDeAba[aba];if(grupo)_ultimaAba[grupo]=aba;
   if(aba==='manutencao')resetAbaManutencao();
+  if(aba==='reportes')carregarReportes();
   _atualizarBadgeGrupo();
 };
 window.mudarGrupo=function(grupo){
@@ -1548,6 +1550,341 @@ window.deletarProf=async function(id,nome){
     notif(`Prof. ${nome} removido.`);
     await carregarProfs();
   }catch(err){console.error('[deletarProf]',err);notif(err.message||'Erro ao remover professor.')}
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ABA REPORTES — triagem do canal "Reportar problema"
+   ─────────────────────────────────────────────────────────────────────────
+   Fecha o ciclo aberto pela migration 20260829120000: o usuário reporta pelo
+   botão flutuante (js/reportar-problema.js) e o técnico tria aqui.
+
+   TRÊS DECISÕES QUE EXPLICAM O CÓDIGO ABAIXO
+   ------------------------------------------
+   1. A LISTA NÃO TRAZ A CAPTURA. `rpc_reportes_listar` devolve tudo menos a
+      coluna `screenshot`, só o booleano `tem_screenshot`. Isso é de propósito
+      no banco: cada captura é um data URI de 100–300 KB gravado na própria
+      tabela, e uma página de 50 linhas com as imagens embutidas passaria de
+      10 MB. A imagem é buscada uma linha por vez, em
+      `problema_reporte?id=eq.N&select=screenshot`.
+
+   2. AS MINIATURAS SÃO PREGUIÇOSAS E COMPARTILHAM CACHE COM O MODAL. Só a
+      linha que entra no viewport dispara o fetch da sua imagem, e o
+      resultado fica em `_repShotCache` — então abrir o detalhe de uma linha
+      cuja miniatura já apareceu não refaz a requisição.
+
+   3. A LEITURA É INVOKER, A ESCRITA É DEFINER. `rpc_reportes_listar` roda com
+      os privilégios de quem chama, então quem não tem sessão de T.I. recebe
+      lista VAZIA — não erro. É o comportamento normal da RLS (ver SEC-05b) e
+      o motivo de a tela dizer "nenhum reporte" em vez de "acesso negado".
+      Já a triagem passa por `_rpcEscrita`, que injeta o token e trata sessão
+      expirada como o resto do painel.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const _REP_POR_PAGINA = 50;   // o mesmo teto que a RPC usa por padrão
+const _REP_STATUS_LABEL = { novo:'Novo', em_analise:'Em análise', resolvido:'Resolvido', descartado:'Descartado' };
+const _REP_PAPEL_LABEL  = { ti:'T.I.', pc:'Computador', professor:'Professor' };
+
+let _reportes = [], _repStatus = 'novo', _repPagina = 0, _repBusca = '', _repDetalhe = null;
+
+// Cache de capturas já baixadas (id → data URI). Limitado porque cada entrada
+// pesa centenas de KB: sem teto, uma sessão longa de triagem acumularia
+// dezenas de MB na aba.
+const _repShotCache = new Map();
+const _REP_SHOT_CACHE_MAX = 40;
+let _repShotObserver = null;
+
+function _repStatusPill(s){
+  return `<span class="rep-pill rp-${s}">${(_REP_STATUS_LABEL[s]||s||'—').toUpperCase()}</span>`;
+}
+function _repData(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}<br/>${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+}
+function _repDataLonga(iso){
+  if(!iso) return '—';
+  return new Date(iso).toLocaleString('pt-BR');
+}
+
+function _repCachearShot(id,uri){
+  // re-inserir move a chave para o fim: o Map mantém ordem de inserção, então
+  // o que sai no despejo é sempre o menos recentemente usado
+  if(_repShotCache.has(id)) _repShotCache.delete(id);
+  _repShotCache.set(id,uri);
+  while(_repShotCache.size > _REP_SHOT_CACHE_MAX)
+    _repShotCache.delete(_repShotCache.keys().next().value);
+}
+
+async function _repBuscarShot(id){
+  if(_repShotCache.has(id)) return _repShotCache.get(id);
+  const r = await fetch(`${SB}/rest/v1/problema_reporte?id=eq.${encodeURIComponent(id)}&select=screenshot`,{headers:H});
+  if(!r.ok) throw new Error('não foi possível carregar a captura');
+  const j = await r.json();
+  const uri = (Array.isArray(j) && j[0]) ? j[0].screenshot : null;
+  if(uri) _repCachearShot(id,uri);
+  return uri;
+}
+
+/* LISTAGEM */
+window.carregarReportes = async function(){
+  const list = document.getElementById('reportes-list');
+  if(!list) return;
+  list.innerHTML = `<div class="loading-spinner"><div class="spin"></div> carregando…</div>`;
+  try{
+    const r = await fetch(`${SB}/rest/v1/rpc/rpc_reportes_listar`,{
+      method:'POST', headers:H,
+      body:JSON.stringify({
+        p_status: _repStatus || null,
+        p_limite: _REP_POR_PAGINA,
+        p_offset: _repPagina * _REP_POR_PAGINA
+      })
+    });
+    if(!r.ok) throw new Error(await r.text().catch(()=>'')||`HTTP ${r.status}`);
+    const j = await r.json();
+    _reportes = Array.isArray(j) ? j : [];
+  }catch(e){
+    console.error('[carregarReportes]',e);
+    _reportes = [];
+    list.innerHTML = `<div class="empty"><p>Não foi possível carregar os reportes. Tente recarregar.</p></div>`;
+    _repAtualizarRodape(0);
+    return;
+  }
+  renderReportes();
+  _atualizarBadgeReportes();
+};
+
+function renderReportes(){
+  const list = document.getElementById('reportes-list');
+  if(!list) return;
+
+  const q = _repBusca.trim().toLowerCase();
+  const visiveis = q
+    ? _reportes.filter(r =>
+        [r.descricao,r.url,r.usuario_nome,r.usuario_login,r.papel]
+          .some(v => String(v||'').toLowerCase().includes(q)))
+    : _reportes;
+
+  if(!visiveis.length){
+    list.innerHTML = `<div class="empty">
+      <div class="eicon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg></div>
+      <p>${q ? 'Nenhum reporte nesta página bate com a busca.' : 'Nenhum reporte com este status.'}</p>
+    </div>`;
+    _repAtualizarRodape(visiveis.length);
+    return;
+  }
+
+  list.innerHTML = visiveis.map(r=>{
+    const quem  = r.usuario_nome || r.usuario_login || 'anônimo';
+    const papel = _REP_PAPEL_LABEL[r.papel] || r.papel || '—';
+    const nota  = r.nota_ti
+      ? `<span class="rep-nota-tag" title="Tem nota do T.I."><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>`
+      : '';
+    const thumb = r.tem_screenshot
+      ? `<div class="rep-thumb-wrap" data-shot-id="${r.id}" title="Captura de tela anexada"><img class="rep-thumb" alt="" /></div>`
+      : `<div class="rep-thumb-wrap sem-shot" title="Sem captura de tela"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+
+    return `<div class="rep-row rep-status-${r.status}" onclick="abrirReporteDetalhes(${r.id})" title="Abrir detalhes do reporte #${r.id}">
+      ${thumb}
+      <div class="rep-main">
+        <div class="rep-desc-linha"><span class="rep-id">#${r.id}</span>${escapeHtml(r.descricao||'')}${nota}</div>
+        <div class="rep-url">${escapeHtml(r.url||'—')}</div>
+      </div>
+      <div class="rep-quem">
+        <div class="rep-quem-nome">${escapeHtml(quem)}</div>
+        <div class="rep-papel">${escapeHtml(papel)}</div>
+      </div>
+      <div class="rep-data">${_repData(r.criado_em)}</div>
+      ${_repStatusPill(r.status)}
+    </div>`;
+  }).join('');
+
+  _repAtualizarRodape(visiveis.length);
+  _repObservarThumbs();
+}
+
+function _repAtualizarRodape(visiveis){
+  const cont = document.getElementById('rep-count');
+  if(cont){
+    const total = _reportes.length;
+    cont.textContent = _repBusca.trim() && visiveis !== total
+      ? `${visiveis} de ${total} nesta página`
+      : `${total} reporte(s) nesta página`;
+  }
+  const pag = document.getElementById('rep-pagina');
+  if(pag) pag.textContent = `página ${_repPagina+1}`;
+  const ant = document.getElementById('rep-anterior');
+  if(ant) ant.disabled = _repPagina === 0;
+  // Sem contagem total no retorno da RPC, "tem próxima" é inferido: uma página
+  // cheia provavelmente tem continuação, uma página curta é a última.
+  const prox = document.getElementById('rep-proxima');
+  if(prox) prox.disabled = _reportes.length < _REP_POR_PAGINA;
+}
+
+// Miniaturas sob demanda: cada linha visível puxa a sua própria captura.
+function _repObservarThumbs(){
+  if(_repShotObserver){_repShotObserver.disconnect();_repShotObserver=null;}
+  const alvos = document.querySelectorAll('#reportes-list .rep-thumb-wrap[data-shot-id]');
+  if(!alvos.length || !('IntersectionObserver' in window)) return;
+
+  _repShotObserver = new IntersectionObserver((entradas,obs)=>{
+    entradas.forEach(async e=>{
+      if(!e.isIntersecting) return;
+      const wrap = e.target;
+      obs.unobserve(wrap);                       // uma tentativa por linha
+      const img = wrap.querySelector('img.rep-thumb');
+      if(!img) return;
+      try{
+        const uri = await _repBuscarShot(Number(wrap.dataset.shotId));
+        if(!uri || !wrap.isConnected) return;    // lista já foi re-renderizada
+        img.src = uri;
+        img.classList.add('carregada');
+      }catch(_){
+        // A miniatura é enfeite: uma falha aqui não pode derrubar a listagem.
+      }
+    });
+  },{root:document.getElementById('reportes-list'),rootMargin:'150px'});
+
+  alvos.forEach(a=>_repShotObserver.observe(a));
+}
+
+window.setReporteFiltro = function(status,btn){
+  _repStatus = status;
+  _repPagina = 0;
+  document.querySelectorAll('#rep-filtros .rf-btn').forEach(b=>b.classList.remove('active'));
+  btn?.classList.add('active');
+  carregarReportes();
+};
+
+window.paginaReportes = function(delta){
+  const nova = _repPagina + delta;
+  if(nova < 0) return;
+  _repPagina = nova;
+  carregarReportes();
+};
+
+window.buscarReportes = q=>{ _repBusca = q||''; _debounce('rep',renderReportes,200); };
+
+/* BADGE — quantos reportes ainda não foram olhados */
+// Consulta direta à tabela pedindo só os ids: é a forma mais barata de contar
+// sem trazer descrição nem captura. A policy de SELECT já garante que só T.I.
+// enxerga alguma coisa; sem sessão válida vem [] e o badge zera.
+async function _atualizarBadgeReportes(){
+  const badge = document.getElementById('badge-reportes');
+  if(!badge) return;
+  try{
+    const r = await fetch(`${SB}/rest/v1/problema_reporte?status=eq.novo&select=id`,{headers:H});
+    const j = await r.json();
+    badge.textContent = Array.isArray(j) ? j.length : 0;
+  }catch(_){ /* badge desatualizado não justifica poluir o console */ }
+}
+
+/* MODAL DE DETALHE */
+window.abrirReporteDetalhes = async function(id){
+  const r = _reportes.find(x=>Number(x.id)===Number(id));
+  if(!r) return;
+  _repDetalhe = r;
+
+  document.getElementById('rep-modal-titulo').textContent = `Reporte #${r.id}`;
+  document.getElementById('rep-modal-sub').textContent    = r.url || 'página não informada';
+  document.getElementById('rep-modal-status').innerHTML   = _repStatusPill(r.status);
+  document.getElementById('rep-desc').textContent         = r.descricao || '—';
+  document.getElementById('rep-status').value             = r.status || 'novo';
+  document.getElementById('rep-nota').value               = r.nota_ti || '';
+
+  const quem = [r.usuario_nome, r.usuario_login ? '@'+r.usuario_login : ''].filter(Boolean).join(' ') || 'anônimo';
+  document.getElementById('rep-ctx').innerHTML = [
+    ['Quem',      quem],
+    ['Papel',     _REP_PAPEL_LABEL[r.papel] || r.papel || '—'],
+    ['Página',    r.url || '—'],
+    ['Enviado',   _repDataLonga(r.criado_em)],
+    ['Tela',      r.viewport || '—'],
+    ['Versão',    r.versao_app || '—'],
+    ['Navegador', r.user_agent || '—'],
+    ['Triado',    r.tratado_em ? _repDataLonga(r.tratado_em) : 'ainda não'],
+  ].map(([k,v])=>`<li><span>${k}</span><code>${escapeHtml(v)}</code></li>`).join('');
+
+  // O aviso de privacidade é acrescentado fora da caixa da imagem, então tem
+  // de ser removido a cada abertura — senão empilha um por reporte visitado.
+  document.querySelectorAll('#rep-shot-col .rep-shot-aviso').forEach(el=>el.remove());
+
+  const box = document.getElementById('rep-shot-box');
+  box.innerHTML = r.tem_screenshot
+    ? `<div class="rep-shot-vazio">carregando a captura…</div>`
+    : `<div class="rep-shot-vazio">Sem captura de tela.<br/>A caixa de anexar vem desmarcada por padrão — não é falha no envio.</div>`;
+
+  document.getElementById('modal-reporte').classList.add('open');
+  setTimeout(()=>document.getElementById('rep-status')?.focus(),120);
+
+  if(!r.tem_screenshot) return;
+  try{
+    const uri = await _repBuscarShot(r.id);
+    // O técnico pode ter fechado o modal ou aberto outro reporte enquanto a
+    // imagem vinha: sem esta guarda, a captura errada apareceria na tela.
+    if(_repDetalhe?.id !== r.id) return;
+    if(!uri){ box.innerHTML = `<div class="rep-shot-vazio">A captura não pôde ser lida.</div>`; return; }
+
+    const img = document.createElement('img');
+    img.className = 'rep-shot-img';
+    img.alt = `Captura de tela enviada no reporte #${r.id}`;
+    img.title = 'Clique para ampliar';
+    img.src = uri;
+    img.addEventListener('click',()=>window.abrirLightbox(img.src));
+
+    const aviso = document.createElement('div');
+    aviso.className = 'rep-shot-aviso';
+    aviso.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg>
+      <span>A imagem pode conter dados de outras pessoas que estavam na tela. Use só para entender o problema.</span>`;
+
+    box.innerHTML = '';
+    box.appendChild(img);
+    box.parentElement.appendChild(aviso);
+  }catch(e){
+    if(_repDetalhe?.id !== r.id) return;
+    box.innerHTML = `<div class="rep-shot-vazio">${escapeHtml(e.message||'Falha ao carregar a captura.')}</div>`;
+  }
+};
+
+window.fecharModalReporte = function(){
+  document.getElementById('modal-reporte')?.classList.remove('open');
+  document.querySelectorAll('#rep-shot-col .rep-shot-aviso').forEach(el=>el.remove());
+  _repDetalhe = null;
+};
+
+document.getElementById('modal-reporte')?.addEventListener('click',e=>{
+  if(e.target.id==='modal-reporte') window.fecharModalReporte();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  // O lightbox fica por cima do modal e já tem o seu próprio handler de Esc:
+  // fechar os dois de uma vez tiraria o técnico do reporte que ele está lendo.
+  if(document.getElementById('lightbox')?.classList.contains('open')) return;
+  if(document.getElementById('modal-reporte')?.classList.contains('open')) window.fecharModalReporte();
+});
+
+/* TRIAGEM */
+window.salvarTriagemReporte = async function(){
+  if(!_repDetalhe) return;
+  const alvo   = _repDetalhe;
+  const status = document.getElementById('rep-status').value;
+  const nota   = document.getElementById('rep-nota').value.trim();
+  const btn    = document.getElementById('btn-rep-salvar');
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  try{
+    // rpc_reporte_status faz coalesce(nullif(nota,''), nota_ti): mandar vazio
+    // MANTÉM a nota atual em vez de apagá-la. O hint do modal diz isso.
+    await _rpcEscrita('rpc_reporte_status',{ p_id: alvo.id, p_status: status, p_nota: nota || null });
+    notif(`Reporte #${alvo.id} → ${_REP_STATUS_LABEL[status]||status}`);
+    window.fecharModalReporte();
+    await carregarReportes();
+  }catch(e){
+    console.error('[salvarTriagemReporte]',e);
+    notif(e.message||'Não foi possível salvar a triagem.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Salvar triagem';
+  }
 };
 
 /* BUSCA DEBOUNCED */

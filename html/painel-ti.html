@@ -119,6 +119,10 @@
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg>
           Professores <span class="tab-badge" id="badge-prof">0</span>
         </button>
+        <button class="tab" id="tab-reportes" onclick="mudarAba('reportes')" role="tab" aria-selected="false" aria-controls="panel-reportes">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg>
+          Reportes <span class="tab-badge" id="badge-reportes">0</span>
+        </button>
         <button class="tab" id="tab-manutencao" onclick="mudarAba('manutencao')" role="tab" aria-selected="false" aria-controls="panel-manutencao">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Manutenção
@@ -268,6 +272,48 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo Professor
         </button>
+      </div>
+    </div>
+
+    <!-- ABA: REPORTES DE PROBLEMA -->
+    <!--
+      Triagem dos reportes enviados pelo botão flutuante "Reportar problema"
+      (js/reportar-problema.js). A leitura passa por rpc_reportes_listar, que
+      devolve TUDO menos a captura de tela — a imagem só é buscada para a
+      linha que o técnico realmente abre. Ver migration 20260829120000.
+    -->
+    <div class="tab-panel" id="panel-reportes" role="tabpanel" aria-labelledby="tab-reportes">
+      <div class="crud-search-row">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="crud-search-input" id="rep-search" placeholder="Filtrar nesta página por usuário, página ou texto…" oninput="buscarReportes(this.value)" autocomplete="off" />
+        <button class="btn-icon" onclick="carregarReportes()" title="Recarregar reportes" aria-label="Recarregar reportes">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+      </div>
+
+      <div class="resp-filters" id="rep-filtros">
+        <button class="rf-btn active" onclick="setReporteFiltro('novo',this)"><span class="rf-dot" style="background:var(--badge-unread)"></span>Novos</button>
+        <button class="rf-btn" onclick="setReporteFiltro('em_analise',this)"><span class="rf-dot" style="background:var(--orange)"></span>Em análise</button>
+        <button class="rf-btn" onclick="setReporteFiltro('resolvido',this)"><span class="rf-dot" style="background:var(--green)"></span>Resolvidos</button>
+        <button class="rf-btn" onclick="setReporteFiltro('descartado',this)"><span class="rf-dot" style="background:var(--muted)"></span>Descartados</button>
+        <button class="rf-btn" onclick="setReporteFiltro('',this)"><span class="rf-dot" style="background:var(--text2)"></span>Todos</button>
+      </div>
+
+      <div class="tbl-head rep-grid">
+        <span></span><span>Descrição / Página</span><span>Quem reportou</span><span>Data</span><span style="justify-self:end">Status</span>
+      </div>
+
+      <div class="ticket-list" id="reportes-list">
+        <div class="loading-spinner"><div class="spin"></div> carregando…</div>
+      </div>
+
+      <div class="rep-footer">
+        <span class="rep-count" id="rep-count">—</span>
+        <div class="rep-pager">
+          <button class="rf-btn" id="rep-anterior" onclick="paginaReportes(-1)" disabled>← Anterior</button>
+          <span class="rep-pagina" id="rep-pagina">página 1</span>
+          <button class="rf-btn" id="rep-proxima" onclick="paginaReportes(1)" disabled>Próxima →</button>
+        </div>
       </div>
     </div>
 
@@ -824,6 +870,68 @@
 <div class="lightbox" id="lightbox" onclick="fecharLightbox()">
   <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
   <img id="lightbox-img" src="" alt="imagem ampliada" onclick="event.stopPropagation()" />
+</div>
+
+<!-- MODAL: DETALHE E TRIAGEM DE REPORTE -->
+<div class="modal-rep-bg" id="modal-reporte" role="dialog" aria-modal="true" aria-labelledby="rep-modal-titulo">
+  <div class="modal-rep">
+    <div class="modal-rep-head">
+      <div class="modal-rep-icon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="modal-rep-title" id="rep-modal-titulo">Reporte</div>
+        <div class="modal-rep-sub" id="rep-modal-sub">—</div>
+      </div>
+      <span id="rep-modal-status"></span>
+      <button class="modal-close" onclick="fecharModalReporte()" aria-label="Fechar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-rep-body">
+      <!-- coluna da captura -->
+      <div class="rep-shot-col" id="rep-shot-col">
+        <div class="rep-shot-label">Captura de tela</div>
+        <div class="rep-shot-box" id="rep-shot-box"></div>
+      </div>
+
+      <!-- coluna de contexto + triagem -->
+      <div class="rep-info-col">
+        <div class="rep-field">
+          <div class="rep-field-label">O que o usuário escreveu</div>
+          <div class="rep-desc" id="rep-desc">—</div>
+        </div>
+
+        <div class="rep-field">
+          <div class="rep-field-label">Contexto técnico</div>
+          <ul class="rep-ctx" id="rep-ctx"></ul>
+        </div>
+
+        <div class="rep-field">
+          <label class="rep-field-label" for="rep-status">Status da triagem</label>
+          <select class="mpc-sel" id="rep-status">
+            <option value="novo">Novo</option>
+            <option value="em_analise">Em análise</option>
+            <option value="resolvido">Resolvido</option>
+            <option value="descartado">Descartado</option>
+          </select>
+        </div>
+
+        <div class="rep-field">
+          <label class="rep-field-label" for="rep-nota">Nota interna (opcional)</label>
+          <textarea class="rep-nota" id="rep-nota" maxlength="1000"
+                    placeholder="Ex.: reproduzido no Chrome; causa era o cache do painel. Corrigido na v2.1."></textarea>
+          <div class="mpc-hint">Visível só para a equipe de T.I. Deixe em branco para manter a nota atual — a RPC não apaga uma nota já gravada.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-rep-footer">
+      <button class="btn-mpc-cancel" onclick="fecharModalReporte()">Cancelar</button>
+      <button class="btn-mpc-save" id="btn-rep-salvar" onclick="salvarTriagemReporte()">Salvar triagem</button>
+    </div>
+  </div>
 </div>
 
 <!-- MINI-MODAL DESCARTE -->
