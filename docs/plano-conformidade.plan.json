@@ -1,0 +1,159 @@
+{
+  "$schema": "internal://spec/plano-conformidade/v1",
+  "meta": {
+    "id": "plano-conformidade-tcc",
+    "titulo": "Plano: UML, regras de acesso, politicas e botao de reportar problema",
+    "projeto": "DSos - HelpDesk Escolar",
+    "contexto": {
+      "stack": "HTML/CSS/JS puro (sem build) + Supabase (Postgres, RPCs, Realtime, Storage, Edge Function Groq)",
+      "auth": "custom, nao usa Supabase Auth; anon key + tabela sessao_token; login triplo",
+      "papeis": ["PC/aluno", "professor", "tecnico T.I.", "conta dupla T.I.+professor", "anon"],
+      "ja_existe": ["auditoria (logging.js + tabelas *_log)", "RLS ligado em todas as tabelas", "RPCs validadas por token (migrations sec05*)", "GRANT revogado em colunas sensiveis (senha_hash, pc_senha)"],
+      "observacoes": [
+        "texto de chamado vai para a Groq (IA) via Edge Function = transferencia a terceiro, relevante para a politica de privacidade",
+        "session-guard.js existe mas nao e importado por nenhuma pagina",
+        "netlify.toml tem CSP - afeta html2canvas do botao de reportar",
+        "404 ja existe (cena canvas 3D) - fora do escopo deste plano"
+      ]
+    },
+    "ordem_execucao": ["regras-de-acesso", "uml", "politicas", "botao-reportar"],
+    "criterio_ordem": "primeiro o que consigo derivar do repo sozinho; politicas cedo porque dependem de dados que so o autor tem; botao por ultimo porque envolve migration + codigo + deploy"
+  },
+
+  "entregaveis": [
+    {
+      "id": "regras-de-acesso",
+      "tipo": "documento",
+      "saida": ["docs/regras-de-acesso.md"],
+      "objetivo": "Documentar quem pode fazer o que e como isso e imposto tecnicamente; sustenta o capitulo de seguranca do TCC",
+      "conteudo": [
+        "matriz papel x recurso x acao (aluno / professor / tecnico T.I. / conta dupla / anon) - uma linha por recurso: ticket, mensagem, pc, pc_senha, professor, usuario_ti, tabelas *_log, fila de descarte PNRS, painel-logs",
+        "como o acesso e imposto hoje: login triplo (auth.js), sessao_token, session-guard.js (inatividade - notar que nao esta importado), RLS + RPCs validadas (migrations sec05*), GRANT revogado em colunas sensiveis",
+        "fronteiras de confianca: cliente (anon key, nunca confiar) -> RPC (valida token) -> Postgres (RLS); Edge Function Groq isolada com service key",
+        "lacunas conhecidas: policies TO public USING (true) em varias tabelas - a defesa real esta nas RPCs e nos GRANTs, nao na RLS; documentar como decisao de arquitetura + risco residual"
+      ],
+      "passos": [
+        "rodar Supabase MCP get_advisors (security) + list_tables",
+        "ler as CREATE POLICY / GRANT do baseline (20260101000000_baseline_schema.sql) e das migrations sec*",
+        "preencher a matriz",
+        "escrever secao de lacunas / risco residual",
+        "linkar em README.md -> Documentacao relacionada"
+      ],
+      "depende_de": [],
+      "autor_precisa_fornecer": [],
+      "posso_fazer_sozinho": true
+    },
+
+    {
+      "id": "uml",
+      "tipo": "documentacao",
+      "saida_dir": "docs/uml/",
+      "formato": "Mermaid dentro de arquivos .md (renderiza no GitHub, versiona em texto, sem ferramenta externa)",
+      "arquivos": [
+        { "arquivo": "docs/uml/README.md", "diagrama": "indice dos diagramas" },
+        { "arquivo": "docs/uml/01-casos-de-uso.md", "diagrama": "casos de uso por ator (aluno, professor, tecnico, sistema/IA)", "fonte": "README funcionalidades + os 3 paineis" },
+        { "arquivo": "docs/uml/02-entidades.md", "diagrama": "classes/ER das tabelas", "fonte": "baseline_schema.sql: ticket, mensagem, pc, pc_senha, professor, usuario_ti, sessao_*, *_log" },
+        { "arquivo": "docs/uml/03-componentes.md", "diagrama": "paginas -> modulos JS -> Supabase (RPCs, Realtime, Storage, Edge Function Groq)", "fonte": "js/README.md + netlify.toml" },
+        { "arquivo": "docs/uml/04-seq-abrir-chamado.md", "diagrama": "sequencia: abrir chamado normal + classificacao IA + deteccao de duplicado", "fonte": "painel-pc.js, groq-proxy/index.ts" },
+        { "arquivo": "docs/uml/05-seq-emergencia.md", "diagrama": "sequencia: chamado de emergencia do professor", "fonte": "painel-pc.js" },
+        { "arquivo": "docs/uml/06-seq-realtime.md", "diagrama": "sequencia: chat realtime + sinal 'recupera ao vivo'", "fonte": "docs/REALTIME.md, migration 20260828120000" },
+        { "arquivo": "docs/uml/07-maquina-estados-ticket.md", "diagrama": "state machine do status do ticket (aberto -> ... -> avaliado)", "fonte": "ui.js (labels de status) + painel-ti.js" }
+      ],
+      "passos": [
+        "extrair schema real via Supabase MCP list_tables (nao copiar cego do SQL)",
+        "rascunhar os 7 .md",
+        "revisao do autor",
+        "linkar em README.md -> Documentacao relacionada"
+      ],
+      "depende_de": ["regras-de-acesso"],
+      "autor_precisa_fornecer": ["revisao dos fluxos"],
+      "posso_fazer_sozinho": true
+    },
+
+    {
+      "id": "politicas",
+      "tipo": "paginas-estaticas",
+      "saida": ["html/politica-privacidade.html", "html/termos-de-uso.html"],
+      "estilo": "mesmo layout dos paineis, reusa css/base.css",
+      "linkar_em": ["rodape de html/login.html", "rodape dos paineis", "aviso de consentimento do index.html"],
+      "politica_privacidade_secoes": [
+        "controlador e contato (DPO / e-mail)",
+        "dados tratados: nome do aluno/professor, matricula/identificacao, conteudo e imagens de chamados, laboratorio/PC, logs de acesso (IP, data/hora, user agent), avaliacoes",
+        "finalidade e base legal (LGPD art. 7 - legitimo interesse / execucao de politica da escola)",
+        "compartilhamento com terceiros: texto de chamado enviado a Groq (IA) para classificacao - o que vai, se ha identificacao, link para a politica deles",
+        "retencao (quanto tempo os *_log e chamados ficam) e descarte",
+        "direitos do titular (acesso, correcao, eliminacao, portabilidade) e como exercer",
+        "seguranca (referencia ao doc de regras de acesso, sem detalhe exploravel)",
+        "armazenamento local (localStorage: tema, Modo Hacker, sessao) - nao e cookie de rastreio",
+        "menores de idade (alunos) - consentimento do responsavel / regime escolar",
+        "data de vigencia e historico de alteracoes"
+      ],
+      "termos_uso_secoes": [
+        "objeto",
+        "quem pode usar",
+        "conduta esperada",
+        "uso dos easter eggs / minigame (oficial e inofensivo)",
+        "indisponibilidade / SLA sem garantia (e TCC)",
+        "propriedade",
+        "foro"
+      ],
+      "passos": [
+        "montar estrutura HTML + texto base com marcadores [PREENCHER]",
+        "autor preenche dados reais (nome da escola, contato, prazos de retencao)",
+        "adicionar links nos rodapes e no consentimento",
+        "revisao final"
+      ],
+      "depende_de": [],
+      "autor_precisa_fornecer": [
+        "nome e contato do controlador / DPO",
+        "prazos de retencao de logs e chamados",
+        "o que exatamente e enviado a Groq (com ou sem identificacao)",
+        "foro / comarca"
+      ],
+      "posso_fazer_sozinho": false
+    },
+
+    {
+      "id": "botao-reportar",
+      "tipo": "feature",
+      "saida": [
+        "js/reportar-problema.js",
+        "css/reportar-problema.css",
+        "js/vendor/html2canvas.min.js",
+        "supabase/migrations/<timestamp>_reportar_problema.sql",
+        "docs/reportar-problema.md"
+      ],
+      "frontend": {
+        "botao": "flutuante fixo no canto inferior, injetado em painel-pc.html, painel-ti.html, painel-logs.html",
+        "modal": "campo de descricao + checkbox 'anexar captura da tela atual' (desmarcado por padrao - a captura pode conter dado de outro aluno)",
+        "screenshot": "html2canvas vendorizado em js/vendor/ (evita CDN e problema de CSP)",
+        "coleta_automatica_com_aviso": ["URL", "papel logado", "user agent", "viewport", "versao do app"]
+      },
+      "backend": {
+        "tabela": "public.problema_reporte (id, criado_em, papel, url, user_agent, viewport, descricao, screenshot_path nullable, status)",
+        "rpc": "reportar_problema(...) validando sessao_token (padrao das migrations sec05), com rate limit por sessao",
+        "storage": "bucket privado 'reportes' (so tecnico T.I. le); a RPC devolve o path",
+        "rls": "INSERT so via RPC; SELECT so tecnico T.I."
+      },
+      "painel_ti": "lista simples para ver os reportes - pode ser fase 2",
+      "passos": [
+        "migration: tabela + RPC + bucket + RLS",
+        "vendorizar html2canvas e ajustar script-src no netlify.toml",
+        "modulo JS + CSS",
+        "importar nos 3 paineis",
+        "testar no preview (Browser pane): abrir modal, gerar screenshot, gravar reporte, conferir no banco",
+        "doc curta em docs/reportar-problema.md"
+      ],
+      "depende_de": ["regras-de-acesso"],
+      "autor_precisa_fornecer": ["ok para criar tabela/bucket no projeto Supabase de producao ou usar branch"],
+      "posso_fazer_sozinho": true,
+      "riscos": [
+        "CSP do netlify.toml pode bloquear html2canvas ou o toDataURL - conferir cedo",
+        "screenshot com dado pessoal de terceiros - mitigado pelo opt-in explicito",
+        "html2canvas nao captura canvas WebGL / video de camera com fidelidade"
+      ]
+    }
+  ],
+
+  "proximo_passo_sugerido": "comecar por regras-de-acesso e uml (deriváveis do repo), entregar politicas com marcadores [PREENCHER], deixar botao-reportar por ultimo"
+}

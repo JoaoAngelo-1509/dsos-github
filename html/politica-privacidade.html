@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+  <!-- DSos — politica-privacidade.html
+       Documento legal. Os trechos marcados com <span class="pendente">
+       dependem de uma instituição controladora, que o projeto ainda nao tem
+       (e um TCC). Nao preencher com dado inventado: documento legal com
+       dado fabricado e pior que documento declaradamente incompleto. -->
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+  <title>DSos — Política de Privacidade</title>
+  <link rel="shortcut icon" href="../images/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/legal.css" />
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+
+<button class="btn-tema" id="btn-tema" onclick="toggleTema()" title="Alternar modo claro/escuro" aria-label="Alternar modo claro/escuro">
+  <svg id="ico-tema" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<main class="doc">
+
+  <header class="doc-header">
+    <a class="doc-voltar" href="login.html">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao login
+    </a>
+
+    <h1 class="doc-titulo">Política de Privacidade</h1>
+    <p class="doc-sub">
+      Como o DSos — Sistema de HelpDesk Escolar trata os dados pessoais de
+      alunos, professores e técnicos de T.I., em conformidade com a Lei
+      13.709/2018 (LGPD).
+    </p>
+
+    <div class="doc-meta">
+      <span>Versão <strong>1.0</strong></span>
+      <span>Publicada em <strong>29 de agosto de 2026</strong></span>
+      <span>Projeto <strong>acadêmico — TCC</strong></span>
+    </div>
+  </header>
+
+  <div class="doc-nota">
+    <p>
+      <strong>O DSos é um protótipo acadêmico, não um sistema em operação.</strong>
+      Ele foi desenvolvido como trabalho de conclusão de curso e ainda não foi
+      adotado por nenhuma instituição de ensino. Isso muda quem responde pelos
+      dados e o que já pode ser prometido — e está descrito com honestidade ao
+      longo deste documento.
+    </p>
+    <p>
+      Alguns pontos aparecem marcados como <span class="pendente">a definir na
+      implantação</span>. Não são campos esquecidos: são decisões que só a
+      instituição que vier a adotar o sistema pode tomar (prazos de retenção,
+      foro, encarregado de dados). Enquanto o DSos for protótipo, elas não
+      existem — e afirmar o contrário seria inventar.
+    </p>
+  </div>
+
+  <nav class="doc-sumario" aria-label="Sumário">
+    <h2>Nesta página</h2>
+    <ol>
+      <li><a href="#controlador">Quem é o responsável pelos dados</a></li>
+      <li><a href="#dados">Que dados são tratados</a></li>
+      <li><a href="#finalidade">Para que servem e com que base legal</a></li>
+      <li><a href="#ia">Uso de inteligência artificial e envio a terceiro</a></li>
+      <li><a href="#compartilhamento">Outros compartilhamentos</a></li>
+      <li><a href="#retencao">Por quanto tempo os dados ficam guardados</a></li>
+      <li><a href="#direitos">Seus direitos e como exercê-los</a></li>
+      <li><a href="#seguranca">Como os dados são protegidos</a></li>
+      <li><a href="#local">O que fica guardado no seu navegador</a></li>
+      <li><a href="#menores">Alunos menores de idade</a></li>
+      <li><a href="#alteracoes">Alterações desta política</a></li>
+    </ol>
+  </nav>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="controlador">
+    <h2><span class="num">1.</span>Quem é o responsável pelos dados</h2>
+
+    <p>
+      O <strong>controlador</strong> é quem decide por que e como os dados
+      pessoais são tratados. No DSos isso depende da fase em que o sistema
+      está — e hoje ele está na primeira.
+    </p>
+
+    <h3>Fase atual: protótipo acadêmico</h3>
+
+    <p>
+      Enquanto o sistema é um trabalho de conclusão de curso em testes, quem
+      decide sobre os dados são os seus autores, que respondem conjuntamente:
+    </p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <tbody>
+          <tr>
+            <th scope="row">Autores responsáveis</th>
+            <td>
+              João Angelo Silva Meneghini<br />
+              Augusto Veronez Borges de Oliveira<br />
+              Kethleen <span class="pendente">sobrenome a completar</span>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row">Natureza do tratamento</th>
+            <td>experimental, para desenvolvimento e avaliação acadêmica do sistema</td>
+          </tr>
+          <tr>
+            <th scope="row">Contato</th>
+            <td>pelos autores, através da coordenação do curso</td>
+          </tr>
+          <tr>
+            <th scope="row">Encarregado (DPO)</th>
+            <td>
+              não há — a designação de encarregado (art. 41 da LGPD) cabe ao
+              controlador, e nesta fase não existe controlador institucional
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Se o sistema for adotado por uma escola</h3>
+
+    <p>
+      A partir do momento em que uma instituição de ensino passar a usar o DSos
+      com alunos e professores reais, <strong>ela</strong> se torna a
+      controladora dos dados. Passam a ser dela as obrigações de identificar-se
+      nesta política, designar um encarregado, definir prazos de retenção e
+      responder às solicitações dos titulares.
+    </p>
+
+    <p>
+      Esta política foi escrita para ser adotada nesse momento com o mínimo de
+      alteração: o que falta está sinalizado, e não escondido.
+    </p>
+
+    <p>
+      A infraestrutura de banco de dados, hospedagem e processamento por IA é
+      fornecida por terceiros, descritos nas
+      <a href="#ia">seções 4</a> e <a href="#compartilhamento">5</a>.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="dados">
+    <h2><span class="num">2.</span>Que dados são tratados</h2>
+
+    <p>
+      O sistema não pede CPF, RG, endereço residencial, telefone nem data de
+      nascimento. O que é coletado está integralmente listado abaixo.
+    </p>
+
+    <h3>2.1 Dados que você informa</h3>
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Dado</th><th>Quando</th><th>De quem</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Nome informado no login</td>
+            <td>a cada acesso</td>
+            <td>alunos e professores</td>
+          </tr>
+          <tr>
+            <td>Nome, login e disciplina</td>
+            <td>cadastro feito pelo T.I.</td>
+            <td>professores</td>
+          </tr>
+          <tr>
+            <td>Nome, login e e-mail de contato</td>
+            <td>cadastro da equipe</td>
+            <td>técnicos de T.I.</td>
+          </tr>
+          <tr>
+            <td>Descrição do problema</td>
+            <td>ao abrir um chamado</td>
+            <td>quem abre</td>
+          </tr>
+          <tr>
+            <td>Mensagens do chat do chamado</td>
+            <td>durante o atendimento</td>
+            <td>solicitante e técnico</td>
+          </tr>
+          <tr>
+            <td>Imagens anexadas (upload ou câmera)</td>
+            <td>durante o atendimento</td>
+            <td>solicitante e técnico</td>
+          </tr>
+          <tr>
+            <td>Avaliação (1 a 5 estrelas) e comentário</td>
+            <td>ao encerrar o chamado</td>
+            <td>solicitante</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="doc-nota">
+      <p>
+        <strong>Sobre imagens anexadas ao chat.</strong> Uma foto de tela pode
+        conter, sem intenção, dados de outras pessoas — nomes, notas, mensagens
+        abertas. Anexe apenas o necessário para explicar o problema técnico.
+        As imagens ficam armazenadas em endereço de difícil adivinhação, mas
+        <strong>quem tiver o link consegue abri-lo sem precisar estar logado</strong>.
+      </p>
+    </div>
+
+    <h3>2.2 Dados gerados automaticamente</h3>
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Dado</th><th>Conteúdo</th><th>Onde é registrado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Registro de acesso</td>
+            <td>login usado, nome, data e hora, sucesso ou falha e o motivo, duração da sessão</td>
+            <td>tabela de logs de acesso</td>
+          </tr>
+          <tr>
+            <td>Características do dispositivo</td>
+            <td>navegador, sistema operacional, resolução de tela, idioma e fuso horário</td>
+            <td>tabelas de log</td>
+          </tr>
+          <tr>
+            <td>Registro de atividade</td>
+            <td>qual ação foi feita, em qual chamado ou computador, quando e por quem</td>
+            <td>tabelas de log</td>
+          </tr>
+          <tr>
+            <td>Alterações no banco</td>
+            <td>valor anterior e valor novo dos campos alterados</td>
+            <td>tabela de auditoria</td>
+          </tr>
+          <tr>
+            <td>Presença</td>
+            <td>quem está com sessão aberta no momento</td>
+            <td>tabela de sessão ativa</td>
+          </tr>
+          <tr>
+            <td>Identificação do computador</td>
+            <td>tag, laboratório e lado da máquina usada</td>
+            <td>chamado</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="doc-info">
+      <p>
+        <strong>O sistema não registra endereço IP.</strong> O campo interno que
+        historicamente se chamava <code>ip_address</code> guarda, na prática,
+        apenas a combinação <em>navegador, sistema operacional, resolução,
+        idioma e fuso horário</em> — usada para distinguir dispositivos em uma
+        investigação de segurança, não para localizar ninguém. O nome do campo
+        foi mantido por compatibilidade interna.
+      </p>
+    </div>
+
+    <h3>2.3 Senhas</h3>
+    <p>
+      Senhas de computadores, professores e técnicos são guardadas apenas como
+      <strong>hash bcrypt</strong> — uma transformação irreversível. Nem os
+      técnicos de T.I. conseguem ler a senha de alguém: a redefinição substitui
+      o hash, não revela o valor anterior.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="finalidade">
+    <h2><span class="num">3.</span>Para que servem e com que base legal</h2>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Finalidade</th><th>Dados usados</th><th>Base legal (LGPD)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Registrar e atender chamados de suporte técnico</td>
+            <td>nome, descrição, mensagens, imagens, computador</td>
+            <td>Art. 7º, V — execução de procedimento preliminar e de política interna da instituição de ensino</td>
+          </tr>
+          <tr>
+            <td>Autenticar usuários e controlar o acesso</td>
+            <td>login, hash de senha, token de sessão</td>
+            <td>Art. 7º, IX — legítimo interesse na segurança do sistema</td>
+          </tr>
+          <tr>
+            <td>Auditoria e apuração de incidentes</td>
+            <td>logs de acesso, atividade e alterações</td>
+            <td>Art. 7º, IX — legítimo interesse; Art. 16, I — cumprimento de obrigação legal e de prestação de contas</td>
+          </tr>
+          <tr>
+            <td>Estatísticas de atendimento e gestão do parque de máquinas</td>
+            <td>dados agregados de chamados; nenhum dado pessoal no resultado</td>
+            <td>Art. 7º, IX — legítimo interesse</td>
+          </tr>
+          <tr>
+            <td>Classificar e priorizar chamados com apoio de IA</td>
+            <td>descrição do problema, contexto do chamado</td>
+            <td>Art. 7º, IX — legítimo interesse (ver <a href="#ia">seção 4</a>)</td>
+          </tr>
+          <tr>
+            <td>Rastreabilidade do descarte de equipamentos</td>
+            <td>identificação do equipamento e do técnico responsável</td>
+            <td>Art. 16, I — obrigação legal (Lei 12.305/2010, PNRS)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Os dados <strong>não</strong> são usados para publicidade, não são
+      vendidos e não alimentam nenhum tipo de perfilamento comportamental ou
+      avaliação de desempenho de alunos e professores.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="ia">
+    <h2><span class="num">4.</span>Uso de inteligência artificial e envio a terceiro</h2>
+
+    <p>
+      O DSos usa um modelo de linguagem hospedado pela <strong>Groq, Inc.</strong>
+      (Estados Unidos) para classificar chamados, sugerir soluções e resumir
+      atendimentos. Isso significa que <strong>parte do texto que você escreve
+      sai da infraestrutura da escola</strong>. Esta seção descreve exatamente o
+      quê.
+    </p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Momento</th><th>O que é enviado</th><th>O que NÃO é enviado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Login</td>
+            <td><strong>o nome que você digitou</strong>, para verificar se parece um nome real</td>
+            <td>login, senha, computador</td>
+          </tr>
+          <tr>
+            <td>Abertura de chamado</td>
+            <td>a descrição do problema</td>
+            <td>seu nome, o login, a tag do computador</td>
+          </tr>
+          <tr>
+            <td>Resumo do chamado (painel T.I.)</td>
+            <td>tipo, laboratório, lado, tag do computador, descrição, nota interna e resolução registrada</td>
+            <td>nome do solicitante</td>
+          </tr>
+          <tr>
+            <td>Sugestão de resposta (painel T.I.)</td>
+            <td>número e tipo do chamado, local, descrição, nota interna e <strong>as últimas mensagens do chat</strong></td>
+            <td>nome do solicitante</td>
+          </tr>
+          <tr>
+            <td>Relatório semanal (painel de logs)</td>
+            <td>apenas números agregados: totais, tipos, laboratórios, tempos médios</td>
+            <td>qualquer dado individual</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="doc-nota">
+      <p>
+        <strong>Dois pontos merecem atenção.</strong> Primeiro: no login, o nome
+        digitado é enviado à Groq — é um dado pessoal direto. Segundo: embora o
+        sistema nunca envie o campo "nome do solicitante" junto com um chamado,
+        <strong>textos livres podem conter nomes</strong> que você mesmo
+        escreveu na descrição ou no chat. Evite incluir dados pessoais de
+        terceiros no texto do chamado.
+      </p>
+    </div>
+
+    <h3>4.1 Como o envio acontece</h3>
+    <p>
+      A chamada passa por um intermediário sob controle da instituição (uma
+      <em>Edge Function</em>), cuja única função é guardar a chave de acesso ao
+      serviço fora do navegador. Esse intermediário não armazena o conteúdo:
+      recebe, repassa e devolve a resposta.
+    </p>
+
+    <h3>4.2 O que a Groq pode fazer com esse texto</h3>
+
+    <p>
+      Consultado nos termos contratuais da Groq em 29/08/2026, e resumido aqui
+      porque é a pergunta que mais importa:
+    </p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Pergunta</th><th>Resposta</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>O texto é usado para treinar modelos de IA?</td>
+            <td><strong>Não.</strong> O contrato de serviço proíbe a Groq de usar entradas e saídas para treinar ou ajustar modelos, salvo permissão expressa do cliente — que não foi dada.</td>
+          </tr>
+          <tr>
+            <td>O texto fica armazenado?</td>
+            <td>Não de forma permanente. A Groq registra entradas e saídas <strong>apenas</strong> quando investiga erros ou suspeita de abuso, por até <strong>30 dias</strong>.</td>
+          </tr>
+          <tr>
+            <td>Dá para desligar até esse registro?</td>
+            <td>Sim — a Groq oferece um modo de retenção zero. <span class="pendente">Ativá-lo é uma decisão a tomar na implantação real.</span></td>
+          </tr>
+          <tr>
+            <td>Onde o processamento acontece?</td>
+            <td>Em servidores fora do Brasil.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Como o processamento ocorre no exterior, há <strong>transferência
+      internacional de dados</strong> nos termos do Art. 33 da LGPD. A base
+      invocada é o legítimo interesse, somado à minimização descrita na tabela
+      da seção 4 — o sistema envia o texto do problema, não o cadastro de quem
+      o escreveu.
+    </p>
+
+    <p>
+      Referências:
+      <a href="https://console.groq.com/docs/legal/services-agreement" target="_blank" rel="noopener noreferrer">contrato de serviço</a>,
+      <a href="https://console.groq.com/docs/your-data" target="_blank" rel="noopener noreferrer">política de retenção de dados</a> e
+      <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener noreferrer">política de privacidade</a> da Groq.
+    </p>
+
+    <h3>4.3 Decisões automatizadas</h3>
+    <p>
+      A IA <strong>pode recusar a abertura de um chamado</strong> quando
+      classifica a descrição como não sendo um problema de tecnologia. Essa é
+      uma decisão automatizada. Se isso acontecer com você, reescreva a
+      descrição de forma mais objetiva ou procure um técnico presencialmente —
+      você tem direito a revisão humana, nos termos do Art. 20 da LGPD.
+    </p>
+    <p>
+      A classificação de tipo e prioridade sugerida pela IA é sempre revisável:
+      o técnico de T.I. pode alterá-la a qualquer momento.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="compartilhamento">
+    <h2><span class="num">5.</span>Outros compartilhamentos</h2>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Quem</th><th>Papel</th><th>O que acessa</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Supabase</td>
+            <td>operador — banco de dados, armazenamento de arquivos e tempo real</td>
+            <td>todos os dados do sistema, para hospedá-los</td>
+          </tr>
+          <tr>
+            <td>Netlify</td>
+            <td>operador — hospedagem das páginas</td>
+            <td>não recebe dados de chamados; serve apenas os arquivos do site</td>
+          </tr>
+          <tr>
+            <td>Groq</td>
+            <td>operador — processamento por IA</td>
+            <td>somente o descrito na <a href="#ia">seção 4</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Dentro da instituição, o acesso é limitado por papel: alunos veem apenas
+      os chamados do próprio computador, professores apenas os que abriram, e
+      técnicos de T.I. têm acesso ao conjunto para poder atender. Essa
+      separação é imposta pelo banco de dados, não apenas pela tela.
+    </p>
+
+    <p>
+      Não há compartilhamento com anunciantes, nem venda ou cessão de dados a
+      terceiros. Dados podem ser fornecidos a autoridades mediante requisição
+      legal.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="retencao">
+    <h2><span class="num">6.</span>Por quanto tempo os dados ficam guardados</h2>
+
+    <div class="doc-nota">
+      <p>
+        <strong>Hoje o sistema não apaga nada sozinho.</strong> Existe uma
+        função de limpeza, mas ela só roda quando um técnico a aciona. Não há
+        rotina automática nem prazo programado. Na prática:
+        <strong>os dados permanecem até que alguém execute a limpeza</strong>.
+      </p>
+      <p>
+        Isto está escrito aqui porque é o estado real do protótipo. Omiti-lo
+        seria prometer uma proteção que o código não entrega. Definir prazos e
+        automatizar o descarte é requisito para qualquer uso com alunos reais.
+      </p>
+    </div>
+
+    <p>O que já é automático, por construção:</p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Dado</th><th>Prazo</th><th>O que acontece</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Token de sessão</td>
+            <td>12 horas</td>
+            <td>expira e é apagado</td>
+          </tr>
+          <tr>
+            <td>Sessão sem uso</td>
+            <td>30 minutos</td>
+            <td>logout automático</td>
+          </tr>
+          <tr>
+            <td>Mensagens de um chamado apagado</td>
+            <td>—</td>
+            <td>apagadas junto, em cascata</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>E o que depende de decisão da instituição que vier a adotar o sistema:</p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Dado</th><th>Prazo</th><th>Por que ainda não está definido</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Chamados encerrados e mensagens</td>
+            <td><span class="pendente">a definir na implantação</span></td>
+            <td>a função de limpeza existe; faltam o prazo e a automação</td>
+          </tr>
+          <tr>
+            <td>Imagens anexadas ao chat</td>
+            <td><span class="pendente">a definir na implantação</span></td>
+            <td>é o dado com maior chance de conter terceiros — merece o prazo mais curto</td>
+          </tr>
+          <tr>
+            <td>Logs de acesso e de atividade</td>
+            <td><span class="pendente">a definir na implantação</span></td>
+            <td>há tensão real entre minimizar dado pessoal e manter trilha de auditoria</td>
+          </tr>
+          <tr>
+            <td>Registros de descarte de equipamento</td>
+            <td><span class="pendente">a definir na implantação</span></td>
+            <td>a rastreabilidade da Lei 12.305/2010 (PNRS) pode exigir prazo maior que o dos demais</td>
+          </tr>
+          <tr>
+            <td>Cadastro de professor ou técnico</td>
+            <td>enquanto houver vínculo</td>
+            <td>excluído pelo T.I. quando o vínculo termina</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      A exclusão de um chamado remove em cascata as mensagens vinculadas. Os
+      registros de auditoria são <strong>imutáveis</strong> enquanto existem:
+      não podem ser alterados nem apagados individualmente, apenas eliminados em
+      bloco pela rotina de limpeza. Isso é proposital — um registro de auditoria
+      que pode ser editado não serve para auditar nada.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="direitos">
+    <h2><span class="num">7.</span>Seus direitos e como exercê-los</h2>
+
+    <p>Nos termos do Art. 18 da LGPD, você pode solicitar:</p>
+
+    <ul>
+      <li><strong>Confirmação e acesso</strong> — saber se há dados seus e quais são;</li>
+      <li><strong>Correção</strong> — corrigir dado incompleto, inexato ou desatualizado;</li>
+      <li><strong>Anonimização, bloqueio ou eliminação</strong> — de dados desnecessários, excessivos ou tratados fora da lei;</li>
+      <li><strong>Portabilidade</strong> — receber seus dados em formato legível;</li>
+      <li><strong>Informação sobre compartilhamento</strong> — com quem seus dados foram compartilhados;</li>
+      <li><strong>Revisão de decisão automatizada</strong> — inclusive da recusa de abertura de chamado descrita na <a href="#ia">seção 4.3</a>;</li>
+      <li><strong>Revogação de consentimento</strong>, quando o tratamento se basear nele.</li>
+    </ul>
+
+    <h3>Como pedir</h3>
+    <p>
+      Enquanto o DSos for um protótipo acadêmico, procure <strong>os autores do
+      projeto, através da coordenação do curso</strong>, informando seu nome e,
+      se possível, o número do chamado envolvido.
+    </p>
+    <p>
+      O Art. 19 da LGPD dá ao titular o direito a uma resposta imediata em
+      formato simplificado, ou a uma declaração completa em até
+      <strong>15 dias</strong>. Numa base de testes com poucos registros, o
+      atendimento tende a ser bem mais rápido do que isso.
+    </p>
+    <p>
+      Adotado o sistema por uma instituição, o canal passa a ser o encarregado
+      designado por ela — <span class="pendente">a definir na
+      implantação</span>.
+    </p>
+    <p>
+      Alguns direitos têm limite: registros de auditoria e de descarte de
+      equipamento podem ser mantidos mesmo após um pedido de eliminação, quando
+      necessários ao cumprimento de obrigação legal ou ao exercício regular de
+      direitos (Art. 16 da LGPD). Nesse caso, a instituição informará o motivo.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="seguranca">
+    <h2><span class="num">8.</span>Como os dados são protegidos</h2>
+
+    <ul>
+      <li>Todo o tráfego é criptografado por HTTPS.</li>
+      <li>Senhas são guardadas apenas como hash bcrypt, nunca em texto legível.</li>
+      <li>O acesso a cada registro é decidido <strong>pelo banco de dados</strong>, com base em um token de sessão emitido no login — e não pela tela, que poderia ser burlada.</li>
+      <li>Toda alteração relevante fica registrada em trilha de auditoria que não pode ser editada nem apagada individualmente.</li>
+      <li>A sessão expira automaticamente após 12 horas, e por inatividade em 30 minutos.</li>
+      <li>Tentativas repetidas de login são limitadas, para dificultar ataques de força bruta.</li>
+      <li>As páginas declaram uma política de segurança de conteúdo (CSP) que restringe de onde código e recursos podem ser carregados.</li>
+    </ul>
+
+    <p>
+      A instituição mantém documentação técnica interna do modelo de
+      autorização, <strong>incluindo as limitações conhecidas e ainda não
+      corrigidas</strong>. Ela não é publicada aqui de propósito — descrever
+      publicamente onde um sistema está frágil ajuda quem quer explorá-lo. O
+      titular que precise dessa informação pode solicitá-la ao encarregado.
+    </p>
+
+    <p>
+      Nenhum sistema é imune. Em caso de incidente de segurança que possa
+      acarretar risco relevante, a instituição comunicará os titulares e a
+      Autoridade Nacional de Proteção de Dados, conforme o Art. 48 da LGPD.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="local">
+    <h2><span class="num">9.</span>O que fica guardado no seu navegador</h2>
+
+    <p>
+      O DSos <strong>não usa cookies</strong> e não faz rastreamento. Ele guarda
+      algumas informações no armazenamento local do próprio navegador, que nunca
+      são enviadas a terceiros:
+    </p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Para quê</th><th>Dura até</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sessão (nome, papel e token)</td>
+            <td>manter você conectado enquanto navega</td>
+            <td>fechar a aba</td>
+          </tr>
+          <tr>
+            <td>Tema claro/escuro e Modo Hacker</td>
+            <td>lembrar sua preferência visual</td>
+            <td>você limpar os dados do navegador</td>
+          </tr>
+          <tr>
+            <td>Contagem de tentativas de login</td>
+            <td>aplicar o bloqueio temporário após erros seguidos</td>
+            <td>fechar a aba</td>
+          </tr>
+          <tr>
+            <td>Preferências do painel T.I. e presença</td>
+            <td>lembrar ordenação, confirmações e status</td>
+            <td>você limpar os dados do navegador</td>
+          </tr>
+          <tr>
+            <td>Marca de última atividade</td>
+            <td>controlar o logout automático por inatividade</td>
+            <td>fechar a aba</td>
+          </tr>
+          <tr>
+            <td>Estatísticas do minigame</td>
+            <td>guardar recordes do minigame do painel T.I.</td>
+            <td>você limpar os dados do navegador</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Para apagar tudo isso, limpe os dados do site nas configurações do
+      navegador. Sair do sistema pelo botão de logout já remove a sessão.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="menores">
+    <h2><span class="num">10.</span>Alunos menores de idade</h2>
+
+    <p>
+      Boa parte dos usuários do DSos são estudantes menores de 18 anos. O
+      tratamento observa o Art. 14 da LGPD: os dados de crianças e adolescentes
+      são tratados <strong>no seu melhor interesse</strong> e limitados ao
+      mínimo necessário para o atendimento técnico.
+    </p>
+
+    <ul>
+      <li>O sistema é ferramenta interna da escola, usada em atividade pedagógica sob supervisão — o uso se insere na relação educacional já existente entre a instituição e o responsável legal.</li>
+      <li>Não é exigido nenhum dado além do nome e da identificação do computador usado.</li>
+      <li>Não há coleta de dado sensível (Art. 5º, II da LGPD): nada sobre saúde, religião, origem racial, opinião política ou biometria.</li>
+      <li>Não há publicidade, nem repasse de dados para fins comerciais.</li>
+      <li>Os responsáveis legais podem exercer, em nome do estudante, todos os direitos da <a href="#direitos">seção 7</a>.</li>
+    </ul>
+
+    <h3>Na fase de testes</h3>
+    <p>
+      Enquanto o DSos é um protótipo, ele não está aberto ao corpo discente: é
+      usado por participantes de teste, com credenciais criadas pelos autores,
+      dentro de atividade acadêmica supervisionada. Não há coleta em larga
+      escala nem uso com turmas reais.
+    </p>
+
+    <h3>Na adoção por uma escola</h3>
+    <p>
+      A forma de dar ciência aos responsáveis legais — termo no ato da
+      matrícula, comunicado próprio ou inclusão no regimento — é decisão da
+      instituição controladora: <span class="pendente">a definir na
+      implantação</span>. É um requisito, não uma formalidade: sem ele, o
+      tratamento de dados de estudantes menores fica sem sustentação.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="alteracoes">
+    <h2><span class="num">11.</span>Alterações desta política</h2>
+
+    <p>
+      Esta política pode ser atualizada sempre que o sistema mudar de forma
+      relevante — novo dado coletado, nova finalidade, novo terceiro envolvido.
+      A versão vigente é sempre a publicada nesta página, e o histórico fica
+      abaixo.
+    </p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Versão</th><th>Data</th><th>O que mudou</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1.0</td>
+            <td>29/08/2026</td>
+            <td>Publicação inicial, com o sistema ainda em fase de protótipo acadêmico.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Mudanças que ampliem o uso dos dados serão comunicadas aos usuários antes
+      de entrar em vigor.
+    </p>
+  </section>
+
+  <footer class="doc-rodape">
+    <span>DSos — HelpDesk Escolar</span>
+    <nav class="doc-rodape-links" aria-label="Documentos legais">
+      <a href="termos-de-uso.html">Termos de uso</a>
+      <a href="login.html">Voltar ao login</a>
+    </nav>
+  </footer>
+
+</main>
+
+<script>
+  // Tema: mesma chave e mesmo comportamento das demais telas do sistema.
+  // Inline porque estas páginas não carregam nenhum módulo do sistema — são
+  // documentos estáticos e não devem depender da configuração do Supabase.
+  (function () {
+    var salvo = localStorage.getItem('dsos_tema_login');
+    if (salvo) document.documentElement.dataset.theme = salvo;
+    document.addEventListener('DOMContentLoaded', function () { pintarIcone(); });
+
+    function pintarIcone() {
+      var ico = document.getElementById('ico-tema');
+      if (!ico) return;
+      ico.innerHTML = document.documentElement.dataset.theme === 'light'
+        ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    }
+
+    window.toggleTema = function () {
+      var html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('dsos_tema_login', html.dataset.theme);
+      pintarIcone();
+    };
+  })();
+</script>
+
+</body>
+</html>

@@ -4,6 +4,7 @@ import { dsosAlert } from './dsos-ui.js';
 import { escapeHtml, tipoIcon, statusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
+import { initReportarProblema } from './reportar-problema.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
 instalarHeaderSessao();
@@ -277,6 +278,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Logout automático por inatividade (30min, aviso aos 28min)
   initSessionGuard({onLogout:()=>window.sair()});
+  initReportarProblema();   // botao flutuante de reportar problema
 
   // ── Heartbeat de sessão ──
   const _pingUrl = `${SB_URL}/rest/v1/rpc/rpc_sessao_ping?apikey=${SB_KEY}`;

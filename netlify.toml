@@ -22,6 +22,84 @@
   to = "/html/painel-ti.html"
   status = 200
 
+# ── Pastas e arquivos que NAO devem ir para o ar ────────────────────────────
+#
+# `publish = "."` publica o repositorio inteiro: sem estas regras,
+# https://<site>/supabase/migrations/20260823170000_sec05b_fechar_leitura.sql
+# e https://<site>/docs/regras-de-acesso.md sao paginas publicas. Sao os dois
+# documentos que descrevem, em detalhe, o modelo de autorizacao do sistema e
+# as brechas ainda abertas — exatamente o material de partida de quem quisesse
+# atacar o DSos.
+#
+# `force = true` e o que faz a regra valer MESMO existindo o arquivo: sem ele,
+# arquivo real tem prioridade sobre redirect e o bloqueio nao aconteceria.
+#
+# Isto e defesa de exposicao, nao de segredo: o repositorio e publico no
+# GitHub. O ganho e nao servir o mapa do sistema no mesmo dominio da
+# aplicacao, para quem so tropecar nela.
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/tests/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/scripts/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# Documentacao de raiz. Nao ha glob por extensao nos redirects da Netlify
+# (`*` so funciona como sufixo de caminho), entao a lista e explicita — ao
+# criar um .md novo na raiz, acrescente-o aqui.
+[[redirects]]
+  from = "/README.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/WORKFLOW.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/SETUP.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/CHANGELOG.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/LASTCHANGES.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/EASTER_EGGS.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
 # Qualquer rota inexistente cai na pagina 404 tematica (404.html na raiz do
 # publish). Fica por ultimo: regras anteriores e arquivos reais tem prioridade.
 [[redirects]]

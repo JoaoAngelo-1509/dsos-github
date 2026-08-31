@@ -9,6 +9,7 @@ import { dsosConfirm } from './dsos-ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { sair, escapeHtml } from './ui.js';
 import { initSessionGuard } from './session-guard.js';
+import { initReportarProblema } from './reportar-problema.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
 instalarHeaderSessao();
@@ -160,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Logout automático por inatividade (30min, aviso aos 28min)
   initSessionGuard({ onLogout: sair });
+  initReportarProblema();   // botao flutuante de reportar problema
 
   carregarUsuario();
   iniciarRelogio();

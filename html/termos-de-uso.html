@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+  <!-- DSos — termos-de-uso.html
+       Documento legal. Os trechos marcados com <span class="pendente">
+       dependem de uma instituicao adotante, que o projeto ainda nao tem (e um
+       TCC). Nao preencher com dado inventado. -->
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+  <title>DSos — Termos de Uso</title>
+  <link rel="shortcut icon" href="../images/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/base.css" />
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/legal.css" />
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+
+<button class="btn-tema" id="btn-tema" onclick="toggleTema()" title="Alternar modo claro/escuro" aria-label="Alternar modo claro/escuro">
+  <svg id="ico-tema" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+</button>
+
+<main class="doc">
+
+  <header class="doc-header">
+    <a class="doc-voltar" href="login.html">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Voltar ao login
+    </a>
+
+    <h1 class="doc-titulo">Termos de Uso</h1>
+    <p class="doc-sub">
+      Condições para o uso do DSos — Sistema de HelpDesk Escolar por alunos,
+      professores e equipe de tecnologia da informação.
+    </p>
+
+    <div class="doc-meta">
+      <span>Versão <strong>1.0</strong></span>
+      <span>Publicada em <strong>29 de agosto de 2026</strong></span>
+      <span>Projeto <strong>acadêmico — TCC</strong></span>
+    </div>
+  </header>
+
+  <div class="doc-nota">
+    <p>
+      <strong>O DSos é um protótipo acadêmico.</strong> Foi desenvolvido como
+      trabalho de conclusão de curso e ainda não foi adotado por nenhuma
+      instituição de ensino. Enquanto isso não acontece, quem responde pelo
+      sistema são seus autores, e alguns pontos destes termos aparecem como
+      <span class="pendente">a definir na implantação</span> — decisões que só
+      a instituição adotante pode tomar.
+    </p>
+  </div>
+
+  <nav class="doc-sumario" aria-label="Sumário">
+    <h2>Nesta página</h2>
+    <ol>
+      <li><a href="#objeto">O que é o DSos</a></li>
+      <li><a href="#quem">Quem pode usar</a></li>
+      <li><a href="#credenciais">Credenciais e responsabilidade pela conta</a></li>
+      <li><a href="#conduta">Como usar bem o sistema</a></li>
+      <li><a href="#proibido">O que não é permitido</a></li>
+      <li><a href="#ia">Chamados analisados por IA</a></li>
+      <li><a href="#eggs">Easter eggs e minigame</a></li>
+      <li><a href="#disponibilidade">Disponibilidade e ausência de garantia</a></li>
+      <li><a href="#dados">Dados pessoais</a></li>
+      <li><a href="#propriedade">Propriedade intelectual</a></li>
+      <li><a href="#suspensao">Suspensão de acesso</a></li>
+      <li><a href="#alteracoes">Alterações destes termos</a></li>
+      <li><a href="#foro">Lei aplicável e foro</a></li>
+    </ol>
+  </nav>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="objeto">
+    <h2><span class="num">1.</span>O que é o DSos</h2>
+
+    <p>
+      O DSos é um sistema de <strong>abertura e acompanhamento de chamados de
+      suporte técnico</strong> para laboratórios de informática de escolas. Ele
+      permite registrar um problema em um computador, conversar com a equipe de
+      T.I. sobre esse problema, acompanhar a resolução e avaliar o atendimento.
+    </p>
+
+    <p>
+      O sistema foi desenvolvido como <strong>trabalho de conclusão de
+      curso</strong> e está em uso experimental — não há instituição de ensino
+      que o tenha adotado em operação. Isso tem consequências práticas
+      descritas na <a href="#disponibilidade">seção 8</a>: leia-a antes de
+      depender do sistema para qualquer coisa urgente.
+    </p>
+
+    <p>
+      Ao acessar o DSos, você concorda com estes termos e com a
+      <a href="politica-privacidade.html">Política de Privacidade</a>. Se não
+      concordar, não utilize o sistema e procure a equipe de T.I. pessoalmente.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="quem">
+    <h2><span class="num">2.</span>Quem pode usar</h2>
+
+    <p>O acesso é restrito a três grupos, com escopos diferentes:</p>
+
+    <div class="doc-tabela-wrap">
+      <table>
+        <thead>
+          <tr><th>Perfil</th><th>Como acessa</th><th>O que pode fazer</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Aluno</strong></td>
+            <td>credencial do computador do laboratório, mais o próprio nome</td>
+            <td>abrir chamados para o computador em uso, conversar no chat e avaliar o atendimento</td>
+          </tr>
+          <tr>
+            <td><strong>Professor</strong></td>
+            <td>credencial pessoal fornecida pelo T.I.</td>
+            <td>o mesmo que o aluno, além de abrir chamados — inclusive de emergência — para qualquer computador, identificado pela etiqueta</td>
+          </tr>
+          <tr>
+            <td><strong>Técnico de T.I.</strong></td>
+            <td>credencial pessoal</td>
+            <td>atender chamados, gerir computadores, professores e equipe, e consultar a auditoria</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      O sistema não é aberto ao público. Não existe autocadastro: todas as
+      credenciais são criadas pela equipe de T.I.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="credenciais">
+    <h2><span class="num">3.</span>Credenciais e responsabilidade pela conta</h2>
+
+    <ul>
+      <li>Sua credencial é <strong>pessoal e intransferível</strong> — no caso dos alunos, é a credencial do computador, e vale para quem estiver usando aquela máquina no momento.</li>
+      <li>Você é responsável pelas ações realizadas com a sua credencial.</li>
+      <li>Não compartilhe senha com colegas. Se desconfiar que alguém a descobriu, avise o T.I. imediatamente.</li>
+      <li>A recuperação de senha é feita presencialmente pela equipe de T.I. — não há redefinição por e-mail.</li>
+      <li>A sessão expira automaticamente após <strong>12 horas</strong>, ou após <strong>30 minutos</strong> sem atividade. Ainda assim, encerre a sessão pelo botão de sair ao deixar o computador.</li>
+    </ul>
+
+    <p>
+      Tentativas repetidas de login com senha errada bloqueiam temporariamente
+      o acesso. Isso é proteção contra ataques, não punição — basta aguardar o
+      tempo indicado na tela.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="conduta">
+    <h2><span class="num">4.</span>Como usar bem o sistema</h2>
+
+    <ul>
+      <li><strong>Informe seu nome verdadeiro.</strong> É por ele que o técnico identifica quem pediu ajuda.</li>
+      <li><strong>Descreva o problema com objetividade.</strong> O que aconteceu, quando começou, o que você já tentou. Descrição vaga atrasa o atendimento e pode ser recusada automaticamente (ver <a href="#ia">seção 6</a>).</li>
+      <li><strong>Verifique se já existe um chamado aberto</strong> para o mesmo problema antes de criar outro.</li>
+      <li><strong>Use a emergência para emergência.</strong> Ela existe para risco físico real e imediato — fumaça, cheiro de queimado, faísca, choque — ou para pedir socorro de outro computador quando o seu não liga.</li>
+      <li><strong>Cuidado ao anexar imagens.</strong> Envie apenas o necessário para explicar o problema. Uma foto de tela pode conter dados de outras pessoas.</li>
+      <li><strong>Responda ao chat.</strong> O técnico pode precisar de mais informações para resolver.</li>
+    </ul>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="proibido">
+    <h2><span class="num">5.</span>O que não é permitido</h2>
+
+    <ul>
+      <li>Abrir chamados falsos, em duplicidade proposital ou como brincadeira.</li>
+      <li>Usar o nome de outra pessoa ao abrir um chamado.</li>
+      <li>Escrever ofensas, ameaças, discurso de ódio ou conteúdo impróprio na descrição ou no chat.</li>
+      <li>Anexar imagens de conteúdo impróprio, ou que exponham dados pessoais de terceiros sem necessidade.</li>
+      <li>Tentar acessar chamados, dados ou funções destinados a outro perfil de usuário.</li>
+      <li>Tentar burlar os controles de acesso, explorar falhas ou automatizar requisições ao sistema.</li>
+      <li>Sobrecarregar o sistema com volume artificial de chamados ou mensagens.</li>
+    </ul>
+
+    <div class="doc-info">
+      <p>
+        <strong>Encontrou uma falha de segurança?</strong> Não a explore —
+        comunique à equipe de T.I. Relatar de forma responsável é bem-vindo e
+        não gera nenhuma penalidade. Explorar, sim.
+      </p>
+    </div>
+
+    <p>
+      Todas as ações no sistema ficam registradas em trilha de auditoria, com
+      identificação de quem as executou. O uso indevido pode acarretar
+      suspensão de acesso e as medidas disciplinares previstas no regimento da
+      instituição.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="ia">
+    <h2><span class="num">6.</span>Chamados analisados por IA</h2>
+
+    <p>
+      O DSos usa inteligência artificial para classificar o tipo e a prioridade
+      do chamado, sugerir soluções simples e ajudar a equipe de T.I. a resumir
+      atendimentos. Ao usar o sistema, você deve saber que:
+    </p>
+
+    <ul>
+      <li><strong>Parte do texto que você escreve é enviada a um serviço externo</strong> para essa análise. O detalhamento exato — o que é enviado e o que não é — está na <a href="politica-privacidade.html#ia">Política de Privacidade, seção 4</a>.</li>
+      <li><strong>A IA pode recusar a abertura de um chamado</strong> quando classifica a descrição como não sendo um problema de tecnologia. Se isso acontecer indevidamente, reescreva de forma mais objetiva ou procure um técnico presencialmente.</li>
+      <li><strong>As sugestões de solução são orientações gerais</strong>, geradas automaticamente. Podem estar erradas. Não substituem a avaliação de um técnico e não devem ser seguidas se envolverem abrir equipamento ou alterar configuração do sistema.</li>
+      <li>A prioridade sugerida pela IA é sempre revisável pela equipe de T.I.</li>
+    </ul>
+
+    <p>
+      Você tem direito a solicitar revisão humana de qualquer decisão
+      automatizada, nos termos do Art. 20 da LGPD.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="eggs">
+    <h2><span class="num">7.</span>Easter eggs e minigame</h2>
+
+    <p>
+      O DSos contém <strong>easter eggs</strong> — pequenas surpresas visuais
+      escondidas, ativadas por sequências de cliques ou teclas — e um minigame
+      opcional no painel de T.I. Eles são <strong>parte oficial do
+      sistema</strong>, documentados no repositório do projeto, e foram
+      colocados ali de propósito.
+    </p>
+
+    <ul>
+      <li>São <strong>puramente cosméticos</strong>: mudam cores, temas e animações. Nenhum altera chamado, dado ou permissão.</li>
+      <li>Ativá-los não é uso indevido, não é falha de segurança e não gera qualquer registro desabonador.</li>
+      <li>São desativados fechando ou recarregando a página.</li>
+      <li>Podem ser removidos ou alterados a qualquer momento, sem aviso.</li>
+    </ul>
+
+    <div class="doc-info">
+      <p>
+        Se um efeito visual atrapalhar seu uso do sistema, recarregue a página.
+        Caso algum deles cause desconforto — animações intensas, contraste
+        forte —, avise a equipe de T.I.: acessibilidade tem prioridade sobre
+        piada interna.
+      </p>
+    </div>
+
+    <p>
+      O minigame do painel de T.I. é integrado ao fluxo de resolução de
+      chamados e é <strong>opcional</strong>: pular não prejudica nem atrasa
+      atendimento nenhum.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="disponibilidade">
+    <h2><span class="num">8.</span>Disponibilidade e ausência de garantia</h2>
+
+    <div class="doc-nota">
+      <p>
+        <strong>O DSos é um projeto acadêmico em fase de testes.</strong> Não
+        há acordo de nível de serviço (SLA), não há garantia de
+        disponibilidade e não há compromisso de tempo de resposta a chamados.
+      </p>
+      <p>
+        <strong>Em caso de emergência real — fumaça, cheiro de queimado,
+        faísca, choque elétrico ou risco a alguém —, procure imediatamente um
+        adulto responsável ou a equipe de T.I. pessoalmente. Não dependa
+        apenas do sistema.</strong>
+      </p>
+    </div>
+
+    <p>Em termos concretos, isso significa que:</p>
+
+    <ul>
+      <li>O sistema pode ficar indisponível sem aviso, por manutenção, falha de infraestrutura de terceiros ou erro de programação.</li>
+      <li>Funcionalidades podem mudar, ser adicionadas ou removidas a qualquer momento.</li>
+      <li><strong>Pode haver perda de dados.</strong> Não use o sistema como único registro de algo que você precise guardar.</li>
+      <li>As funções de inteligência artificial dependem de serviço externo e podem falhar ou ficar indisponíveis; nesse caso, o chamado ainda pode ser aberto normalmente.</li>
+      <li>O sistema é fornecido "no estado em que se encontra", sem garantias expressas ou implícitas.</li>
+    </ul>
+
+    <p>
+      Na máxima extensão permitida pela lei, a instituição e os autores do
+      projeto não respondem por danos indiretos decorrentes do uso ou da
+      indisponibilidade do sistema. Nada aqui afasta direitos que a lei
+      brasileira assegure de forma inafastável.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="dados">
+    <h2><span class="num">9.</span>Dados pessoais</h2>
+
+    <p>
+      O tratamento de dados pessoais é regido pela
+      <a href="politica-privacidade.html">Política de Privacidade</a>, que é
+      parte integrante destes termos. Ela descreve quais dados são coletados,
+      para que servem, com quem são compartilhados, por quanto tempo ficam
+      guardados e como exercer seus direitos.
+    </p>
+
+    <p>
+      Em resumo: o sistema coleta o nome informado, o conteúdo dos chamados e
+      registros técnicos de acesso e atividade — e nada além disso. Não há
+      cookies de rastreamento, publicidade ou venda de dados.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="propriedade">
+    <h2><span class="num">10.</span>Propriedade intelectual</h2>
+
+    <p>
+      O código-fonte, a identidade visual e a documentação do DSos são de
+      autoria de <strong>João Angelo Silva Meneghini</strong>,
+      <strong>Augusto Veronez Borges de Oliveira</strong> e
+      <strong>Kethleen <span class="pendente">sobrenome a completar</span></strong>,
+      no âmbito do trabalho de conclusão de curso.
+    </p>
+
+    <p>
+      <strong>Não há licença de uso declarada.</strong> Na ausência de licença,
+      vale a regra padrão da Lei 9.610/1998: todos os direitos ficam reservados
+      aos autores. Adotar uma licença — aberta ou não — é
+      <span class="pendente">decisão pendente dos autores</span>.
+    </p>
+
+    <p>
+      Marcas, logotipos e nomes de terceiros eventualmente exibidos pertencem a
+      seus respectivos titulares e aparecem apenas para identificação.
+    </p>
+
+    <p>
+      O conteúdo que você escreve — descrição de chamado, mensagens, imagens —
+      continua sendo seu. Ao enviá-lo, você autoriza a instituição a
+      armazená-lo e utilizá-lo para prestar o atendimento técnico e cumprir
+      obrigações de auditoria, conforme a Política de Privacidade.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="suspensao">
+    <h2><span class="num">11.</span>Suspensão de acesso</h2>
+
+    <p>
+      A equipe de T.I. pode suspender ou encerrar o acesso de um usuário que
+      descumpra estes termos, especialmente a <a href="#proibido">seção 5</a>.
+      Sempre que possível, a suspensão será comunicada com o motivo.
+    </p>
+
+    <p>
+      A suspensão do acesso ao sistema não substitui nem antecipa as medidas
+      disciplinares previstas no regimento da instituição, que seguem seu
+      próprio rito.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="alteracoes">
+    <h2><span class="num">12.</span>Alterações destes termos</h2>
+
+    <p>
+      Estes termos podem ser atualizados a qualquer momento. A versão vigente é
+      sempre a publicada nesta página, com a data indicada no topo. Mudanças
+      relevantes serão comunicadas aos usuários.
+    </p>
+
+    <p>
+      Continuar usando o sistema após uma alteração significa concordar com a
+      nova versão.
+    </p>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <section class="doc-secao" id="foro">
+    <h2><span class="num">13.</span>Lei aplicável e foro</h2>
+
+    <p>
+      Estes termos são regidos pelas leis da República Federativa do Brasil,
+      em especial a Lei 13.709/2018 (LGPD), a Lei 12.965/2014 (Marco Civil da
+      Internet) e, no que couber, a Lei 8.069/1990 (Estatuto da Criança e do
+      Adolescente).
+    </p>
+
+    <p>
+      <strong>Não há eleição de foro.</strong> Cláusula de foro pressupõe uma
+      relação contratual entre partes definidas, e nesta fase o sistema é um
+      protótipo acadêmico sem instituição contratante. Vale, portanto, a
+      competência que a lei determinar em cada caso — inclusive as regras
+      próprias do Estatuto da Criança e do Adolescente e do Código de Defesa do
+      Consumidor, que não podem ser afastadas por contrato.
+    </p>
+
+    <p>
+      Adotado o sistema por uma instituição, o foro competente será o
+      correspondente a ela: <span class="pendente">a definir na
+      implantação</span>.
+    </p>
+
+    <p>
+      Dúvidas sobre estes termos: procure os autores do projeto, através da
+      coordenação do curso.
+    </p>
+  </section>
+
+  <footer class="doc-rodape">
+    <span>DSos — HelpDesk Escolar</span>
+    <nav class="doc-rodape-links" aria-label="Documentos legais">
+      <a href="politica-privacidade.html">Política de privacidade</a>
+      <a href="login.html">Voltar ao login</a>
+    </nav>
+  </footer>
+
+</main>
+
+<script>
+  // Tema: mesma chave e mesmo comportamento das demais telas do sistema.
+  // Inline porque estas páginas não carregam nenhum módulo do sistema — são
+  // documentos estáticos e não devem depender da configuração do Supabase.
+  (function () {
+    var salvo = localStorage.getItem('dsos_tema_login');
+    if (salvo) document.documentElement.dataset.theme = salvo;
+    document.addEventListener('DOMContentLoaded', function () { pintarIcone(); });
+
+    function pintarIcone() {
+      var ico = document.getElementById('ico-tema');
+      if (!ico) return;
+      ico.innerHTML = document.documentElement.dataset.theme === 'light'
+        ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    }
+
+    window.toggleTema = function () {
+      var html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('dsos_tema_login', html.dataset.theme);
+      pintarIcone();
+    };
+  })();
+</script>
+
+</body>
+</html>

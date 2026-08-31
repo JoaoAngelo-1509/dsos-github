@@ -1,5 +1,79 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-08-29 — Conformidade: UML, regras de acesso, políticas e reportar problema
+
+Leva de documentação e conformidade prevista em
+`docs/plano-conformidade.plan.json`, na ordem do plano.
+
+### Documentação
+
+- **`docs/regras-de-acesso.md`** — matriz papel × recurso × ação (aluno,
+  professor, T.I., conta dupla, anônimo), como o acesso é imposto nas três
+  camadas (RLS por token de header, RPCs `SECURITY DEFINER`, privilégio de
+  coluna), fronteiras de confiança e **nove lacunas conhecidas** com risco
+  residual. Duas merecem atenção: as tabelas `*_log` continuam com `SELECT`
+  aberto (L2) e o bucket `chat-prints` é público (L3).
+- **`docs/uml/`** — sete diagramas em Mermaid (renderizam no GitHub, versionam
+  como texto): casos de uso, entidades, componentes, sequências de abrir
+  chamado / emergência / realtime, e a máquina de estados do chamado. Todos
+  derivados do schema e do código, com as simplificações declaradas.
+
+### Conformidade LGPD
+
+- **`html/politica-privacidade.html`** e **`html/termos-de-uso.html`**, com
+  `css/legal.css` compartilhado (inclui layout de impressão, para anexar ao
+  TCC). Linkados do consentimento do `index.html`, do rodapé do login e de uma
+  faixa discreta nos três painéis (`.legal-fixed`, em `base.css`).
+- A política declara **exatamente** o que sai para a Groq em cada momento —
+  inclusive que **o nome digitado no login é enviado** — e que a IA pode
+  recusar a abertura de um chamado, o que é decisão automatizada sujeita a
+  revisão (art. 20 da LGPD).
+- Os termos contratuais da Groq foram conferidos e resumidos na política, com
+  link: o contrato de serviço **proíbe** usar entradas e saídas para treinar ou
+  ajustar modelos, e a retenção é de no máximo 30 dias, só para investigar erro
+  ou abuso. Há um modo de retenção zero — ativá-lo fica como decisão para a
+  implantação real.
+- Registra também que a coluna `ip_address` das tabelas de log **não guarda
+  IP**: `logging.js` grava ali um fingerprint do dispositivo (navegador, SO,
+  resolução, idioma, fuso).
+- **Os dois documentos assumem o que o projeto é: um protótipo acadêmico.**
+  Não há instituição controladora, CNPJ nem encarregado de dados — e inventá-los
+  seria pior que declarar a ausência. O controlador na fase atual são os três
+  autores, nomeados; a política explica que a instituição que vier a adotar o
+  sistema assume esse papel, e o que ela terá de definir.
+- O que depende dessa adoção (prazos de retenção, foro, licença do código,
+  encarregado) aparece como *a definir na implantação*, em itálico discreto —
+  não como badge de "preencher". São 9 pontos na política e 4 nos termos, todos
+  justificados no texto.
+- **Sem eleição de foro**, e isso é deliberado: cláusula de foro pressupõe
+  partes contratantes definidas. Sem licença declarada, vale a Lei 9.610/1998 —
+  direitos reservados aos autores por padrão.
+- A seção de retenção declara o que o código realmente faz hoje: **nada é
+  apagado automaticamente**; a limpeza só roda quando um técnico a aciona.
+  Prometer prazo que o sistema não cumpre seria o defeito mais grave que uma
+  política de privacidade pode ter.
+
+### Reportar problema
+
+- Botão flutuante nos três painéis abre um modal de reporte sobre o próprio
+  sistema. Contexto técnico coletado é mostrado antes do envio; captura de tela
+  é **opt-in e vem desmarcada**, com aviso de que pode conter dado de terceiro.
+- `js/reportar-problema.js` injeta o próprio markup — os painéis só ganharam um
+  `import`, uma chamada e o `<link>` do CSS.
+- Migration `20260829120000_reportar_problema` (com ROLLBACK): tabela
+  `problema_reporte`, `rpc_reportar_problema` (valida token, rate limit de 3
+  por 10 min, identidade vem da sessão), `rpc_reportes_listar` e
+  `rpc_reporte_status`. Leitura só com sessão de T.I.
+  **Aplicada no banco de TESTE** e validada (14 casos: token ausente/forjado,
+  INSERT direto negado, leitura por papel, rate limit, identidade vinda da
+  sessão, triagem). Produção pendente de aprovação.
+- A captura ficou **na tabela**, não em bucket: a API de Storage avalia a RLS
+  sem o header `X-Sessao-Token`, então um bucket "privado" seria legível por
+  qualquer um com a anon key. Detalhe em `docs/reportar-problema.md`.
+- `js/vendor/html2canvas.min.js` vendorizado (1.4.1, MIT). Não exigiu mudança
+  na CSP — `script-src` já tem `self`. Captura testada ponta a ponta: 1100x700
+  vira JPEG de 1024px com ~14 KB, bem abaixo do teto de 1,2 MB da RPC.
+
 ## 2026-08-28 — Realtime de volta ao "ao vivo" via tabela de sinal
 
 - **Chamados e chat voltaram a atualizar sozinhos.** Desde o SEC-05b o Supabase

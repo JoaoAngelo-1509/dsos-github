@@ -4,6 +4,7 @@ import { dsosConfirm } from './dsos-ui.js';
 import { escapeHtml, tipoIcon, statusLabel as uiStatusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
+import { initReportarProblema } from './reportar-problema.js';
 import { initEasterEgg } from './easter-egg.js';
 import { logger } from './logging.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
@@ -153,6 +154,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
 
   // Logout automático por inatividade (30min, aviso aos 28min)
   initSessionGuard({onLogout:()=>window.sair()});
+  initReportarProblema();   // botao flutuante de reportar problema
 
   // Marcar técnico como online ao entrar
   fetch(`${SB}/rest/v1/rpc/rpc_set_presenca`,{method:'POST',headers:H,body:JSON.stringify({p_id:session.id,p_presenca:'online'})}).catch(()=>{});

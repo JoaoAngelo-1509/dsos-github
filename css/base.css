@@ -231,3 +231,91 @@ body { font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robot
 /* ── Easter egg no hacker mode ── */
 [data-hacker="1"] .egg-img{border-color:#e5000a;box-shadow:0 0 80px rgba(229,0,10,.7)}
 [data-hacker="1"] .egg-card *{font-family:'Courier New',Courier,monospace}
+/* ─────────────────────────────────────────────────────────────────────────
+   LINKS LEGAIS (política de privacidade / termos de uso)
+
+   Duas apresentacoes, porque os dois contextos sao diferentes:
+
+   .legal-links  — dentro de um card com fluxo normal (login). Segue o fluxo.
+   .legal-fixed  — faixa discreta presa ao canto inferior ESQUERDO, para os
+                   paineis, que sao telas de app sem rodape de pagina. O canto
+                   direito fica livre de proposito: e onde vive o botao
+                   flutuante de reportar problema.
+
+   z-index 900: acima do conteudo, abaixo de modais (>= 999) e do aviso de
+   sessao expirando (9000).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: .6rem;
+  color: var(--text-muted, #666);
+}
+.legal-links a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color .2s;
+}
+.legal-links a:hover { color: var(--red, #c0171a); }
+
+.legal-fixed {
+  position: fixed;
+  left: 12px;
+  bottom: 10px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid rgba(255, 255, 255, .08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: .58rem;
+  letter-spacing: .02em;
+  /* Sem `opacity` no container: opacidade se multiplica pela do texto e
+     derrubaria o contraste abaixo do minimo do WCAG AA. O tom discreto vem
+     da cor, que da ~6:1 sobre o fundo escuro. */
+  color: rgba(255, 255, 255, .62);
+  transition: color .2s, border-color .2s;
+}
+.legal-fixed:hover,
+.legal-fixed:focus-within {
+  color: #fff;
+  border-color: rgba(255, 255, 255, .2);
+}
+.legal-fixed a {
+  color: inherit;
+  text-decoration: none;
+  transition: color .2s;
+}
+/* #ff5c5f e nao o --red da marca: sobre fundo escuro o vermelho da marca fica
+   em ~3:1. Mesmo criterio de css/legal.css. */
+.legal-fixed a:hover { color: #ff5c5f; text-decoration: underline; }
+
+[data-theme="light"] .legal-fixed {
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(0, 0, 0, .12);
+  color: rgba(0, 0, 0, .66);
+}
+[data-theme="light"] .legal-fixed:hover,
+[data-theme="light"] .legal-fixed:focus-within { color: #000; }
+[data-theme="light"] .legal-fixed a:hover { color: var(--red, #c0171a); }
+
+/* Em tela estreita a faixa some do canto: nao ha espaco para ela e o botao
+   flutuante ao mesmo tempo. Os documentos continuam alcancaveis pelo login e
+   pela pagina de consentimento. */
+@media (max-width: 620px) {
+  .legal-fixed { display: none; }
+}
+
+@media print {
+  .legal-fixed { display: none !important; }
+}

@@ -193,6 +193,17 @@
     .btn-access:not(:disabled):hover { opacity: .88; box-shadow: 0 6px 28px rgba(192,23,26,.45); }
     .btn-access:not(:disabled):active { transform: scale(.99); }
 
+    /* ── Links legais sob o consentimento ── */
+    .consent-legal {
+      font-size: .66rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: -4px;
+    }
+    .consent-legal a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
+    .consent-legal a:hover { color: var(--red); }
+
     /* ── Rodapé ── */
     .footer {
       display: flex; justify-content: space-between; align-items: center;
@@ -312,6 +323,12 @@
       </div>
       <span class="consent-label">Entendi tudo acima e quero acessar o sistema.</span>
     </div>
+
+    <p class="consent-legal">
+      Ao acessar, você concorda com os
+      <a href="./html/termos-de-uso.html">Termos de Uso</a> e com a
+      <a href="./html/politica-privacidade.html">Política de Privacidade</a>.
+    </p>
 
     <button class="btn-access" id="btn-access" disabled onclick="acessar()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

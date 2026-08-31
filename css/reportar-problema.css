@@ -1,0 +1,322 @@
+/* DSos — reportar-problema.css
+   ────────────────────────────────────────────────────────────────────────
+   Estilos do botão flutuante e do modal de reportar problema.
+
+   Carregue DEPOIS de tokens.css, em painel-pc.html, painel-ti.html e
+   painel-logs.html:
+     <link rel="stylesheet" href="../css/reportar-problema.css" />
+
+   POR QUE TUDO AQUI É PREFIXADO COM .dsos-rp-
+   O módulo é injetado em três telas com folhas de estilo grandes e
+   independentes — painel-ti.css e painel-logs.css juntos têm centenas de
+   `!important`. Um nome genérico (.modal, .btn) colidiria com pelo menos uma
+   delas. O prefixo torna a colisão impossível sem precisar entrar na disputa
+   de especificidade.
+
+   Os valores de cor saem de tokens.css quando existem, com fallback literal
+   ao lado: as três telas declaram paletas próprias e nem todas definem os
+   mesmos tokens.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* ── Botão flutuante ───────────────────────────────────────────────────── */
+/* Canto inferior DIREITO. O esquerdo é dos links legais (.legal-fixed em
+   base.css); manter os dois separados evita sobreposição em tela estreita. */
+.dsos-rp-btn {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 950;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: rgba(20, 20, 20, .92);
+  color: #e8e8e8;
+  font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: .7rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .35);
+  transition: border-color .2s, color .2s, transform .15s, box-shadow .2s;
+}
+.dsos-rp-btn:hover {
+  border-color: var(--red, #c0171a);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .45);
+}
+.dsos-rp-btn:active { transform: none; }
+.dsos-rp-btn:focus-visible { outline: 2px solid var(--red, #c0171a); outline-offset: 3px; }
+
+[data-theme="light"] .dsos-rp-btn {
+  background: rgba(255, 255, 255, .95);
+  border-color: rgba(0, 0, 0, .14);
+  color: #1f1f1f;
+}
+[data-theme="light"] .dsos-rp-btn:hover { color: #000; }
+
+/* Em tela estreita o rótulo sai e sobra o ícone: o botão vira um alvo
+   circular de 40px, que continua acima do mínimo de toque recomendado. */
+@media (max-width: 620px) {
+  .dsos-rp-btn span { display: none; }
+  .dsos-rp-btn { padding: 11px; gap: 0; }
+}
+
+/* ── Fundo do modal ────────────────────────────────────────────────────── */
+.dsos-rp-bg {
+  position: fixed;
+  inset: 0;
+  /* 9500 põe este modal acima de tudo o que as telas desenham: os modais dos
+     painéis ficam na casa dos 999 e o aviso de sessão expirando, injetado por
+     session-guard.js, em 9000. É o certo — ele foi aberto por uma ação
+     explícita do usuário e nada deve cobri-lo. */
+  z-index: 9500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.dsos-rp-bg.open { display: flex; }
+
+/* ── Caixa ─────────────────────────────────────────────────────────────── */
+.dsos-rp-modal {
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 20px 22px 18px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 14px;
+  background: #141414;
+  color: #e8e8e8;
+  font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
+  animation: dsosRpIn .22s cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes dsosRpIn {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-theme="light"] .dsos-rp-modal {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, .12);
+}
+
+.dsos-rp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.dsos-rp-head h2 {
+  font-size: .96rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0;
+}
+
+.dsos-rp-x {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  opacity: .6;
+  cursor: pointer;
+  transition: opacity .2s, border-color .2s;
+}
+.dsos-rp-x:hover { opacity: 1; border-color: rgba(128, 128, 128, .35); }
+
+.dsos-rp-hint {
+  font-size: .74rem;
+  line-height: 1.6;
+  opacity: .72;
+  margin: 0 0 14px;
+}
+
+.dsos-rp-label {
+  display: block;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .7;
+  margin-bottom: 6px;
+}
+
+.dsos-rp-textarea {
+  width: 100%;
+  min-height: 104px;
+  padding: 10px 12px;
+  border: 1px solid rgba(128, 128, 128, .3);
+  border-radius: 9px;
+  background: rgba(128, 128, 128, .07);
+  color: inherit;
+  font-family: inherit;
+  font-size: .8rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.dsos-rp-textarea:focus {
+  outline: none;
+  border-color: var(--red, #c0171a);
+  box-shadow: 0 0 0 3px var(--red-dim, rgba(192, 23, 26, .18));
+}
+
+.dsos-rp-contador {
+  text-align: right;
+  font-size: .64rem;
+  opacity: .5;
+  margin: 4px 0 12px;
+}
+
+/* ── Caixa de captura de tela ──────────────────────────────────────────── */
+.dsos-rp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(128, 128, 128, .25);
+  border-radius: 9px;
+  background: rgba(128, 128, 128, .05);
+  cursor: pointer;
+}
+.dsos-rp-check input { margin-top: 2px; flex-shrink: 0; accent-color: var(--red, #c0171a); }
+.dsos-rp-check input:disabled { cursor: not-allowed; }
+.dsos-rp-check:has(input:disabled) { cursor: not-allowed; opacity: .7; }
+.dsos-rp-check strong { display: block; font-size: .76rem; font-weight: 600; margin-bottom: 3px; }
+.dsos-rp-check em {
+  display: block;
+  font-style: normal;
+  font-size: .68rem;
+  line-height: 1.55;
+  opacity: .68;
+}
+
+/* ── Contexto coletado ─────────────────────────────────────────────────── */
+.dsos-rp-ctx { margin-bottom: 12px; }
+.dsos-rp-ctx summary {
+  font-size: .68rem;
+  font-weight: 600;
+  opacity: .65;
+  cursor: pointer;
+  padding: 4px 0;
+  list-style-position: inside;
+}
+.dsos-rp-ctx summary:hover { opacity: .95; }
+.dsos-rp-ctx ul {
+  list-style: none;
+  margin: 8px 0 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(128, 128, 128, .07);
+  display: grid;
+  gap: 5px;
+}
+.dsos-rp-ctx li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: .68rem;
+}
+.dsos-rp-ctx li span { flex-shrink: 0; width: 74px; opacity: .6; }
+.dsos-rp-ctx code {
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: .92em;
+  word-break: break-all;
+  opacity: .85;
+}
+.dsos-rp-ctx p { font-size: .66rem; opacity: .6; margin: 0; line-height: 1.55; }
+
+/* ── Erro ──────────────────────────────────────────────────────────────── */
+.dsos-rp-erro {
+  font-size: .72rem;
+  line-height: 1.5;
+  color: #ff5c5f;             /* não o --red da marca: sobre o fundo escuro do
+                                 modal ele fica em ~3:1 e reprova no WCAG AA */
+  min-height: 0;
+}
+.dsos-rp-erro:not(:empty) { margin-bottom: 10px; }
+[data-theme="light"] .dsos-rp-erro { color: var(--red, #c0171a); }
+
+/* ── Ações ─────────────────────────────────────────────────────────────── */
+.dsos-rp-acoes { display: flex; gap: 9px; justify-content: flex-end; }
+
+.dsos-rp-acoes button {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .2s, border-color .2s;
+}
+.dsos-rp-acoes button:disabled { opacity: .55; cursor: progress; }
+.dsos-rp-acoes button:focus-visible { outline: 2px solid var(--red, #c0171a); outline-offset: 2px; }
+
+.dsos-rp-cancelar {
+  border: 1px solid rgba(128, 128, 128, .3);
+  background: none;
+  color: inherit;
+}
+.dsos-rp-cancelar:hover { border-color: rgba(128, 128, 128, .55); }
+
+.dsos-rp-enviar {
+  border: 1px solid var(--red, #c0171a);
+  background: var(--red, #c0171a);
+  color: #fff;
+}
+.dsos-rp-enviar:not(:disabled):hover { background: var(--red-hover, #a01215); }
+
+/* ── Aviso de confirmação ──────────────────────────────────────────────── */
+.dsos-rp-aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translate(-50%, 14px);
+  z-index: 9600;
+
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 11px 18px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  background: #141414;
+  color: #e8e8e8;
+  font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: .74rem;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+}
+.dsos-rp-aviso.show { opacity: 1; transform: translate(-50%, 0); }
+
+[data-theme="light"] .dsos-rp-aviso {
+  background: #fff;
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, .14);
+}
+
+/* ── Impressão ─────────────────────────────────────────────────────────── */
+/* painel-logs.css tem layout de impressão dedicado — nada disto pode sair no
+   papel de um relatório. */
+@media print {
+  .dsos-rp-btn, .dsos-rp-bg, .dsos-rp-aviso { display: none !important; }
+}

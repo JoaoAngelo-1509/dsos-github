@@ -14,6 +14,8 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 │   ├── painel-pc.html        ← Painel do aluno/professor (abrir e acompanhar chamados)
 │   ├── painel-ti.html        ← Painel do técnico de T.I. (gestão de chamados, PCs, equipe)
 │   ├── painel-logs.html      ← Auditoria de logs + dashboard com gráficos (Chart.js)
+│   ├── politica-privacidade.html ← Política de privacidade (LGPD)
+│   ├── termos-de-uso.html    ← Termos de uso
 │   └── skillcheck.html       ← Protótipo standalone do minigame "Skill Check" (não usado em produção)
 ├── css/
 │   ├── base.css              ← Reset, fundo, lightbox, easter egg, Modo Hacker (compartilhado)
@@ -21,7 +23,9 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 │   ├── painel-pc.css         ← Estilos do painel do aluno/professor
 │   ├── painel-ti.css         ← Estilos do painel T.I. (o mais extenso: inclui easter eggs)
 │   ├── painel-logs.css       ← Estilos do painel de logs/dashboard (inclui layout de impressão)
-│   └── 404.css               ← Estilos da página 404 (paleta própria; não usa base.css/tokens.css)
+│   ├── 404.css               ← Estilos da página 404 (paleta própria; não usa base.css/tokens.css)
+│   ├── legal.css             ← Estilos das páginas de política de privacidade e termos de uso
+│   └── reportar-problema.css ← Estilos do botão flutuante e modal de reportar problema
 ├── js/
 │   ├── supabase-config.js    ← Config do Supabase (URL + anon key) — NÃO versionado, ver SETUP.md
 │   ├── ui.js                 ← Utilitários compartilhados (tema, toast, escapeHtml, labels de status)
@@ -32,7 +36,8 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 │   ├── painel-pc.js            ← Lógica do painel do aluno/professor
 │   ├── painel-ti.js            ← Lógica do painel T.I. (o maior módulo do sistema)
 │   ├── painel-logs.js           ← Lógica do painel de logs/dashboard
-│   ├── session-guard.js        ← Logout automático por inatividade (módulo pronto, hoje não importado por nenhuma página — ver nota abaixo)
+│   ├── session-guard.js        ← Logout automático por inatividade (ativo em painel-pc, painel-ti e painel-logs)
+│   ├── reportar-problema.js    ← Botão flutuante + modal de reportar problema no sistema (injeta o próprio markup)
 │   ├── 404-inimigo.js          ← Geometria 3D do inimigo da página 404 — GERADO, ver scripts/gera-404-inimigo.js
 │   └── 404.js                  ← Renderizador 3D da cena da página 404 (canvas puro) + "scrub de tempo" controlado pelo cursor
 ├── supabase/
@@ -55,6 +60,8 @@ Sistema de chamados de suporte técnico para laboratórios de informática escol
 - **Painel de auditoria e dashboard**: logs de login/logout, alterações de banco, atividades e alterações críticas, com filtros, exportação CSV/PDF e gráficos (Chart.js) — chamados por dia/tipo/status, acessos, heatmap por hora, ranking de laboratórios e técnicos.
 - **Gestão completa** de PCs, equipe de T.I. e professores (com suporte a contas duplas T.I. + Professor), incluindo fila de descarte de equipamento com fluxo de conformidade PNRS (Lei 12.305/2010).
 - **Login triplo** (PC/aluno, professor, técnico T.I.) com rate limiting client-side e troca de papel sem logout.
+- **Reportar problema**: botão flutuante nos três painéis que grava um reporte sobre o próprio sistema, com o contexto técnico da tela e captura de tela opcional (opt-in explícito) — ver [docs/reportar-problema.md](docs/reportar-problema.md).
+- **Conformidade LGPD**: [política de privacidade](html/politica-privacidade.html) e [termos de uso](html/termos-de-uso.html) próprios, linkados do consentimento, do login e dos painéis.
 - **Modo Hacker** (tema alternativo estilo terminal) disponível em todos os painéis.
 - **Easter eggs**: 5 cliques na logo em todas as telas, Konami code e Ordens Paranormais (RPG com 5 temas visuais) no painel T.I., e um minigame "Skill Check" (Dead by Daylight) integrado ao fluxo de resolução de chamados.
 
@@ -68,6 +75,9 @@ Em produção, o deploy é feito na Netlify (`netlify.toml` já configura os rew
 
 - [SETUP.md](SETUP.md) — como configurar o ambiente local
 - [WORKFLOW.md](WORKFLOW.md) — fluxo de alterações no banco de dados
+- [docs/regras-de-acesso.md](docs/regras-de-acesso.md) — quem pode fazer o quê e como isso é imposto (matriz de permissões, fronteiras de confiança, lacunas conhecidas)
+- [docs/uml/](docs/uml/) — diagramas UML: casos de uso, entidades, componentes, sequências e máquina de estados do chamado
+- [docs/reportar-problema.md](docs/reportar-problema.md) — canal de feedback dentro do sistema (tabela, RPCs, captura de tela)
 - [docs/REALTIME.md](docs/REALTIME.md) — arquitetura de realtime (canais, eventos, diagnóstico)
 - [CHANGELOG.md](CHANGELOG.md) — histórico de versões
 - [LASTCHANGES.md](LASTCHANGES.md) — resumo das últimas alterações
