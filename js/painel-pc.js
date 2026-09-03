@@ -276,8 +276,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   session = JSON.parse(raw);
   if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
 
-  // Logout automático por inatividade (30min, aviso aos 28min)
-  initSessionGuard({onLogout:()=>window.sair()});
+  // Logout automático por inatividade — 10 min, com aviso aos 8.
+  //
+  // Bem mais curto que os 30 min dos painéis do T.I. porque esta tela roda nas
+  // máquinas do laboratório: são públicas e trocam de usuário ao longo do dia,
+  // então uma sessão esquecida aberta fica à disposição do próximo que sentar
+  // ali. Nos painéis do T.I. a máquina é de uso pessoal e o risco não existe —
+  // lá o incômodo de deslogar alguém no meio do turno pesa mais.
+  //
+  // 10 min é o meio-termo: quem está esperando resposta do T.I. no chat sem
+  // mexer no mouse ainda recebe o aviso e clica em "Continuar conectado", e
+  // qualquer digitação ou rolagem já zera a contagem.
+  initSessionGuard({
+    onLogout: () => window.sair(),
+    timeoutMs: 10 * 60 * 1000,
+    avisoMs:    2 * 60 * 1000,
+  });
   initReportarProblema();   // botao flutuante de reportar problema
 
   // ── Heartbeat de sessão ──
@@ -299,6 +313,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.toggleNormal();
     await carregarChamados();
     _iniciarPollPC();
+    _iniciarRealtimePC();
     return;
   }
 
@@ -337,6 +352,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await carregarChamados();
   _iniciarPollPC();
+  _iniciarRealtimePC();
   _carregarMediasResolucao();
 });
 
@@ -348,6 +364,76 @@ function _iniciarPollPC(){
     if(document.hidden){clearInterval(_pollPC);_pollPC=null;}
     else{carregarChamados();_pollPC=setInterval(carregarChamados,30000);}
   },{once:false});
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// REALTIME — canal principal do painel do PC/professor (vive a página inteira)
+//
+// Até aqui o único canal realtime desta tela era o de dentro do modal de chat
+// (_iniciarRealtime), criado ao ABRIR um chamado e destruído ao fechar. Com o
+// modal fechado — que é como a tela passa a maior parte do tempo — não havia
+// nenhuma assinatura: a lista "Meus Chamados" e o contador de mensagens não
+// lidas só se mexiam no poll de 30 s. Daí os dois sintomas relatados: resposta
+// do T.I. sem aviso nenhum, e chamado que o T.I. acabou de resolver
+// continuando "Em andamento" na tela do aluno por até meio minuto.
+//
+// Espelha o canal 'tickets-realtime' do painel T.I.: escuta a tabela-espelho
+// `realtime_sinal` (metadado não sensível, SELECT aberto — ver a migration
+// 20260828120000 e docs/REALTIME.md) e re-busca o conteúdo pelo REST, que
+// continua filtrado pelo token da sessão.
+//
+// O filtro do WebSocket é por CANAL, não por ticket: `realtime_sinal` avisa
+// sobre todos os chamados do sistema, e quem separa "é meu" de "não é meu" é
+// o `_ehMeuTicket` abaixo, usando a lista que já está carregada. Nada de
+// conteúdo alheio trafega — o sinal só carrega o id do ticket.
+// ─────────────────────────────────────────────────────────────────────────
+let _canalPC=null;
+
+function _ehMeuTicket(id){
+  return tickets.some(t=>String(t.id)===String(id));
+}
+
+function _iniciarRealtimePC(){
+  if(_canalPC)return;
+  _canalPC=sbClient.channel('painel-pc-realtime')
+    // Mudou algum chamado: se for um dos meus, recarrega a lista. Um INSERT de
+    // ticket que ainda não está em `tickets` também recarrega — pode ser um
+    // chamado que este próprio usuário acabou de abrir noutra aba.
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:'canal=eq.ticket'},async ({new:s})=>{
+      const eraMeu=_ehMeuTicket(s?.ref_id);
+      if(!eraMeu&&s?.evento!=='INSERT')return;
+      const antes=tickets.find(t=>String(t.id)===String(s?.ref_id))?.status;
+      await carregarChamados();
+      // Se o chamado aberto no modal mudou de status, o modal precisa refletir
+      // isso na hora (o chat é desabilitado quando o chamado é encerrado).
+      if(String(chatTicketId)===String(s?.ref_id)){
+        const t=tickets.find(x=>String(x.id)===String(chatTicketId));
+        if(t)_atualizarCabecalhoModal(t);
+      }
+      const depois=tickets.find(t=>String(t.id)===String(s?.ref_id))?.status;
+      if(eraMeu&&antes&&depois&&antes!==depois){
+        window._dsosSom?.notificacao?.();
+        toast(`Chamado #${s.ref_id}: ${statusLabel(depois)}`,'ok');
+      }
+    })
+    // Mensagem nova em algum chamado: se for meu E o chat dele não estiver
+    // aberto, atualiza o contador de não lidas e avisa. Com o modal aberto
+    // quem cuida é o canal do próprio chat, que já marca como lida.
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:'canal=eq.mensagem'},async ({new:s})=>{
+      if(s?.evento!=='INSERT')return;
+      if(!_ehMeuTicket(s?.ref_id))return;
+      if(String(chatTicketId)===String(s?.ref_id))return;
+      const antes=window._naoLidasPC?.[s.ref_id]||0;
+      await carregarChamados();
+      const depois=window._naoLidasPC?.[s.ref_id]||0;
+      // Só avisa se a contagem de NÃO LIDAS subiu — assim a própria mensagem
+      // que este usuário acabou de enviar não dispara notificação nele mesmo.
+      if(depois>antes){
+        window._dsosSom?.notificacao?.();
+        toast(`Nova mensagem do T.I. no chamado #${s.ref_id}`,'ok');
+      }
+    })
+    .subscribe(rtStatusHandler('painel-pc-realtime'));
 }
 
 function _icoSol(){return`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`}
@@ -439,8 +525,13 @@ function renderChamados() {
 window.abrirChat    = function(id) { const t=tickets.find(x=>x.id===id); if(t) _abrirModal(t); };
 window.abrirDetalhes = function(id) { const t=tickets.find(x=>x.id===id); if(t) _abrirModal(t); };
 
-async function _abrirModal(t) {
-  chatTicketId=t.id;
+// Pinta o cabeçalho do modal (título, status, resolução) e liga/desliga os
+// controles do chat conforme o chamado ainda estiver aberto. Extraído de
+// _abrirModal porque o canal realtime do painel também precisa reaplicar isto
+// quando o T.I. encerra um chamado com o modal aberto — antes o modal ficava
+// mostrando "Em andamento" e com o campo de mensagem habilitado até o usuário
+// fechar e reabrir.
+function _atualizarCabecalhoModal(t) {
   const podeChat=t.status==='aberto'||t.status==='em_andamento';
   document.getElementById('m-title').textContent=`#${t.id} — ${t.tipo||'—'}`;
   const hora=t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
@@ -460,6 +551,14 @@ async function _abrirModal(t) {
   document.getElementById('chat-input').placeholder=podeChat?'Escreva sua mensagem...':'Chamado encerrado — chat desabilitado.';
   const btnImg=document.getElementById('btn-img-attach');
   if(btnImg)btnImg.disabled=!podeChat;
+  const btnCam=document.getElementById('btn-camera');
+  if(btnCam)btnCam.disabled=!podeChat;
+  return podeChat;
+}
+
+async function _abrirModal(t) {
+  chatTicketId=t.id;
+  const podeChat=_atualizarCabecalhoModal(t);
   document.getElementById('modal-chat').classList.add('open');
   await carregarMsgs(t.id);
   _iniciarRealtime(t.id);
@@ -507,32 +606,27 @@ async function carregarMsgs(ticketId) {
 // ref_id=eq.{ticketId} — só metadado não sensível trafega; o conteúdo vem do
 // re-fetch REST, ainda filtrado pelo token. Ver docs/REALTIME.md.
 //
-//   sinal canal='mensagem'          → recarrega o chat e marca como lida; se for
-//                                     INSERT, busca só o `remetente` da última
-//                                     mensagem para tocar som quando veio do TI
-//   sinal canal='ticket' evento=UP  → busca só o `status` do chamado (o PC vê o
-//                                     seu): som se encerrado, recarrega lista+chat
+//   sinal canal='mensagem' → recarrega o chat e marca como lida; se for INSERT,
+//                            busca só o `remetente` da última mensagem para
+//                            tocar som quando ela veio do T.I.
+//
+// Mudança de STATUS do chamado NÃO é tratada aqui: quem cuida disso é o canal
+// do painel (_iniciarRealtimePC), que recarrega a lista e reaplica o cabeçalho
+// deste modal. Antes os dois canais reagiam ao mesmo sinal de 'ticket' e o
+// resultado era carregarChamados() em dobro e o som tocando duas vezes.
 function _iniciarRealtime(ticketId) {
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   realtimeChannel=sbClient.channel(`chat-pc-${ticketId}`)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:`ref_id=eq.${ticketId}`},async ({new:s})=>{
-      if(s?.canal==='mensagem'){
-        carregarMsgs(ticketId);
-        _marcarLidoPC(ticketId);
-        if(s?.evento==='INSERT'){
-          try{
-            const r=await fetch(`${SB_URL}/rest/v1/mensagem?ticket_id=eq.${ticketId}&select=remetente&order=enviado_em.desc&limit=1`,{headers:H});
-            const j=await r.json();
-            if(Array.isArray(j)&&j[0]?.remetente==='TI')window._dsosSom?.notificacao?.();
-          }catch(_){}
-        }
-      }else if(s?.canal==='ticket'&&s?.evento==='UPDATE'){
+      if(s?.canal!=='mensagem')return;
+      carregarMsgs(ticketId);
+      _marcarLidoPC(ticketId);
+      if(s?.evento==='INSERT'){
         try{
-          const r=await fetch(`${SB_URL}/rest/v1/ticket?id=eq.${ticketId}&select=status`,{headers:H});
+          const r=await fetch(`${SB_URL}/rest/v1/mensagem?ticket_id=eq.${ticketId}&select=remetente&order=enviado_em.desc&limit=1`,{headers:H});
           const j=await r.json();
-          if(Array.isArray(j)&&['resolvido','descartado','falso_alarme'].includes(j[0]?.status))window._dsosSom?.notificacao?.();
+          if(Array.isArray(j)&&j[0]?.remetente==='TI')window._dsosSom?.notificacao?.();
         }catch(_){}
-        carregarChamados();carregarMsgs(ticketId);
       }
     })
     .subscribe(rtStatusHandler(`chat-pc-${ticketId}`));
@@ -609,8 +703,22 @@ window.enviarMsg = async function(e) {
 async function _uploadImg(file){
   const ext=(file.name&&file.name.includes('.'))?file.name.split('.').pop():(file.type.split('/')[1]||'jpg');
   const nome=`${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const res=await fetch(`${SB_URL}/storage/v1/object/chat-prints/${nome}`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':file.type,'x-upsert':'true'},body:file});
-  if(!res.ok)throw new Error('Upload falhou');
+  // Sem 'x-upsert': o upsert do Storage faz o servidor LER a linha antiga em
+  // storage.objects antes de gravar, e o bucket 'chat-prints' só tem policy de
+  // INSERT — sem SELECT/UPDATE a leitura era negada e TODO upload de imagem
+  // voltava 403 "new row violates row-level security policy". Upsert também
+  // não servia para nada aqui: `nome` já leva Date.now() + sufixo aleatório,
+  // então não existe colisão para sobrescrever.
+  const res=await fetch(`${SB_URL}/storage/v1/object/chat-prints/${nome}`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':file.type},body:file});
+  if(!res.ok){
+    // A mensagem do Storage (limite de tamanho, tipo recusado, RLS) é o que
+    // diz ao usuário o que fazer — colapsar tudo em 'Upload falhou' escondia a
+    // causa e foi o que fez este bug demorar a ser diagnosticado.
+    const detalhe=await res.text().catch(()=>'');
+    let msg='';try{msg=JSON.parse(detalhe)?.message||'';}catch(_){}
+    console.error('[_uploadImg]',res.status,detalhe);
+    throw new Error(msg||`HTTP ${res.status}`);
+  }
   return`${SB_URL}/storage/v1/object/public/chat-prints/${nome}`;
 }
 
@@ -834,11 +942,29 @@ async function _carregarMediasResolucao(){
 let _cameraStream=null;
 window.abrirCamera=async function(){
   const modal=document.getElementById('camera-modal');if(!modal)return;
+  // getUserMedia só existe em contexto seguro (https ou localhost). Sem este
+  // aviso o navegador só devolve `navigator.mediaDevices === undefined` e o
+  // erro que chegava ao usuário era um TypeError sem sentido.
+  if(!navigator.mediaDevices?.getUserMedia){
+    await dsosAlert({msg:'Este navegador não permite usar a câmera nesta página. Envie a foto pelo botão de imagem.',tipo:'warning',titulo:'Câmera'});
+    return;
+  }
   try{
     _cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
     document.getElementById('camera-video').srcObject=_cameraStream;
     modal.style.display='flex';
-  }catch(e){await dsosAlert({msg:'Câmera não disponível: '+e.message,tipo:'warning',titulo:'Câmera'});}
+  }catch(e){
+    // Cada motivo pede uma ação diferente do usuário; a mensagem crua do
+    // navegador ('Permission denied', 'Requested device not found') não diz
+    // qual é qual em português.
+    const motivo={
+      NotAllowedError:'Você (ou o navegador) bloqueou o acesso à câmera. Libere a permissão de câmera para este site e tente de novo.',
+      NotFoundError:'Nenhuma câmera foi encontrada neste computador.',
+      NotReadableError:'A câmera está em uso por outro programa.',
+    }[e.name] || ('Câmera não disponível: '+e.message);
+    console.error('[abrirCamera]',e.name,e.message);
+    await dsosAlert({msg:motivo,tipo:'warning',titulo:'Câmera'});
+  }
 };
 window.fecharCamera=function(){
   const modal=document.getElementById('camera-modal');if(modal)modal.style.display='none';
@@ -847,18 +973,22 @@ window.fecharCamera=function(){
 window.capturarFoto=function(){
   const video=document.getElementById('camera-video');
   const canvas=document.getElementById('camera-canvas');
+  // Sem quadro ainda (o <video> só tem dimensão depois do primeiro frame):
+  // capturar aqui geraria um canvas 0x0 e um blob nulo, e o botão parecia
+  // simplesmente não fazer nada.
+  if(!video?.videoWidth||!video?.videoHeight){toast('Aguarde a câmera abrir e tente de novo.','err');return;}
   canvas.width=video.videoWidth;canvas.height=video.videoHeight;
   canvas.getContext('2d').drawImage(video,0,0);
   canvas.toBlob(blob=>{
-    if(!blob)return;
+    if(!blob){toast('Não foi possível capturar a foto.','err');return;}
     const file=new File([blob],'foto_'+Date.now()+'.jpg',{type:'image/jpeg'});
-    // Adiciona ao input de imagens como se o usuário tivesse selecionado
-    const dt=new DataTransfer();
-    const inp=document.getElementById('img-input');
-    if(inp?.files){Array.from(inp.files).forEach(f=>dt.items.add(f));}
-    dt.items.add(file);
-    if(inp)inp.files=dt.files;
-    window.previewImagens?.(inp);
+    // A foto entra pelo MESMO caminho de uma imagem escolhida no seletor de
+    // arquivos: selecionarImagem() é quem empilha em imgsPendentes e desenha a
+    // miniatura. Antes daqui saía uma chamada a window.previewImagens(), que
+    // não existe em lugar nenhum, mexendo num input '#img-input' que também
+    // não existe (o do HTML é '#file-input-chat') — a foto era tirada, o modal
+    // fechava e nada acontecia.
+    window.selecionarImagem({ target: { files: [file], value: '' } });
     window.fecharCamera();
   },'image/jpeg',0.88);
 };

@@ -445,20 +445,29 @@ body{height:100vh;height:100dvh;display:flex;flex-direction:column;background:va
 .faq-continuar{margin-top:10px;width:100%;background:rgba(192,23,26,.12);border:1px solid rgba(192,23,26,.3);border-radius:6px;padding:8px;font-family:inherit;font-size:.65rem;font-weight:700;color:var(--red,#c0171a);cursor:pointer;transition:background .15s}
 .faq-continuar:hover{background:rgba(192,23,26,.22)}
 
-/* ── Modal de avaliação ── */
-.avaliacao-card{background:var(--card-bg,#1a1a1a);border:1px solid var(--glass-b,rgba(255,255,255,.1));border-radius:14px;padding:24px 22px;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(320px,90vw);box-shadow:0 24px 64px rgba(0,0,0,.7);animation:fadeUp .25s cubic-bezier(.22,1,.36,1) both}
+/* ── Modal de avaliação ──
+   As cores vinham de --card-bg / --glass-b / --input-bg / --muted, que NENHUM
+   dos CSS carregados por painel-pc.html define (são variáveis do painel-ti e
+   do painel-logs). Todas caíam no valor de fallback, todos escuros — mas
+   --text existe aqui e vale #2a2a2a no tema claro. Resultado: card preto com
+   texto quase preto, ilegível no tema claro. Agora usa os tokens do próprio
+   painel (--gray-card / --gray-border / --gray-input / --text-muted), que têm
+   valor nos dois temas. */
+.avaliacao-card{background:var(--gray-card);border:1px solid var(--gray-border);border-radius:14px;padding:24px 22px;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(320px,90vw);box-shadow:0 24px 64px rgba(0,0,0,.35);animation:fadeUp .25s cubic-bezier(.22,1,.36,1) both}
+[data-theme="dark"] .avaliacao-card{box-shadow:0 24px 64px rgba(0,0,0,.7)}
 .avaliacao-icon{font-size:2.2rem;line-height:1}
-.avaliacao-titulo{font-size:.95rem;font-weight:700;color:var(--text,#eee)}
-.avaliacao-sub{font-size:.7rem;color:var(--muted,#888)}
+.avaliacao-titulo{font-size:.95rem;font-weight:700;color:var(--text)}
+.avaliacao-sub{font-size:.7rem;color:var(--text-muted)}
 .avaliacao-estrelas{display:flex;gap:6px;margin:4px 0}
-.estrela{font-size:2rem;cursor:pointer;color:var(--glass-b,rgba(255,255,255,.15));transition:color .15s,transform .1s;line-height:1}
+.estrela{font-size:2rem;cursor:pointer;color:var(--gray-border);transition:color .15s,transform .1s;line-height:1}
 .estrela:hover,.estrela.ativa{color:#f59e0b}
-.estrela:hover~.estrela{color:var(--glass-b,rgba(255,255,255,.15))}
-.avaliacao-label{font-size:.65rem;color:var(--muted,#888);min-height:14px}
-.avaliacao-textarea{width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,.06));border:1px solid var(--glass-b,rgba(255,255,255,.1));border-radius:6px;color:var(--text,#eee);font-family:inherit;font-size:.68rem;padding:7px 9px;resize:none;height:64px;transition:border-color .15s}
+.estrela:hover~.estrela{color:var(--gray-border)}
+.avaliacao-label{font-size:.65rem;color:var(--text-muted);min-height:14px}
+.avaliacao-textarea{width:100%;box-sizing:border-box;background:var(--gray-input);border:1px solid var(--gray-border);border-radius:6px;color:var(--text);font-family:inherit;font-size:.68rem;padding:7px 9px;resize:none;height:64px;transition:border-color .15s}
+.avaliacao-textarea::placeholder{color:var(--text-muted)}
 .avaliacao-textarea:focus{outline:none;border-color:rgba(192,23,26,.5)}
-.avaliacao-skip{flex:1;background:transparent;border:1px solid var(--glass-b,rgba(255,255,255,.1));border-radius:6px;padding:8px;font-family:inherit;font-size:.65rem;font-weight:600;color:var(--muted,#888);cursor:pointer;transition:background .15s}
-.avaliacao-skip:hover{background:rgba(255,255,255,.06)}
+.avaliacao-skip{flex:1;background:transparent;border:1px solid var(--gray-border);border-radius:6px;padding:8px;font-family:inherit;font-size:.65rem;font-weight:600;color:var(--text-muted);cursor:pointer;transition:background .15s}
+.avaliacao-skip:hover{background:var(--gray-item)}
 .avaliacao-enviar{flex:2;background:rgba(192,23,26,.15);border:1px solid rgba(192,23,26,.35);border-radius:6px;padding:8px;font-family:inherit;font-size:.65rem;font-weight:700;color:var(--red,#c0171a);cursor:pointer;transition:background .15s}
 .avaliacao-enviar:not(:disabled):hover{background:rgba(192,23,26,.28)}
 .avaliacao-enviar:disabled{opacity:.4;cursor:not-allowed}
