@@ -1,5 +1,32 @@
 # DSos — Changelog
 
+## [Não publicado]
+
+### Segurança — fecha L2/L4 e retira a `fn-enviar-otp` (migration `20260911160000`, `painel-logs.js`, `diagnostico.js`)
+- **CORRIGIDO** L2: as tabelas de log (`acesso_log`, `atividades_log`, `audit_log`, `alteracoes_criticas_log`, `operacoes_massa_log`, `auditoria_ti`) deixaram de ser legíveis por qualquer um com a anon key — o SELECT passou a exigir sessão de T.I. (`USING ((SELECT fn_sessao_tipo())='ti')`, mesmo padrão de `ticket_select`). Era a maior exposição de dado pessoal em aberto: 111 linhas de acesso (nomes, logins, horários, fingerprint de dispositivo) liam-se sem login
+- **CORRIGIDO** L4: `sessao_ativa` (quem está online, com login e nome) idem — só T.I. lê
+- **ALTERADO** Para não cegar o realtime do painel-logs (que roda como anon, sem o `X-Sessao-Token`), as mudanças dessas tabelas passaram a ser anunciadas por `realtime_sinal` — o mesmo fan-out sanitizado de ticket/mensagem (canal = nome da tabela, `ref_id = 0`, sem conteúdo); `painel-logs.js` assina o sinal e busca o dado por HTTP com token
+- **REMOVIDO** Pasta `supabase/functions/fn-enviar-otp/` (L12): o 2FA saiu em agosto e a Edge Function ficou como stub `410`. Falta só deletar a função publicada na nuvem — passo de operador (`supabase functions delete fn-enviar-otp`)
+- **ALTERADO** `diagnostico.js`: os testes de L2/L4 passam em ✅ e viram ❌ se a brecha reabrir; `api-otp` marca 404 (removida) como estado ideal
+
+### Painel do PC — envio só depois da IA, lista "Meus chamados" e correções (`painel-pc.js`)
+- **NOVO** No PC, o botão de envio fica travado até a IA responder sobre a descrição atual ("Descreva o problema para enviar" → "Aguardando a análise da IA…" → "Enviar chamado"). Antes dava para enviar durante a pausa de 2,5 s, a sugestão nunca aparecia e a classificação atrasada abria o card "tente antes de abrir" por cima do "Chamado aberto!". Chamada à IA com teto de 20 s, para a trava nunca ficar presa. Professor sem mudança: o envio dele já esperava a IA
+- **ALTERADO** "Meus chamados": cartões com a descrição em destaque, status por extenso ("Um técnico está cuidando disso"), selo de mensagens novas, botão "Conversar com o T.I." e grupos "Em aberto" / "Encerrados"; telas vazias com botão para abrir chamado ou limpar a busca; a legenda de cores deu lugar a uma dica de uso
+- **CORRIGIDO** Duplo clique em enviar abria dois chamados
+- **CORRIGIDO** `pickTipo` zerava o resultado guardado da IA no instante em que a própria IA marcava o tipo: todo envio chamava a IA duas vezes (PERF-02 nunca funcionava)
+- **CORRIGIDO** Apagar a descrição desmarcava o tipo na tela, mas o tipo antigo continuava valendo e ia junto com o chamado
+- **CORRIGIDO** Busca de chamados: o poll de 30 s e o realtime desfaziam a busca com o texto ainda no campo; durante a busca o realtime ignorava os chamados fora dela e o contador da aba contava só os filtrados; vírgula ou parêntese no termo zeravam a lista. Agora filtra na tela, sobre a lista completa
+
+### Painel do PC — redesenho da abertura de chamado (`painel-pc.html`/`painel-pc.css`)
+- **ALTERADO** "Abrir chamado" virou a primeira aba e já abre selecionada; as abas viraram um controle segmentado de largura total
+- **ALTERADO** Formulário em passos numerados: descrição primeiro (no PC a IA marca o tipo a partir dela) e tipo em quatro cartões à vista, no lugar da lista suspensa; para professor, o passo de escolher o PC (normal/emergência) vem antes, com botão de rádio no lugar das pílulas "ATIVAR"
+- **ALTERADO** Botão de envio renomeado para "Enviar chamado", maior e sempre visível no rodapé do painel
+- **CORRIGIDO** Popup de sucesso: o botão "Abrir novo chamado" levava para a lista. Agora é "Acompanhar meu chamado", com o link separado "Abrir outro chamado" e os próximos passos explicados
+- **ALTERADO** Sugestão da IA: "Resolveu!" limpa a descrição em vez de pular para "Meus chamados"
+- **NOVO** Botão "Novo chamado" na barra de busca de "Meus chamados"
+- **CORRIGIDO** Contador de mensagens não lidas cobria o status do chamado na lista
+- Conferido com o JS real (sessão e backend simulados): PC e professor, tema claro/escuro, modo hacker, easter egg do título, 1280px, 375px e 320px
+
 ## [2.0.1] — 2026-08-22
 
 ### Deploy

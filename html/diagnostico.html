@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>DSos — Central de Diagnóstico</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/diagnostico.css" />
+</head>
+<body data-escrita="0">
+  <header class="diag-topbar">
+    <div class="diag-topbar-titulo">
+      <h1>🩺 Central de Diagnóstico</h1>
+      <p>Verifica rapidamente se as principais partes do DSos estão funcionando.</p>
+    </div>
+    <div id="diag-ambiente" class="diag-ambiente">carregando…</div>
+  </header>
+
+  <div class="diag-barra">
+    <div class="diag-acoes">
+      <button id="btn-todos" class="btn-primario">Executar todos</button>
+      <button id="btn-limpar" class="btn-secundario">Limpar</button>
+      <button id="btn-exportar" class="btn-secundario">Exportar resultados (JSON)</button>
+      <label class="diag-toggle" title="Habilita testes que criam dados (ZZTESTE, autolimpantes) ou consomem cota da IA">
+        <input type="checkbox" id="toggle-escrita" />
+        <span>Modo de escrita</span>
+      </label>
+    </div>
+    <div id="resumo" class="diag-resumo"></div>
+  </div>
+
+  <div class="diag-aviso-escrita">
+    ⚠️ <strong>Modo de escrita ligado.</strong> Os testes desta seção criam dados de teste
+    (prefixo <code>ZZTESTE-</code>, removidos ao final) ou consomem cota da IA. Prefira rodá-los
+    contra o banco de <strong>TESTE</strong>.
+  </div>
+
+  <main id="diag-categorias"></main>
+
+  <section class="diag-log-wrap">
+    <h2>📋 Registro de execuções</h2>
+    <div id="diag-log" class="diag-log"></div>
+  </section>
+
+  <footer class="diag-rodape">
+    <p>Ferramenta de diagnóstico — não vai ao ar em produção (bloqueada no <code>netlify.toml</code>).
+       Rode localmente: <code>npx serve .</code> e abra <code>/html/diagnostico.html</code>.</p>
+  </footer>
+
+  <!-- supabase-js: necessário só para o teste de WebSocket do Realtime. Mesma
+       versão/CDN já usada pelos painéis; coberta pela CSP (cdn.jsdelivr.net). -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js" integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg" crossorigin="anonymous"></script>
+  <script type="module" src="../js/diagnostico.js"></script>
+</body>
+</html>

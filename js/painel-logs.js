@@ -1457,19 +1457,26 @@ const TABLE_TO_ABA = {
 // ─────────────────────────────────────────────────────────────────────────
 // REALTIME — canal único do painel de logs (vive por toda a sessão da página)
 //
-// Para cada tabela de log em TABLE_TO_ABA:
-//   INSERT → se a aba correspondente está ativa e na página 0, recarrega a
-//            tabela silenciosamente (sem loading spinner); caso contrário,
-//            só incrementa o contador "novos" mostrado no badge da aba
-// Tabela `acesso_log`:
-//   UPDATE → captura duracao_sessao preenchida no logout; recarrega se a aba
-//            "acessos" está ativa e na página 0
-// Tabela `sessao_ativa` (INSERT/UPDATE/DELETE):
-//   Mantém o Set local `_sessoesAtivas` sincronizado e re-marca as células
-//   "duração ao vivo" no DOM sem refazer fetch — evita resetar a lista a
-//   cada heartbeat de 30s de outro usuário logado
+// L2/L4: as tabelas de log e `sessao_ativa` deixaram de ser legíveis por anon
+// (agora exigem sessão de T.I. — migration 20260911160000). O realtime roda
+// como anon e o X-Sessao-Token NÃO chega no contexto da replicação, então não
+// dá mais pra assinar postgres_changes direto nelas: viria vazio. Em vez disso
+// assinamos `realtime_sinal` — tabela pública e SEM conteúdo ({canal, ref_id,
+// evento}) — o mesmo cano que ticket/mensagem já usam. O gatilho do banco
+// emite {canal: <nome da tabela>, evento: <op>, ref_id: 0}; o dado de verdade
+// o painel busca por HTTP, já com o token (e agora barrado pela RLS).
 //
-// Quem recebe: qualquer sessão com o painel de logs aberto (sem filtro).
+// Para cada tabela de log em TABLE_TO_ABA (canal = nome da tabela):
+//   INSERT → se a aba está ativa e na página 0, recarrega silenciosamente;
+//            caso contrário, incrementa o contador "novos" no badge da aba
+//   UPDATE → (acesso_log, duracao_sessao no logout) recarrega se a aba está
+//            ativa e na página 0; fora dela não conta como "novo"
+// Presença (canal `sessao_ativa`, INSERT/UPDATE/DELETE):
+//   re-sincroniza o Set `_sessoesAtivas` pelo fetch com token e re-marca as
+//   células "duração ao vivo". O sinal é vazio de propósito — não revela quem
+//   está online; a lista autoritativa vem de _carregarSessoesAtivas.
+//
+// Quem recebe: qualquer sessão com o painel de logs aberto (filtrado por canal).
 // O indicador "AO VIVO" no topo (rt-dot) reflete o status da subscription.
 // ─────────────────────────────────────────────────────────────────────────
 function iniciarRealtime() {
@@ -1480,43 +1487,27 @@ function iniciarRealtime() {
   const channel  = sbClient.channel('logs-realtime-all');
 
   Object.keys(TABLE_TO_ABA).forEach(table => {
-    const onInsert = () => {
-      const aba = TABLE_TO_ABA[table];
-      if (STATE.abaAtiva === aba && (STATE.pagina[aba] || 0) === 0) {
-        _recarregarSilencioso(aba);
-      } else {
-        STATE.newCounts[aba] = (STATE.newCounts[aba] || 0) + 1;
-        _atualizarBadgeRT(aba);
-      }
-    };
-    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table }, onInsert);
+    channel.on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'realtime_sinal', filter: `canal=eq.${table}` },
+      ({ new: s }) => {
+        const aba = TABLE_TO_ABA[table];
+        if (STATE.abaAtiva === aba && (STATE.pagina[aba] || 0) === 0) {
+          _recarregarSilencioso(aba);
+        } else if (s?.evento === 'INSERT') {
+          // UPDATE (ex.: duracao_sessao no logout) não é item novo: não conta badge
+          STATE.newCounts[aba] = (STATE.newCounts[aba] || 0) + 1;
+          _atualizarBadgeRT(aba);
+        }
+      });
   });
 
-  // acesso_log: UPDATE para capturar duracao_sessao preenchida no logout
-  channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'acesso_log' }, () => {
-    if (STATE.abaAtiva === 'acessos' && (STATE.pagina['acessos'] || 0) === 0) {
-      _recarregarSilencioso('acessos');
-    }
-  });
-
-  // Sessões ativas em tempo real — só atualiza o Set e remarca cells no DOM,
-  // sem refazer fetch (evita reset da lista a cada ping de 30s)
-  async function _syncSessoes(payload, evento) {
-    if (evento === 'DELETE') {
-      // remove só a entrada deletada do Set
-      const s = payload?.old;
-      if (s) _sessoesAtivas.delete(`${s.usuario_id}:${s.usuario_tipo}`);
-    } else {
-      // INSERT ou UPDATE — atualiza o Set inteiro
+  // Presença: sinal sem conteúdo → re-sincroniza o Set pelo fetch com token.
+  channel.on('postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'realtime_sinal', filter: 'canal=eq.sessao_ativa' },
+    async () => {
       await _carregarSessoesAtivas();
-    }
-    _atualizarCellsSessao();
-  }
-
-  channel
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'INSERT'))
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'UPDATE'))
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'sessao_ativa' }, p => _syncSessoes(p, 'DELETE'));
+      _atualizarCellsSessao();
+    });
 
   channel.subscribe(rtStatusHandler('logs-realtime-all', 'rt-dot'));
 }

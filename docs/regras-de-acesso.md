@@ -231,7 +231,7 @@ nenhum técnico cadastrado.
 
 | Ação | Anônimo | Aluno | Professor | T.I. |
 |---|---|---|---|---|
-| `SELECT` | **(!) OK** | **(!) OK** | **(!) OK** | OK |
+| `SELECT` | NÃO | NÃO | NÃO | OK — exige sessão de T.I. |
 | `INSERT` | OK — é assim que o app registra | OK | OK | OK |
 | `UPDATE` | NÃO — `USING (false)` | NÃO | NÃO | NÃO |
 | `DELETE` | NÃO — `USING (false)` | NÃO | NÃO | RPC `rpc_limpar_logs` |
@@ -241,7 +241,11 @@ O **append-only** é real e é a parte forte deste bloco: as policies
 próprio rastro pela REST. Quem limpa é `rpc_limpar_logs`, chamada só pelo
 painel-logs.
 
-A leitura, porém, está aberta — é a lacuna **L2** da seção 5.
+A leitura é restrita a T.I.: as policies `*_select_ti` usam
+`USING ((SELECT fn_sessao_tipo()) = 'ti')`, o mesmo padrão de `ticket_select`.
+Era a lacuna **L2** — fechada em 11/09/2026 (migration 20260911160000). O
+painel-logs continua recebendo atualização ao vivo porque o realtime passou a
+escutar `realtime_sinal` em vez das tabelas-base (ver 3.6 e §5/L2).
 
 > **Detalhe importante para a política de privacidade:** a coluna
 > `ip_address` dessas tabelas **não guarda endereço IP**. `js/logging.js`
@@ -254,7 +258,7 @@ A leitura, porém, está aberta — é a lacuna **L2** da seção 5.
 | Recurso | `SELECT` | Escrita | Observação |
 |---|---|---|---|
 | `sessao_token` | NÃO — ninguém | NÃO — ninguém | só funções `SECURITY DEFINER` |
-| `sessao_ativa` | **(!) OK** — todos | RPCs `rpc_sessao_ping` / `rpc_sessao_encerrar` | expõe quem está online |
+| `sessao_ativa` | OK — só T.I. | RPCs `rpc_sessao_ping` / `rpc_sessao_encerrar` | era L4 (expunha quem está online), fechada 11/09/2026 |
 | `login_tentativas` | NÃO — `USING (false)` | RPC `rpc_registrar_tentativa` | rate limit |
 | `realtime_sinal` | OK — todos, **por desenho** | só por trigger | ver abaixo |
 
@@ -263,7 +267,10 @@ entregar evento depois que a leitura de `ticket`/`mensagem` foi fechada. Ela
 guarda **só metadado não sensível** (`canal`, `ref_id`, `evento`, `em`); o
 conteúdo nunca trafega pelo WebSocket — o front recebe o aviso "o ticket X
 mudou" e refaz o `fetch` pelo caminho REST normal, esse sim filtrado pelo
-token. `tests/realtime-sinal.test.js` trava o formato da tabela justamente para
+token. Desde 11/09/2026 ela também carrega os sinais das tabelas de log e de
+`sessao_ativa` (canal = nome da tabela, `ref_id = 0`, sem conteúdo), que foi o
+que permitiu fechar L2/L4 sem cegar o realtime do painel-logs.
+`tests/realtime-sinal.test.js` trava o formato da tabela justamente para
 impedir que alguém acrescente ali uma coluna derivada de dado fechado.
 
 ### 3.7 Storage — bucket `chat-prints`
@@ -388,19 +395,26 @@ volume, e todo `INSERT` dispara trigger de auditoria.
 *Risco residual:* poluição da base e chamados forjados em nome de terceiros —
 não vazamento.
 
-### L2 — Tabelas de log são legíveis por qualquer um
+### L2 — Tabelas de log eram legíveis por qualquer um (CORRIGIDA)
 
-Todas as `*_log` têm `SELECT ... TO public USING (true)` e `GRANT SELECT` para
-`anon`. Um `GET /rest/v1/acesso_log?select=*` com a `anon key` devolve nomes,
-logins, horários e fingerprints de dispositivo de todo mundo.
+Todas as `*_log` tinham `SELECT ... USING (true)` + `GRANT SELECT` para `anon`.
+Um `GET /rest/v1/acesso_log?select=*` com a `anon key` devolvia nomes, logins,
+horários e fingerprints de dispositivo de todo mundo — 111 linhas no
+diagnóstico de 11/09/2026. Era a maior exposição de dado pessoal em aberto.
 
-*Por que ficou assim:* o SEC-05b fechou `ticket`/`mensagem`/`pc`/`professor`/
-`usuario_ti`; as tabelas de auditoria ficaram para uma leva seguinte.
-*Correção natural:* trocar por `USING ((SELECT fn_sessao_tipo()) = 'ti')`,
-que é o mesmo padrão já usado em `professor_select`. O painel-logs lê a maior
-parte dos dados por RPCs `SECURITY DEFINER`, então o impacto tende a ser
-pequeno — mas precisa de teste de regressão nas 6 abas.
-*Risco residual:* **é a maior exposição de dado pessoal em aberto hoje.**
+*Corrigida em 11/09/2026 (migration 20260911160000):* o SELECT das seis tabelas
+(`acesso_log`, `atividades_log`, `audit_log`, `alteracoes_criticas_log`,
+`operacoes_massa_log`, `auditoria_ti`) passou a `USING ((SELECT fn_sessao_tipo())
+= 'ti')` — mesmo predicado de `ticket_select`. Verificado: anon sem token agora
+vê `[]`.
+
+*A armadilha que a correção evitou:* o painel-logs assinava `postgres_changes`
+direto nessas tabelas, e o realtime roda como `anon` (o `X-Sessao-Token` não
+chega na replicação). Fechar só a policy teria cegado a atualização ao vivo,
+sem erro aparente. A solução roteia as mudanças por `realtime_sinal` (canal =
+nome da tabela, `ref_id = 0`, sem conteúdo), o mesmo cano de `ticket`/`mensagem`;
+`painel-logs.js` passou a escutar o sinal e buscar o dado por HTTP com token.
+Ver 3.5/3.6.
 
 ### L3 — Bucket `chat-prints` é público
 
@@ -408,9 +422,13 @@ Ver 3.7. Quem tiver a URL de uma imagem a acessa sem sessão, para sempre.
 *Correção natural:* bucket privado + URL assinada com validade.
 *Risco residual:* imagem de chamado pode conter tela com dado pessoal.
 
-### L4 — `sessao_ativa` é legível por qualquer um
+### L4 — `sessao_ativa` era legível por qualquer um (CORRIGIDA)
 
-Expõe quem está online, com login e nome. Baixo impacto isolado; soma-se a L2.
+Expunha quem está online, com login e nome. *Corrigida em 11/09/2026* junto com
+L2, na mesma migration e pelo mesmo mecanismo: o SELECT agora exige sessão de
+T.I. e o realtime de presença do painel-logs passou a ir pelo canal
+`sessao_ativa` de `realtime_sinal` — cujo sinal **não** carrega `usuario_id`,
+justamente para não reexpor a presença pela janela do próprio sinal.
 
 ### L5 — Vínculo professor⇄chamado é por nome, não por id
 
@@ -495,8 +513,11 @@ senha primeiro, validar o nome depois, já com token em mãos.
 repositório saberia que elas existem, nem o que fazem, nem que uma delas roda
 com service_role — foi exatamente por isso que a L10 passou despercebida.
 
-*Resolvido:* `fn-limpar-dados` e `fn-enviar-otp` agora estão versionadas em
-`supabase/functions/`. As três Edge Functions do projeto estão no repositório.
+*Resolvido:* `fn-limpar-dados` passou a ser versionada em `supabase/functions/`,
+ao lado de `groq-proxy`. A `fn-enviar-otp` também foi versionada enquanto
+existiu; com a retirada do recurso (L12) sua pasta saiu do repositório em
+11/09/2026. As Edge Functions vivas do projeto — `groq-proxy` e `fn-limpar-dados`
+— estão no repositório.
 
 ### L12 — `fn-enviar-otp`: função morta publicada com service_role (NEUTRALIZADA)
 
@@ -512,9 +533,12 @@ vazando nomes internos do schema.
 
 *Neutralizada em 02/09/2026 (versão 2):* republicada como stub que não importa
 o cliente do Supabase, não lê `SERVICE_ROLE_KEY`, não toca no banco e responde
-`410 Gone`. **Ainda falta deletar a função de vez** (painel do Supabase →
-Edge Functions → `fn-enviar-otp` → Delete), e então apagar a pasta do
-repositório.
+`410 Gone`. **Em 11/09/2026 a pasta `supabase/functions/fn-enviar-otp/` foi
+removida do repositório.** Falta só o passo de operador — deletar a função
+publicada (painel do Supabase → Edge Functions → `fn-enviar-otp` → Delete, ou
+`supabase functions delete fn-enviar-otp`); enquanto isso não acontece, a nuvem
+serve o stub 410 inerte. O diagnóstico (`api-otp`) agora marca 404 (removida)
+como estado ideal e 410 como pendência.
 
 *Lição que vale além deste caso:* remover um recurso é remover TODAS as suas
 partes. Este ficou sete meses no ar depois de o recurso ter sido "removido por

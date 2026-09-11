@@ -68,9 +68,15 @@ describe('rpc_sessao_ping', () => {
       p_usuario_login: 'zzteste', p_usuario_nome: 'zzteste',
     }, { 'X-Sessao-Token': tokenForjado() });
 
+    // NOTA: desde L4 (11/09/2026) `sessao_ativa` só é legível com sessão de T.I.,
+    // então sem token este GET devolve [] por RLS, não porque a presença não
+    // foi gravada. A garantia de fato é do próprio rpc_sessao_ping, que só grava
+    // presença quando fn_sessao_token_header() casa um token vivo — o teste
+    // "com token forjado → null" acima já trava isso. Este bloco fica como
+    // guarda do contrato REST (200, sem vazar linha sem sessão).
     const r = await fetch(`${URL}/rest/v1/sessao_ativa?usuario_id=eq.${ID_FALSO}&select=usuario_id`, { headers });
     assert.equal(r.status, 200);
-    assert.deepEqual(await r.json(), [], 'o ping gravou presença sem token válido');
+    assert.deepEqual(await r.json(), [], 'sessao_ativa vazou linha sem sessão (L4?)');
   });
 });
 
