@@ -61,17 +61,28 @@ async function _verificarDuplicata(desc, pcId) {
 // ── CLASSIFICAÇÃO DE PRIORIDADE VIA GROQ AI ──────────────────────────────────
 
 async function _groqCall(messages, maxTokens = 2048) {
-  const resp = await fetch(`${SB_URL}/functions/v1/groq-proxy`, {
-    method: 'POST',
-    headers: H,
-    body: JSON.stringify({ model: 'openai/gpt-oss-20b', temperature: 0, max_tokens: maxTokens, messages })
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error('Groq ' + resp.status + ': ' + (err?.error?.message || ''));
+  // Teto de 20 s. Com o envio travado até a IA responder (ver
+  // _atualizarTravaEnvio), uma requisição pendurada deixaria o botão travado
+  // para sempre. Estourou, o fetch rejeita, classificarChamado cai no catch e
+  // devolve 'medio' — o que conta como resposta e libera o envio.
+  const ctrl = new AbortController();
+  const limite = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const resp = await fetch(`${SB_URL}/functions/v1/groq-proxy`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify({ model: 'openai/gpt-oss-20b', temperature: 0, max_tokens: maxTokens, messages }),
+      signal: ctrl.signal
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error('Groq ' + resp.status + ': ' + (err?.error?.message || ''));
+    }
+    const data = await resp.json();
+    return (data.choices?.[0]?.message?.content || '').trim();
+  } finally {
+    clearTimeout(limite);
   }
-  const data = await resp.json();
-  return (data.choices?.[0]?.message?.content || '').trim();
 }
 
 // Retorna { prioridade, tipo, sugestao } — uma única chamada para os três
@@ -157,7 +168,43 @@ let _aiDebounceTimer = null;
 let _aiUltimaDesc = '';
 let _aiUltimoResultado = null;
 
-function _atualizarBadgeAI(descricao, tipo) {
+// ── ENVIO SÓ DEPOIS DA RESPOSTA DA IA ────────────────────────────────────
+// No PC o classificador roda enquanto a pessoa digita (2,5 s depois da última
+// tecla) e devolve prioridade, tipo e a sugestão "tente antes de abrir". Com o
+// botão livre nesse intervalo, o chamado saía sem a pessoa ver a sugestão, e
+// a classificação atrasada ainda abria o card de sugestão POR CIMA do
+// "Chamado aberto!". Agora o envio só libera quando existe resposta da IA
+// para o texto que está no campo — ou para um quase igual, pelo mesmo
+// critério de 70% que _atualizarBadgeAI usa para não reclassificar.
+// IA fora do ar não trava nada: classificarChamado nunca lança (devolve
+// 'medio'), e _groqCall tem teto de 20 s.
+// Só no PC: no professor o classificador não roda durante a digitação, e
+// abrirChamado já espera a IA (com o botão em loading) antes de gravar.
+let _travaIAAtiva = false;   // ligada no carregamento do PC
+let _envioProibido = false;  // PC descartado: o botão nunca libera
+function _atualizarTravaEnvio() {
+  if (!_travaIAAtiva) return;
+  const btn = document.getElementById('btn-submit');
+  const txt = btn?.querySelector('.btn-txt');
+  if (!btn || !txt) return;
+  if (_envioProibido) {
+    btn.disabled = true;
+    btn.dataset.espera = '';
+    txt.textContent = 'Envio indisponível neste PC';
+    return;
+  }
+  const desc = document.getElementById('descricao').value.trim();
+  const respondida = !!_aiUltimoResultado &&
+    (desc === _aiUltimaDesc || _similaridade(desc, _aiUltimaDesc) >= 0.7);
+  const espera = desc.length < 10 ? 'curta' : (respondida ? '' : 'ia');
+  btn.dataset.espera = espera;
+  btn.disabled = espera !== '';
+  txt.textContent = espera === 'curta' ? 'Descreva o problema para enviar'
+                  : espera === 'ia'    ? 'Aguardando a análise da IA…'
+                  : 'Enviar chamado';
+}
+
+function _atualizarBadgeAI(descricao) {
   const badge = document.getElementById('ai-prioridade-badge');
   if (!badge) return;
   clearTimeout(_aiDebounceTimer);
@@ -166,18 +213,22 @@ function _atualizarBadgeAI(descricao, tipo) {
     _aiUltimaDesc = '';
     _aiUltimoResultado = null;
     document.getElementById('ai-sugestao-card')?.classList.add('hidden');
-    // reseta seletor de tipo
+    // reseta seletor de tipo. Até aqui a função recebia `tipo` como
+    // parâmetro, e esta linha zerava só a cópia local: o cartão desmarcava,
+    // mas o tipo antigo continuava valendo e ia junto com o chamado.
     tipo = null;
     document.querySelectorAll('.sel-opt').forEach(o => o.classList.remove('active'));
     document.querySelectorAll('.sel-t-icon').forEach(i => i.style.display = 'none');
     document.getElementById('sel-val').textContent = '';
     document.getElementById('sel-trigger').classList.remove('valued');
+    _atualizarTravaEnvio();
     return;
   }
   // Só reclassifica se mudou mais de 30% em relação à última classificação
-  if (_aiUltimoResultado && _similaridade(descricao, _aiUltimaDesc) >= 0.7) return;
+  if (_aiUltimoResultado && _similaridade(descricao, _aiUltimaDesc) >= 0.7) { _atualizarTravaEnvio(); return; }
 
   clearTimeout(_aiDebounceTimer);
+  _atualizarTravaEnvio();
   _aiDebounceTimer = setTimeout(async () => {
     badge.className = 'ai-badge loading';
     badge.textContent = '⏳ Classificando…';
@@ -195,6 +246,7 @@ function _atualizarBadgeAI(descricao, tipo) {
     badge.className = `ai-badge pri-${p}`;
     badge.textContent = labels[p] || '🟡 Prioridade Média';
     _exibirSugestaoAI(sugestao, p);
+    _atualizarTravaEnvio();
   }, 2500);
 }
 // ──────────────────────────────────────────────────────────────────────────
@@ -340,14 +392,17 @@ window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('pc-status-msg').textContent = 'Este PC está registrado como DESCARTADO. Não é possível abrir chamados. Entre em contato com o T.I.';
         b.classList.add('visible','descartado');
         document.getElementById('btn-submit').disabled = true;
+        _envioProibido = true;   // a trava da IA não pode reabrir este botão
       }
     }
   } catch(e) { /* silencioso */ }
 
   // Atualiza badge de prioridade AI enquanto usuário digita
   document.getElementById('descricao')?.addEventListener('input', function() {
-    _atualizarBadgeAI(this.value.trim(), tipo);
+    _atualizarBadgeAI(this.value.trim());
   });
+  _travaIAAtiva = true;
+  _atualizarTravaEnvio();
 
   await carregarChamados();
   _iniciarPollPC();
@@ -463,18 +518,26 @@ window.trocarAba = function(aba) {
   document.getElementById('view-'+aba).classList.add('active');
 };
 
-let buscaTimer=null;
+// A busca filtra na TELA, sobre a lista completa. Antes ela ia para o banco
+// (`or=(descricao.ilike...)`) e trocava a própria `tickets` pela lista
+// filtrada, com três efeitos colaterais: o poll de 30 s e o realtime chamam
+// carregarChamados() sem termo e desfaziam a busca com o texto ainda no
+// campo; enquanto a busca valia, `_ehMeuTicket` não enxergava os chamados
+// fora dela e o realtime ignorava mudanças neles (e o contador da aba contava
+// só os filtrados); e vírgula ou parêntese no termo quebravam o `or=()` do
+// PostgREST, zerando a lista.
+let buscaTimer=null, _buscaAtual='';
 window.buscaChamados = function(q) {
-  clearTimeout(buscaTimer);buscaTimer=setTimeout(()=>carregarChamados(q),350);
+  clearTimeout(buscaTimer);
+  buscaTimer=setTimeout(()=>{_buscaAtual=String(q||'').trim().toLowerCase();renderChamados();},200);
 };
 
-async function carregarChamados(q='') {
+async function carregarChamados() {
   try{
     const filtroBase=session.tipo==='professor'
       ?`nome_solicitante=eq.${encodeURIComponent(session.nome)}`
       :`pc_origem=eq.${encodeURIComponent(session.id)}`;
-    const searchFilter=q?`&or=(descricao.ilike.*${encodeURIComponent(q)}*,laboratorio.ilike.*${encodeURIComponent(q)}*,tipo.ilike.*${encodeURIComponent(q)}*)`:'';
-    const r=await fetch(`${SB_URL}/rest/v1/ticket?${filtroBase}${searchFilter}&order=aberto_em.desc&select=*`,{headers:H});
+    const r=await fetch(`${SB_URL}/rest/v1/ticket?${filtroBase}&order=aberto_em.desc&select=*`,{headers:H});
     const data=await r.json();tickets=Array.isArray(data)?data:[];
   }catch(e){tickets=[];}
   // Busca não lidas do PC
@@ -487,34 +550,76 @@ async function carregarChamados(q='') {
   renderChamados();
 }
 
+// ── LISTA "MEUS CHAMADOS" ────────────────────────────────────────────────
+// O cartão mostra primeiro o que a pessoa escreveu (antes o título era só o
+// tipo, e três chamados de "Hardware" ficavam iguais), o status com uma
+// frase dizendo o que acontece agora, e uma ação escrita por extenso. A lista
+// vem em dois grupos: o que ainda está em aberto — onde se conversa com o
+// T.I. — e o histórico.
+const _TIPO_NOME={hardware:'Hardware',software:'Software',rede:'Rede',outro:'Outro',periferico:'Periférico'};
+const _STATUS_DICA={aberto:'Aguardando um técnico assumir',em_andamento:'Um técnico está cuidando disso'};
+const _ehAtivo=t=>t.status==='aberto'||t.status==='em_andamento';
+
+function _quandoFoi(iso){
+  if(!iso)return'—';
+  const d=new Date(iso),min=Math.floor((Date.now()-d.getTime())/60000);
+  if(min<1)return'agora mesmo';
+  if(min<60)return`há ${min} min`;
+  if(min<24*60)return`há ${Math.floor(min/60)} h`;
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+
+function _cardChamado(t){
+  const ativo=_ehAtivo(t);
+  const acao=ativo?`abrirChat(${t.id})`:`abrirDetalhes(${t.id})`;
+  const nl=ativo?(window._naoLidasPC?.[t.id]||0):0;
+  const desc=t.descricao&&t.descricao!=='(chamado rápido)'?t.descricao:'Sem descrição';
+  const tipoNome=_TIPO_NOME[t.tipo]||t.tipo||'—';
+  const dataHora=t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  const icoChat=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+  const novas=nl>0?`<span class="ticket-unread-badge-pc visible">${icoChat} ${nl} ${nl>1?'mensagens novas':'mensagem nova'}</span>`:'';
+  const acaoHtml=ativo
+    ?`<button class="btn-chat-ticket" type="button" onclick="event.stopPropagation();abrirChat(${t.id})">${icoChat} Conversar com o T.I.</button>`
+    :`<span class="t-ver">Ver detalhes <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></span>`;
+  // role/tabindex/onkeydown: o cartão é clicável, então também precisa abrir
+  // pelo teclado. O `event.target===this` evita abrir duas vezes quando o
+  // Enter vem do botão "Conversar", que está dentro do cartão.
+  return`<div class="ticket-card ${t.status} ${ativo?'ativo':'fechado'}${nl>0?' tem-nl':''}" role="button" tabindex="0" onclick="${acao}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${acao}}">
+      <div class="t-icon">${tipoIcon(t.tipo)}</div>
+      <div class="t-info">
+        <div class="t-topo"><span class="status-pill pill-${t.status}">${statusLabel(t.status)}</span>${ativo?`<span class="t-dica">${_STATUS_DICA[t.status]}</span>`:''}${novas}</div>
+        <div class="t-desc">${_esc(desc)}</div>
+        <div class="t-meta">#${t.id} · ${_esc(tipoNome)} · ${_esc(t.laboratorio||'—')} Lado ${_esc(t.lado||'—')} · <span title="${dataHora}">${_quandoFoi(t.aberto_em)}</span></div>
+      </div>
+      <div class="t-right">${acaoHtml}</div>
+    </div>`;
+}
+
 function renderChamados() {
   const list=document.getElementById('ticket-list'),badge=document.getElementById('tab-badge');
-  const ativos=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento').length;
+  const ativos=tickets.filter(_ehAtivo).length;
   badge.textContent=ativos||tickets.length;badge.classList.toggle('zero',ativos===0);
   if(!tickets.length){
-    const quem=session.tipo==='professor'?'para você':'para este PC';
-    list.innerHTML=`<div class="empty"><div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><p>Nenhum chamado encontrado ${quem}.<br>Vá em <strong>Abrir Chamado</strong> para criar um.</p></div>`;
+    const quem=session.tipo==='professor'?'aberto por você':'aberto neste PC';
+    list.innerHTML=`<div class="empty"><div class="eicon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><p>Nenhum chamado ${quem} ainda.<br>Quando algo não funcionar, abra um chamado e acompanhe tudo por aqui.</p><button class="btn-empty" type="button" onclick="trocarAba('abrir')">Abrir chamado</button></div>`;
     return;
   }
-  list.innerHTML=tickets.map(t=>{
-    const podeChat=t.status==='aberto'||t.status==='em_andamento';
-    const hora=t.aberto_em?new Date(t.aberto_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-    const nl=window._naoLidasPC?.[t.id]||0;
-    const nlBadge=nl>0&&podeChat?`<span class="ticket-unread-badge-pc visible"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> ${nl}</span>`:'';
-    return`<div class="ticket-card ${t.status}" onclick="${podeChat?`abrirChat(${t.id})`:`abrirDetalhes(${t.id})`}" style="position:relative">
-      <div class="t-icon">${tipoIcon(t.tipo)}</div>
-      <div class="t-info"><div class="t-title">${_esc(t.tipo||'—')}</div><div class="t-meta">#${t.id} · ${_esc(t.laboratorio||'—')} Lado ${_esc(t.lado||'—')}</div></div>
-      <div class="t-right">
-        <span class="status-pill pill-${t.status}">${statusLabel(t.status)}</span>
-        <span class="t-time">${hora}</span>
-        ${podeChat
-          ?`<button class="btn-chat-ticket" onclick="event.stopPropagation();abrirChat(${t.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat</button>`
-          :`<span class="t-enc"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></span>`
-        }
-        ${nlBadge}
-      </div>
-    </div>`;
-  }).join('');
+  const q=_buscaAtual;
+  const visiveis=q
+    ?tickets.filter(t=>[t.descricao,t.tipo,_TIPO_NOME[t.tipo],t.laboratorio,'#'+t.id,statusLabel(t.status)].some(v=>String(v||'').toLowerCase().includes(q)))
+    :tickets;
+  if(!visiveis.length){
+    const termo=document.getElementById('chamados-search')?.value.trim()||q;
+    list.innerHTML=`<div class="empty"><p>Nenhum chamado encontrado para “${_esc(termo)}”.</p><button class="btn-empty sec" type="button" onclick="const b=document.getElementById('chamados-search');b.value='';buscaChamados('')">Limpar busca</button></div>`;
+    return;
+  }
+  const abertos=visiveis.filter(_ehAtivo),fechados=visiveis.filter(t=>!_ehAtivo(t));
+  const grupo=(titulo,lista)=>`<div class="t-grupo"><span>${titulo}</span><span class="t-grupo-n">${lista.length}</span></div>${lista.map(_cardChamado).join('')}`;
+  let html='';
+  if(abertos.length)html+=grupo('Em aberto',abertos);
+  else if(!q)html+=`<div class="t-nenhum-aberto"><span>Nenhum chamado em aberto agora.</span><button class="btn-empty" type="button" onclick="trocarAba('abrir')">Abrir chamado</button></div>`;
+  if(fechados.length)html+=grupo('Encerrados',fechados);
+  list.innerHTML=html;
 }
 
 // DUP-01: tipoIcon e statusLabel eram reimplementados aqui, byte a byte
@@ -756,7 +861,13 @@ window.pickTipo = function(opt) {
   document.getElementById('sel-val').textContent=nomes[tipo]||tipo;
   document.getElementById('sel-trigger').classList.add('valued');
   document.getElementById('sel-wrap').classList.remove('open');
-  _aiUltimaDesc = ''; _aiUltimoResultado = null;
+  // Não zera mais o resultado guardado da IA (_aiUltimaDesc/_aiUltimoResultado).
+  // A classificação não depende do tipo — o prompt só recebe a descrição — e
+  // a própria IA chama pickTipo ao marcar o tipo detectado, então o zeramento
+  // apagava o resultado no instante em que ele era guardado: abrirChamado
+  // nunca reaproveitava nada (PERF-02) e chamava a IA de novo a cada envio.
+  // Um tipo escolhido à mão continua valendo: abrirChamado só usa o tipo da
+  // IA quando `tipo` está vazio.
 };
 document.addEventListener('click',e=>{ const w=document.getElementById('sel-wrap');if(!w.contains(e.target))w.classList.remove('open'); });
 window.toggleEmerg = function() {
@@ -782,11 +893,25 @@ async function _resolverPcPorTag(tag){
   return Array.isArray(pcs)&&pcs.length?pcs[0]:null;
 }
 
+// Duplo clique abria dois chamados: até o `loading` entrar no botão a função
+// já passou por dois `await` (limite de envio e tag do PC), e o segundo
+// clique corria em paralelo — passando também pela checagem de duplicata,
+// porque o primeiro ainda não tinha gravado.
+let _enviandoChamado=false;
 window.abrirChamado = async function() {
+  if(_enviandoChamado)return;
+  _enviandoChamado=true;
+  try{await _abrirChamado();}finally{_enviandoChamado=false;}
+};
+
+async function _abrirChamado() {
   if(!tipo){toast('Selecione o tipo de problema.','err');return}
   const desc=document.getElementById('descricao').value.trim();
   if(!desc){toast('Adicione uma descrição do problema.','err');return}
   if(session.tipo==='professor'&&!emergAtivo&&!normalAtivo){toast('Selecione o tipo de chamado.','err');return}
+  // Vai enviar: uma classificação ainda agendada pela digitação só chegaria
+  // depois, e abriria o card "tente antes de abrir" por cima do sucesso.
+  clearTimeout(_aiDebounceTimer);
 
   // Emergências pulam o rate limit
   const ehEmergencia = emergAtivo;
@@ -904,7 +1029,9 @@ window.resetForm = function() {
   document.getElementById('ai-prioridade-badge').className='ai-badge hidden';
   _fecharSugestao();
   _aiUltimaDesc='';_aiUltimoResultado=null;
+  clearTimeout(_aiDebounceTimer);
   tipo=null;
+  _atualizarTravaEnvio();   // campo vazio: volta a pedir a descrição
   trocarAba('chamados');
   setTimeout(()=>_abrirAvaliacaoSistema(window._ultimoTicketAberto),800);
 };
@@ -929,19 +1056,18 @@ async function _carregarMediasResolucao(){
       const mins=Math.round(v.sum/v.n/60000);
       _mediasResolucao[k]=mins>=60?`${Math.floor(mins/60)}h${mins%60?` ${mins%60}min`:''}` :`${mins}min`;
     });
-    // Atualiza o texto de descrição de cada opção do seletor com a estimativa
+    // Adiciona um selo com a estimativa de tempo de resolução em cada opção do seletor
     document.querySelectorAll('.sel-opt[data-v]').forEach(opt=>{
       const est=_mediasResolucao[opt.dataset.v];
-      const desc=opt.querySelector('.sel-opt-desc');
-      if(!desc||!est)return;
-      // Remove estimativa anterior se já existir
-      const existing=desc.querySelector('._est');
+      const info=opt.querySelector('.sel-opt-info');
+      if(!info||!est)return;
+      const existing=opt.querySelector('._est');
       if(existing)existing.remove();
       const span=document.createElement('span');
       span.className='_est';
-      span.style.cssText='color:var(--green,#22c55e);font-weight:600;margin-left:4px';
-      span.textContent='· ~'+est;
-      desc.appendChild(span);
+      span.title='Tempo médio de resolução deste tipo de chamado';
+      span.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Resolução média: ~'+est;
+      info.appendChild(span);
     });
   }catch(e){}
 }
