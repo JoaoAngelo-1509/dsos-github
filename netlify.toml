@@ -61,6 +61,24 @@
   status = 404
   force = true
 
+# Central de diagnostico: ferramenta de DEV. Mostra o modelo de autorizacao e
+# as lacunas em aberto (L2/L3/L4) e so e util com uma sessao; nao deve ser
+# servida no mesmo dominio da aplicacao. Rode localmente (npx serve .). Os dois
+# caminhos precisam de force=true porque sao arquivos reais (arquivo real tem
+# prioridade sobre redirect sem force). A pagina nao tem URL limpa, entao
+# /diagnostico cai sozinho no catch-all 404 la embaixo.
+[[redirects]]
+  from = "/html/diagnostico.html"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/js/diagnostico.js"
+  to = "/404.html"
+  status = 404
+  force = true
+
 # Documentacao de raiz. Nao ha glob por extensao nos redirects da Netlify
 # (`*` so funciona como sufixo de caminho), entao a lista e explicita — ao
 # criar um .md novo na raiz, acrescente-o aqui.
