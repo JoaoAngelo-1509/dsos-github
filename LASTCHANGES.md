@@ -1,5 +1,100 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-09-10 — Sessão viva só enquanto a aba dá sinal (e o chamado que não abria)
+
+Na apresentação de 08/09, abrir chamado no painel do PC dava
+`new row violates row-level security policy for table "ticket"`, e enviar
+imagem no chat dava o mesmo erro na tabela `objects`. Os logs do Supabase
+daquele dia mostraram que eram dois defeitos:
+
+- **Imagem:** a correção de 02/09 (upload sem `x-upsert`, logo abaixo) estava
+  na branch `fix/bugs-reportados-e-seguranca-edge-functions` e **nunca tinha ido
+  para a `main`**. O site no ar seguia com o código antigo, enquanto o banco e
+  as Edge Functions já estavam na versão nova. Resolvido pelo merge.
+- **Chamado:** a aba do painel estava logada desde 01/09. O `acesso_log` #144
+  registrou o logout dela com **6 dias 23h30** de sessão. O token valia 12h,
+  mas nada no front perguntava ao banco se ele ainda valia: a sessão ficava no
+  `sessionStorage` (o Chrome devolve o `sessionStorage` ao restaurar abas), a
+  tela seguia "logada", a lista de chamados voltava vazia e o INSERT em
+  `ticket` era recusado. O INSERT usa `Prefer: return=representation`, e o
+  Postgres só devolve a linha nova se ela passar na policy de SELECT, que
+  exige token vivo. Às 10:55:12 a `groq-proxy` recusou o token (401) e, 66 ms
+  depois, o banco recusou o chamado.
+
+E o contrário também estava errado: fechar o navegador não encerrava nada. O
+token continuava válido no banco por até 12h.
+
+### O que mudou
+
+- **O token passa a viver por inatividade** (migration
+  `20260910120000_sessao_token_expira_por_inatividade.sql`). Ele nasce com
+  5 min, e cada `rpc_sessao_ping` (a cada 30s, em toda aba aberta) empurra a
+  validade para agora + 5 min, com teto de 12h desde o login. Fechou o
+  navegador, o ping para e o token morre em até 5 min. É o mesmo limiar que
+  `rpc_limpar_sessoes_mortas` já usava para a presença.
+- **O painel confere a sessão** (`js/sessao-vida.js`, novo). Agora o
+  `rpc_sessao_ping` devolve o tipo da sessão, ou `NULL` se o token morreu. Os
+  três painéis perguntam ao banco em três momentos: ao abrir, antes de
+  carregar qualquer coisa; a cada 30s, inclusive com a aba em segundo plano;
+  e ao voltar para a aba. Sessão morta manda a pessoa para o login, que exibe
+  "Sua sessão expirou. Entre de novo."
+- **Sair apaga o token no banco.** Vale para o botão e para o logout por
+  inatividade (`rpc_sessao_encerrar` com `p_logout`). Antes o token sobrevivia
+  ao logout.
+- **Fechar a aba só tira a presença** (`pagehide` + `sendBeacon`). O token não
+  é apagado ali porque `pagehide` dispara igual no F5, e apagar deslogaria
+  quem só recarregou a página.
+- **O painel de logs ganhou heartbeat.** Ele não pingava nunca, e com o token
+  de 5 min morreria com o painel aberto.
+- **Abrir chamado:** um 401/403 confirmado pelo ping como sessão morta leva
+  ao login, em vez de mostrar o erro cru do Postgres. Um erro com sessão
+  válida continua aparecendo como erro, para ninguém cair em loop de login.
+- **Duas brechas de presença fechadas.** `rpc_sessao_ping` aceitava qualquer
+  `p_usuario_id`/`p_usuario_tipo` no corpo, então qualquer um marcava qualquer
+  conta como "ao vivo" no painel de logs. E `rpc_sessao_encerrar` tirava a
+  presença de qualquer conta pelo id. Agora as duas tiram a identidade do
+  token, e sem token vivo não gravam nada. O formato antigo das chamadas
+  continua aceito, para o front em cache não quebrar durante o deploy.
+
+### Como foi verificado
+
+- **Ensaio da migration no banco de produção**, dentro de uma transação
+  desfeita no fim:
+
+  | Caso | Resultado |
+  |---|---|
+  | Validade inicial do token | 5 min |
+  | Ping com token vivo | devolve `pc` e renova para +5 min |
+  | Ping sem token | `NULL`, sem presença gravada |
+  | Presença forjada pelo id do corpo | 0 linhas |
+  | `encerrar` sem token | não tira a presença de ninguém |
+  | Sair da página | tira a presença, mantém o token |
+  | Ping depois de 12h do login | `NULL` |
+  | Ping com token vencido | `NULL` |
+  | Logout | apaga o token (`rpc_sessao_valida` → `NULL`) |
+
+- `tests/sessao-vida.test.js` (novo): 5/5 contra produção, só com token
+  forjado.
+- **No navegador**, simulando a aba zumbi: gravamos no `sessionStorage` uma
+  sessão de PC com token forjado e abrimos o `painel-pc.html`. O painel voltou
+  para o login sozinho, a sessão foi apagada da aba e apareceu "Sua sessão
+  expirou. Entre de novo."
+
+### Repositório
+
+Tudo consolidado na `main`. As outras branches foram apagadas: as já
+mergeadas, e as duas antigas superadas (`claude/adoring-archimedes-kf5a30`,
+skill check que já foi refeito na `main`; `JoaoAngelo-1509-patch-1`, um
+`images/ReadMe` obsoleto). A tag `backup-pre-auditoria-20260823` foi enviada
+ao GitHub e substitui a branch de backup.
+
+### Ainda aberto
+
+- `rpc_log_enviar_mensagem` e `rpc_log_abrir_chamado` são chamadas pelo
+  `painel-pc.js` com nomes de parâmetro que não existem no banco. Toda
+  chamada volta 404 e o erro é engolido, então mensagens e aberturas de
+  chamado não entram no log de atividades.
+
 ## 2026-09-02 — Correção dos filtros do painel de logs, do chat do PC e da avaliação
 
 Leva de correção dos problemas relatados em uso. Cada item abaixo foi

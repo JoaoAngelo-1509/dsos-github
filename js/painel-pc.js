@@ -5,6 +5,7 @@ import { escapeHtml, tipoIcon, statusLabel } from './ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 import { initReportarProblema } from './reportar-problema.js';
+import { manterSessaoViva, sessaoViva, expirarSessao, encerrarSessao } from './sessao-vida.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
 instalarHeaderSessao();
@@ -276,6 +277,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   session = JSON.parse(raw);
   if (session.tipo !== 'pc' && session.tipo !== 'professor') { window.location.href = 'login.html'; return; }
 
+  // Confere o token no banco antes de carregar qualquer coisa, e mantém ele
+  // vivo com o ping de 30s. Antes esta tela confiava no sessionStorage para
+  // sempre: em 08/09 uma aba restaurada com token vencido havia 6 dias abriu
+  // "logada", listou zero chamados e teve o chamado novo recusado por RLS.
+  // Ver js/sessao-vida.js.
+  if (!(await manterSessaoViva())) return;
+
   // Logout automático por inatividade — 10 min, com aviso aos 8.
   //
   // Bem mais curto que os 30 min dos painéis do T.I. porque esta tela roda nas
@@ -293,14 +301,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     avisoMs:    2 * 60 * 1000,
   });
   initReportarProblema();   // botao flutuante de reportar problema
-
-  // ── Heartbeat de sessão ──
-  const _pingUrl = `${SB_URL}/rest/v1/rpc/rpc_sessao_ping?apikey=${SB_KEY}`;
-  const _encUrl  = `${SB_URL}/rest/v1/rpc/rpc_sessao_encerrar?apikey=${SB_KEY}`;
-  function _pingBody(){ return JSON.stringify({p_usuario_id:session.id,p_usuario_tipo:session.tipo,p_usuario_login:session.login||session.tag||'',p_usuario_nome:session.nome||''}); }
-  fetch(_pingUrl,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},body:_pingBody()}).catch(()=>{});
-  setInterval(()=>fetch(_pingUrl,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},body:_pingBody()}).catch(()=>{}),30000);
-  window.addEventListener('beforeunload',()=>navigator.sendBeacon(_encUrl,new Blob([JSON.stringify({p_usuario_id:session.id,p_usuario_tipo:session.tipo})],{type:'application/json'})));
 
   if (session.tipo === 'professor') {
     document.getElementById('info-nome').textContent  = session.nome || session.login;
@@ -860,7 +860,16 @@ window.abrirChamado = async function() {
       nome_solicitante:session.nome,
       chamado_emergencia: ehEmergencia || ehEmergenciaIA
     })});
-    if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||'HTTP '+r.status)}
+    if(!r.ok){
+      const err=await r.json().catch(()=>({}));
+      // 401/403 aqui quase sempre é sessão morta: o INSERT usa
+      // return=representation, e a policy de SELECT de ticket exige token vivo
+      // (foi o "violates row-level security" de 08/09). Só manda para o login
+      // se o ping confirmar — erro de regra com sessão válida tem que aparecer
+      // como erro, senão a pessoa entra em loop de login.
+      if((r.status===401||r.status===403)&&(await sessaoViva())===false){expirarSessao();return;}
+      throw new Error(err.message||'HTTP '+r.status);
+    }
     const data=await r.json();
     const id=Array.isArray(data)?data[0]?.id:data?.id;
     
@@ -1076,7 +1085,7 @@ window.sair = async function() {
       ...(_dur?{p_duracao_sessao:_dur}:{}),
     });
   }catch(e){}
-  try{await fetch(`${SB_URL}/rest/v1/rpc/rpc_sessao_encerrar`,{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({p_usuario_id:session?.id,p_usuario_tipo:session?.tipo||'pc'})});}catch(_){}
+  await encerrarSessao();   // apaga o token no banco (e a presença)
   sessionStorage.removeItem('dsos_session');
   window.location.href='login.html';
 };

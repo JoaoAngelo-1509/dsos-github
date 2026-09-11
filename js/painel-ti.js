@@ -7,6 +7,7 @@ import { initSessionGuard } from './session-guard.js';
 import { initReportarProblema } from './reportar-problema.js';
 import { initEasterEgg } from './easter-egg.js';
 import { logger } from './logging.js';
+import { manterSessaoViva, encerrarSessao } from './sessao-vida.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
 instalarHeaderSessao();
@@ -152,6 +153,11 @@ window.addEventListener('DOMContentLoaded',async()=>{
   session=JSON.parse(raw);
   if(session.tipo!=='ti'){window.location.href='login.html';return}
 
+  // Confere o token no banco antes de carregar qualquer coisa, e mantém ele
+  // vivo com o ping de 30s (heartbeat e presença em sessao_ativa vivem lá).
+  // Sessão morta → login com aviso. Ver js/sessao-vida.js.
+  if(!(await manterSessaoViva()))return;
+
   // Logout automático por inatividade (30min, aviso aos 28min)
   // Sem timeoutMs: usa o padrão de 30 min do session-guard. Máquina do T.I. é
   // de uso pessoal — ver a nota em painel-pc.js, que encurta para 10 min por
@@ -163,14 +169,6 @@ window.addEventListener('DOMContentLoaded',async()=>{
   fetch(`${SB}/rest/v1/rpc/rpc_set_presenca`,{method:'POST',headers:H,body:JSON.stringify({p_id:session.id,p_presenca:'online'})}).catch(()=>{});
   _presencaAtual='online';
   localStorage.setItem('dsos_presenca','online');
-
-  // ── Heartbeat de sessão ──
-  const _pingUrl=`${SB}/rest/v1/rpc/rpc_sessao_ping?apikey=${SB_KEY}`;
-  const _encUrl =`${SB}/rest/v1/rpc/rpc_sessao_encerrar?apikey=${SB_KEY}`;
-  function _pingBody(){return JSON.stringify({p_usuario_id:session.id,p_usuario_tipo:'ti',p_usuario_login:session.login||'',p_usuario_nome:session.nome||''});}
-  fetch(_pingUrl,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},body:_pingBody()}).catch(()=>{});
-  setInterval(()=>fetch(_pingUrl,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},body:_pingBody()}).catch(()=>{}),30000);
-  window.addEventListener('beforeunload',()=>navigator.sendBeacon(_encUrl,new Blob([JSON.stringify({p_usuario_id:session.id,p_usuario_tipo:'ti'})],{type:'application/json'})));
 
   try{
     const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?select=id,login,nome,presenca`,{headers:H});
@@ -4082,6 +4080,7 @@ window.sair=async function(){
   }catch(e){}
   // Marcar técnico como ausente ao sair
   try{await fetch(`${SB}/rest/v1/rpc/rpc_set_presenca`,{method:'POST',headers:H,body:JSON.stringify({p_id:session?.id,p_presenca:'ausente'})});}catch(_){}
+  await encerrarSessao();   // apaga o token no banco (e a presença)
   sessionStorage.removeItem('dsos_session');
   window.location.href='login.html';
 };

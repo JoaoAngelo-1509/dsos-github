@@ -72,10 +72,10 @@
 // quando o próprio setup quebra. A limpeza é defensiva: cada passo é
 // independente, então uma falha no meio não deixa o resto para trás.
 //
-// Sobra apenas a linha em `public.sessao_token` de cada login feito aqui:
-// não há caminho anon para apagá-la (a tabela não tem policy nenhuma, de
-// propósito). Elas expiram em 12h e o próprio `fn_emitir_token` remove as
-// vencidas no login seguinte.
+// Sobra apenas a linha em `public.sessao_token` de cada login feito aqui (a
+// tabela não tem policy nenhuma, de propósito). Sem ping ela morre em 5 min
+// (migration 20260910120000) e o próprio `fn_emitir_token` remove as vencidas
+// no login seguinte.
 //
 // SOBRE "TOKEN EXPIRADO"
 // Não dá para forjar um token genuinamente expirado só com a anon key: seria

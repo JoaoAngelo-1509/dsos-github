@@ -19,6 +19,14 @@ window.addEventListener('DOMContentLoaded', () => {
   if (saved === 'dark') {
     updateTemaIcon(true);
   }
+
+  // Um painel mandou a pessoa para cá porque o token morreu (sessao-vida.js).
+  // Sem este aviso ela cairia no login sem saber por quê.
+  const aviso = sessionStorage.getItem('dsos_aviso_login');
+  if (aviso) {
+    sessionStorage.removeItem('dsos_aviso_login');
+    mostrarErro(aviso);
+  }
 });
 
 // ── TOGGLE VISIBILIDADE DE SENHA ──
@@ -265,7 +273,8 @@ window.entrar = async function () {
     btn.querySelector('span').textContent = 'Verificando nome…';
     const nomeValido = await validarNome(nome, conta.d.token);
     if (!nomeValido) {
-      // O token emitido aqui fica órfão em sessao_token até expirar (12h).
+      // O token emitido aqui fica órfão em sessao_token até expirar (5 min
+      // sem ping — nenhum painel abre para pingar).
       // Não é problema: quem chegou até aqui provou a senha, e fn_emitir_token
       // poda os expirados a cada novo login. O que importa é que a sessão NÃO
       // é gravada no navegador — sem isso, nenhuma tela abre.

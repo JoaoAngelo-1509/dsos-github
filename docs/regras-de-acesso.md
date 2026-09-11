@@ -60,7 +60,12 @@ sessionStorage.dsos_session     (1) RLS lê o header via fn_sessao_*()
 (bcrypt) e, se bater, chama `fn_emitir_token()`:
 
 * token = `encode(gen_random_bytes(32), 'hex')` — 64 caracteres hexadecimais;
-* gravado em `public.sessao_token` com `expira_em = now() + 12 horas`;
+* gravado em `public.sessao_token` com `expira_em = now() + 5 min`. Cada
+  `rpc_sessao_ping` (a cada 30s, em toda aba aberta) empurra a validade para
+  agora + 5 min, com teto de 12h desde o login. Fechou o navegador, o ping
+  para e o token morre em até 5 min. O ping devolve `NULL` quando o token
+  morreu, e o painel manda a pessoa para o login (`js/sessao-vida.js`,
+  migration `20260910120000`);
 * cada emissão aproveita para apagar tokens já vencidos.
 
 `public.sessao_token` é a peça central do modelo e por isso é a tabela mais

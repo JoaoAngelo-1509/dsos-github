@@ -39,6 +39,7 @@ vem por variável de ambiente, como o resto das credenciais do projeto.
 | SEC-05 | `PATCH` direto em `ticket`/`pc` não altera nada; RPC recusa token forjado; `sessao_token` ilegível |
 | SEC-05b (leitura) | `ticket`/`mensagem` ilegíveis sem token; isolamento entre PCs; regra do professor; RPC `nao_lidas` não vaza id de terceiros (`leitura.test.js`) |
 | Realtime (sinal) | triggers geram `realtime_sinal` para INSERT/UPDATE de ticket/mensagem; a tabela só expõe `{id,canal,ref_id,evento,em}`; escrita pela API recusada (`realtime-sinal.test.js`) |
+| Sessão por inatividade | `rpc_sessao_ping` devolve `null` sem token vivo e não grava presença pelo id do corpo; `rpc_sessao_encerrar` aceita o formato antigo e ignora token forjado (`sessao-vida.test.js`) |
 | — | Login com credencial inválida devolve lista vazia, sem erro nem dado |
 
 ## Por que estes testes existem

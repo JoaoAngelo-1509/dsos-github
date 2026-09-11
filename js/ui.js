@@ -1,5 +1,6 @@
 // DSos v1.3 alpha alpha — ui.js
 // ── ui.js — Utilitários de UI compartilhados entre todas as páginas ──
+import { encerrarSessao } from './sessao-vida.js';
 
 // ── PATHS DE BACKGROUND ──
 const BGPATH = {
@@ -46,7 +47,8 @@ export function updateTemaIcon(isDark) {
 }
 
 // ── LOGOUT ──
-export function sair() {
+export async function sair() {
+  await encerrarSessao();   // apaga o token no banco antes de limpar a aba
   sessionStorage.removeItem('dsos_session');
   window.location.href = 'login.html';
 }

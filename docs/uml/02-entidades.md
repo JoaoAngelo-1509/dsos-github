@@ -120,7 +120,7 @@ erDiagram
         text usuario_login
         text usuario_nome
         timestamptz criado_em
-        timestamptz expira_em "default now + 12h"
+        timestamptz expira_em "now + 5min, renovado pelo ping (teto 12h)"
     }
 
     SESSAO_ATIVA {

@@ -206,10 +206,16 @@ const STATE = {
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const _raw = sessionStorage.getItem('dsos_session');
   const _session = _raw ? JSON.parse(_raw) : null;
   if (!_session || _session.tipo !== 'ti') { window.location.href = 'login.html'; return; }
+
+  // Confere o token no banco antes de carregar qualquer coisa, e mantém ele
+  // vivo com o ping de 30s. Este painel não tinha heartbeat nenhum: com o
+  // token passando a viver por inatividade (5 min), sem ping ele morreria
+  // com o painel aberto. Ver js/sessao-vida.js.
+  if (!(await manterSessaoViva())) return;
 
   // Logout automático por inatividade (30min, aviso aos 28min)
   // Sem timeoutMs: padrão de 30 min (máquina do T.I., de uso pessoal).
