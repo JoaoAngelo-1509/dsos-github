@@ -111,8 +111,8 @@
         </div>
         <div class="quick-dates">
           <button class="btn-qdate" onclick="setDateRange('auditoria','today')">Hoje</button>
-          <button class="btn-qdate" onclick="setDateRange('auditoria','24h')">24h</button>
-          <button class="btn-qdate" onclick="setDateRange('auditoria','week')">Semana</button>
+          <button class="btn-qdate" onclick="setDateRange('auditoria','7d')">7 dias</button>
+          <button class="btn-qdate" onclick="setDateRange('auditoria','30d')">30 dias</button>
         </div>
         <div class="filter-group">
           <label class="filter-label">Login:</label>
@@ -171,8 +171,8 @@
         </div>
         <div class="quick-dates">
           <button class="btn-qdate" onclick="setDateRange('audit-log','today')">Hoje</button>
-          <button class="btn-qdate" onclick="setDateRange('audit-log','24h')">24h</button>
-          <button class="btn-qdate" onclick="setDateRange('audit-log','week')">Semana</button>
+          <button class="btn-qdate" onclick="setDateRange('audit-log','7d')">7 dias</button>
+          <button class="btn-qdate" onclick="setDateRange('audit-log','30d')">30 dias</button>
         </div>
         <div class="filter-group">
           <label class="filter-label">Tipo:</label>
@@ -249,25 +249,26 @@
         </div>
         <div class="quick-dates">
           <button class="btn-qdate" onclick="setDateRange('atividades','today')">Hoje</button>
-          <button class="btn-qdate" onclick="setDateRange('atividades','24h')">24h</button>
-          <button class="btn-qdate" onclick="setDateRange('atividades','week')">Semana</button>
+          <button class="btn-qdate" onclick="setDateRange('atividades','7d')">7 dias</button>
+          <button class="btn-qdate" onclick="setDateRange('atividades','30d')">30 dias</button>
         </div>
+        <!-- As opções destes dois selects são montadas em tempo de execução a
+             partir dos valores que existem na tabela — ver
+             TAB_SELECTS_DINAMICOS / popularSelectsDinamicos em painel-logs.js.
+             A lista fixa que ficava aqui não batia com nenhum valor gravado no
+             banco, então todo filtro devolvia zero linha. -->
         <div class="filter-group">
           <label class="filter-label">Módulo:</label>
           <select class="filter-select" id="atividades-modulo">
             <option value="">Todos</option>
-            <option value="tickets">Tickets</option>
-            <option value="pcs">PCs</option>
-            <option value="usuarios">Usuários</option>
           </select>
         </div>
         <div class="filter-group">
-          <label class="filter-label">Impacto:</label>
+          <!-- "Evento", não "Impacto": a coluna guarda o tipo do que
+               aconteceu (novo_comentario, alteracao_status…), não um nível. -->
+          <label class="filter-label">Evento:</label>
           <select class="filter-select" id="atividades-impacto">
             <option value="">Todos</option>
-            <option value="baixo">Baixo</option>
-            <option value="médio">Médio</option>
-            <option value="alto">Alto</option>
           </select>
         </div>
         <button class="btn-filter-clear" onclick="limparFiltros('atividades')">Limpar</button>
@@ -278,7 +279,7 @@
              "ALTERAR_STATUS" e "alteracao_status"; a diferença sai do 1fr da
              descrição, que é a coluna com folga -->
         <div class="table-header" style="grid-template-columns:150px 110px 90px 120px 1fr 120px">
-          <span>Data/Hora</span><span>Usuário</span><span>Módulo</span><span>Ação</span><span>Descrição</span><span>Impacto</span>
+          <span>Data/Hora</span><span>Usuário</span><span>Módulo</span><span>Ação</span><span>Descrição</span><span>Evento</span>
         </div>
         <div class="table-rows" id="rows-atividades">
           <div class="loading"><div class="spinner"></div> Carregando…</div>
@@ -320,8 +321,8 @@
         </div>
         <div class="quick-dates">
           <button class="btn-qdate" onclick="setDateRange('acessos','today')">Hoje</button>
-          <button class="btn-qdate" onclick="setDateRange('acessos','24h')">24h</button>
-          <button class="btn-qdate" onclick="setDateRange('acessos','week')">Semana</button>
+          <button class="btn-qdate" onclick="setDateRange('acessos','7d')">7 dias</button>
+          <button class="btn-qdate" onclick="setDateRange('acessos','30d')">30 dias</button>
         </div>
         <div class="filter-group">
           <label class="filter-label">Status:</label>
@@ -383,27 +384,19 @@
         </div>
         <div class="quick-dates">
           <button class="btn-qdate" onclick="setDateRange('criticas','today')">Hoje</button>
-          <button class="btn-qdate" onclick="setDateRange('criticas','24h')">24h</button>
-          <button class="btn-qdate" onclick="setDateRange('criticas','week')">Semana</button>
+          <button class="btn-qdate" onclick="setDateRange('criticas','7d')">7 dias</button>
+          <button class="btn-qdate" onclick="setDateRange('criticas','30d')">30 dias</button>
         </div>
         <div class="filter-group">
           <label class="filter-label">Tabela:</label>
           <input type="text" class="filter-input" id="criticas-tabela" placeholder="Filtrar…" autocomplete="off"/>
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Aprovado:</label>
-          <select class="filter-select" id="criticas-aprovado">
-            <option value="">Todos</option>
-            <option value="true">Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
         <button class="btn-filter-clear" onclick="limparFiltros('criticas')">Limpar</button>
         <span class="last-update" id="lu-criticas" style="margin-left:auto"></span>
       </div>
       <div class="logs-table">
-        <div class="table-header" style="grid-template-columns:150px 110px 90px 100px 130px 130px 80px">
-          <span>Data/Hora</span><span>Usuário</span><span>Tabela</span><span>Campo</span><span>Valor Anterior</span><span>Novo Valor</span><span>Aprovado</span>
+        <div class="table-header" style="grid-template-columns:150px 110px 90px 100px 130px 130px 1fr">
+          <span>Data/Hora</span><span>Usuário</span><span>Tabela</span><span>Campo</span><span>Valor Anterior</span><span>Novo Valor</span><span>Motivo</span>
         </div>
         <div class="table-rows" id="rows-criticas">
           <div class="loading"><div class="spinner"></div> Carregando…</div>

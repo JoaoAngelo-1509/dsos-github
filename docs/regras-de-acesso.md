@@ -421,12 +421,27 @@ enxergando todos os chamados. Aceitável (a pessoa tem mesmo o privilégio), mas
 o registro de auditoria vai dizer "professor" enquanto a autorização foi de
 T.I.
 
-### L7 — `groq-proxy` não valida sessão
+### L7 — `groq-proxy` não validava sessão (CORRIGIDA)
 
-Basta a `anon key` para usar a função — logo, para consumir a cota da Groq do
-projeto. Não vaza dado do banco (a função não o consulta), mas é abuso de
-recurso possível.
-*Correção natural:* validar `X-Sessao-Token` na própria Edge Function.
+Bastava a `anon key` — que é pública, vai no bundle do site — para usar a
+função e consumir a cota da Groq do projeto. Não vazava dado do banco (a função
+não o consulta), mas era abuso de recurso possível.
+
+*Por que demorou:* a correção óbvia (exigir `X-Sessao-Token`) quebrava o login.
+A `groq-proxy` era chamada por `validarNome` em `js/auth.js` **antes** de
+qualquer credencial ser conferida — quando ainda não existia token. Limitar por
+IP também não servia: num laboratório todas as máquinas saem pelo mesmo IP
+público, e a sala inteira estouraria o limite no começo da aula.
+
+*Corrigido em 02/09/2026* invertendo a ordem do login: a senha é conferida
+primeiro (`_autenticar`), o nome depois, já com o token emitido. Aí a
+`groq-proxy` passou a exigir sessão viva em 100% das chamadas (qualquer papel).
+A validação usa `rpc_sessao_valida` (migration 20260902130000) — a função
+**não** carrega `SERVICE_ROLE_KEY` de propósito: recebe texto arbitrário do
+usuário e o repassa a terceiro, é o último lugar onde se quer a chave mestra.
+
+Verificado: senha errada agora faz **zero** chamadas à Groq; login correto faz
+exatamente uma; nome falso com senha certa gasta uma chamada e não cria sessão.
 
 ### L8 — Checagem de papel no frontend é cosmética
 
@@ -440,6 +455,89 @@ existem no banco mas **não são chamadas por nenhuma tela**; só
 `rpc_limpar_logs` é, pelo painel-logs, sob ação manual do técnico. Na prática,
 **o dado fica até alguém apagar**. Isso precisa ser resolvido — ou ao menos
 declarado — na política de privacidade.
+
+### L10 — `fn-limpar-dados` rodava sem nenhuma autenticação (CORRIGIDA)
+
+**Registrada aqui porque esta auditoria não a tinha encontrado.** A Edge
+Function `fn-limpar-dados`, que o painel T.I. chama na aba Manutenção, subiu
+com `verify_jwt: false` **e sem nenhuma verificação no corpo**. Como ela roda
+com a `SERVICE_ROLE_KEY` (que ignora a RLS inteira), qualquer pessoa com a URL
+podia apagar todos os chamados encerrados, mensagens e imagens do projeto — sem
+apikey, sem token, de qualquer lugar da internet. Verificado com `curl`: a
+chamada respondia `200` e devolvia a contagem real do banco.
+
+Gravidade maior que a da L7 (`groq-proxy`): lá o pior caso é consumo de cota;
+aqui era destruição de dado.
+
+*Corrigido em 02/09/2026 (versão 3 da função):* passou a exigir
+`X-Sessao-Token` de uma sessão **de T.I.** válida e não expirada, validada
+contra `sessao_token` — a mesma regra que `fn_sessao_do_token()` aplica no
+banco, mais a exigência do papel. Sem token → 401; token inválido/expirado →
+401; token de PC ou professor → 403. `verify_jwt` continua `false` de
+propósito: o projeto não usa Supabase Auth e não existe JWT de usuário.
+
+*Sobre as outras duas Edge Functions:* a `fn-enviar-otp` tinha a MESMA falha e
+foi neutralizada — ver L12. A `groq-proxy` (L7) continua sem validar sessão,
+por um motivo concreto: ela é chamada na tela de login (`validarNome`, em
+`js/auth.js`), antes de o token existir. Exigir sessão ali impediria qualquer
+pessoa de entrar. A correção passa por inverter a ordem do login — conferir a
+senha primeiro, validar o nome depois, já com token em mãos.
+
+### L11 — Edge Functions fora do controle de versão
+
+`fn-limpar-dados` e `fn-enviar-otp` existiam **só na nuvem**: não estavam em
+`supabase/functions/`, que até então só continha `groq-proxy`. Ninguém lendo o
+repositório saberia que elas existem, nem o que fazem, nem que uma delas roda
+com service_role — foi exatamente por isso que a L10 passou despercebida.
+
+*Resolvido:* `fn-limpar-dados` e `fn-enviar-otp` agora estão versionadas em
+`supabase/functions/`. As três Edge Functions do projeto estão no repositório.
+
+### L12 — `fn-enviar-otp`: função morta publicada com service_role (NEUTRALIZADA)
+
+O 2FA foi removido do projeto em agosto/2026 — saíram a tabela `otp_ti` e as
+RPCs `rpc_gerar_otp_ti`/`rpc_verificar_otp_ti` (confirmado: nenhuma das três
+existe mais no banco). **A Edge Function não foi removida junto.** Ficou no ar,
+chamável por qualquer um, montando um cliente com a `SERVICE_ROLE_KEY` e sem
+verificar quem chamava — mesma falha da L10.
+
+Não havia dano possível hoje, porque a RPC de que ela depende não existe: a
+chamada morria com `500`. Mas devolvia o erro cru do PostgREST ao chamador,
+vazando nomes internos do schema.
+
+*Neutralizada em 02/09/2026 (versão 2):* republicada como stub que não importa
+o cliente do Supabase, não lê `SERVICE_ROLE_KEY`, não toca no banco e responde
+`410 Gone`. **Ainda falta deletar a função de vez** (painel do Supabase →
+Edge Functions → `fn-enviar-otp` → Delete), e então apagar a pasta do
+repositório.
+
+*Lição que vale além deste caso:* remover um recurso é remover TODAS as suas
+partes. Este ficou sete meses no ar depois de o recurso ter sido "removido por
+completo".
+
+### L13 — Chave da Groq embutida no código da função publicada (CORRIGIDA)
+
+A versão publicada da `groq-proxy` (v3) trazia `GROQ_KEY_FALLBACK` com a chave
+da Groq em texto puro, usada porque **o secret `GROQ_KEY` nunca foi
+configurado** neste projeto — constatado ao publicar a v4 sem o fallback: toda
+chamada passou a responder `500 GROQ_KEY nao configurada`.
+
+A chave nunca foi commitada (verificado em todo o histórico do git) e não é
+exposta ao navegador, então não houve vazamento público. Mas é credencial em
+código, e o arquivo versionado do repositório sempre leu só o secret — ou seja,
+repositório e nuvem divergiam silenciosamente (L11 de novo).
+
+*Corrigido em 02/09/2026:* o secret `GROQ_KEY` foi configurado no projeto e a
+versão limpa do repositório foi publicada (v7) — sem `GROQ_KEY_FALLBACK`, com o
+secret como única fonte. Verificado: a função responde normalmente, e o código
+publicado não contém mais nenhuma chave. Repositório e nuvem voltaram a bater.
+
+Se o secret sumir, a função agora responde `500 GROQ_KEY nao configurada` em vez
+de silenciosamente cair num fallback — a falha de configuração fica visível.
+
+*Pendência do operador:* **revogar a chave antiga** no painel da Groq, se a que
+foi cadastrada como secret for uma chave nova. A antiga ficou meses em texto
+puro no código de uma função publicada.
 
 ---
 

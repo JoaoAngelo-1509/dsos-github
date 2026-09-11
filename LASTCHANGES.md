@@ -1,5 +1,268 @@
 # Últimas alterações — DSos v2.0
 
+## 2026-09-02 — Correção dos filtros do painel de logs, do chat do PC e da avaliação
+
+Leva de correção dos problemas relatados em uso. Cada item abaixo foi
+reproduzido antes de ser corrigido — os que dependiam do banco estão com o
+número de linhas que provou o defeito.
+
+### Painel de logs — filtros de data (todas as abas)
+
+- **Toda janela de data saía deslocada em 3 horas.** O `<input type="date">`
+  devolve o dia LOCAL (`2026-09-02`) e a string ia crua para o PostgREST, que
+  a lê como `00:00 UTC`; como o banco roda em UTC e o usuário está em UTC−3,
+  "Hoje" trazia as linhas a partir das 21h de ontem e cortava as de hoje
+  depois das 21h. Agora `limiteDoDiaLocal()` converte o dia escolhido para o
+  instante em que ele começa e termina no fuso do usuário.
+  Medida em `alteracoes_criticas_log`: filtrar 22/08 → 22/08 devolvia **3
+  linhas**; devolve **6**. As três que faltavam são as de 22/08 às 22:26 e
+  22:44 — gravadas como 23/08 em UTC, e exibidas na tela como 22/08.
+  O BUG-08 já havia acertado *qual dia é hoje* no navegador; faltava o outro
+  lado, a conversão do dia para instante.
+- **"24h" foi substituído por "7 dias", e "Semana" por "30 dias".** Os atalhos
+  escrevem nos dois campos de data e só conseguem expressar dias inteiros: o
+  botão "24h" escrevia a data de ontem, o que dá uma janela entre 24h e 48h
+  conforme a hora do clique, e "Semana" voltava 7 dias a partir de hoje,
+  pegando 8. Agora `QUICK_RANGES` define a janela em dias inteiros, contando o
+  de hoje.
+
+### Painel de logs — aba Atividades
+
+- **Os filtros Módulo e Impacto não devolviam nada.** As opções estavam fixas
+  no HTML (`tickets`/`pcs`/`usuarios`, `baixo`/`médio`/`alto`) e nenhuma delas
+  existe na tabela: `modulo` guarda `Chat`, `Usuários`, `Computadores`,
+  `Professores`, `mensagens`, `usuarios_ti`, `Tickets`. As opções passam a ser
+  lidas do próprio banco quando a aba abre (`popularSelectsDinamicos`).
+- **`impacto` não é um nível de impacto.** A coluna guarda o TIPO do evento
+  (`novo_comentario`, `alteracao_status`, `pc_deletado`…). O filtro, a coluna
+  da tabela, o campo do modal e o CSV foram renomeados para **Evento**, e o
+  KPI "Alto impacto" — que contava `impacto === 'alto'` e por isso mostrava 0
+  desde sempre — virou "Evento mais frequente".
+- **Grafias diferentes do mesmo módulo eram filtros diferentes.** A tabela tem
+  `Tickets` (62 linhas) e `tickets` (3). O operador `ieq` (novo) compara sem
+  diferenciar maiúsculas, e a lista de opções agrupa as grafias: escolher
+  "Tickets" devolve as **65**.
+
+### Painel de logs — aba Críticas
+
+- **A função "Aprovado" foi removida.** Nenhuma tela do sistema jamais marcou
+  uma alteração como aprovada: as 13 linhas da tabela nascem com
+  `aprovado=false` e não existe RPC nem botão que mude isso. O badge dizia
+  "⚠ Pendente" em 100% das linhas, o filtro "Aprovado: Sim" devolvia sempre
+  zero e o KPI "Aprovados" ficava preso em 0. Saíram o filtro, a coluna, o
+  campo do modal e os KPIs "Pendentes"/"Aprovados".
+  No lugar da coluna entrou **Motivo**, que antes só aparecia abrindo o
+  registro; e os KPIs passaram a ser total, hoje, tabela mais alterada e
+  usuário mais ativo. A coluna `aprovado` continua no banco, sem uso — se um
+  dia houver um fluxo de revisão de verdade, ela está lá.
+
+### Painel do PC/professor — chat e tempo real
+
+- **Nada era "ao vivo" com o modal fechado.** O único canal realtime da tela
+  era criado ao ABRIR um chamado e destruído ao fechar; fora disso a lista
+  "Meus Chamados" e o contador de não lidas dependiam só do poll de 30s. Daí
+  os dois sintomas: resposta do T.I. sem aviso nenhum, e chamado resolvido
+  continuando "Em andamento" por até meio minuto. Agora existe
+  `_iniciarRealtimePC()`, um canal que vive a página inteira e espelha o
+  `tickets-realtime` do painel T.I. — escuta `realtime_sinal` e re-busca pelo
+  REST, sem trafegar conteúdo pelo WebSocket.
+- O canal do modal deixou de tratar mudança de status: os dois reagiam ao
+  mesmo sinal e o resultado era `carregarChamados()` em dobro e som duplicado.
+- Com o modal aberto, encerrar o chamado pelo T.I. agora atualiza o cabeçalho
+  e desabilita o chat na hora (`_atualizarCabecalhoModal`, extraída de
+  `_abrirModal`).
+
+### Painel do PC/professor — imagens e câmera
+
+- **Todo upload de imagem falhava com 403.** O `_uploadImg` mandava
+  `x-upsert: true`, e o upsert do Storage lê a linha antiga em
+  `storage.objects` antes de gravar — o bucket `chat-prints` só tem policy de
+  `INSERT`, então a leitura era negada e a resposta era
+  `new row violates row-level security policy`. O header foi removido (não
+  servia para nada: o nome do arquivo já leva `Date.now()` + sufixo
+  aleatório). Mesma correção em `painel-ti.js`. O erro do Storage agora chega
+  ao usuário em vez de virar "Upload falhou".
+- **A câmera estava desligada no `netlify.toml`.** O header
+  `Permissions-Policy: camera=()` faz o navegador negar `getUserMedia` antes
+  mesmo de perguntar ao usuário — e o defeito só aparecia em produção, porque
+  em localhost não há Permissions-Policy. Passou a `camera=(self)`; microfone
+  e geolocalização seguem bloqueados.
+- **Tirar a foto não fazia nada.** `capturarFoto()` chamava
+  `window.previewImagens()`, que não existe em lugar nenhum, sobre um input
+  `#img-input` que também não existe (o do HTML é `#file-input-chat`). A foto
+  agora entra pelo mesmo caminho de uma imagem escolhida no seletor de
+  arquivos. Também há guarda para captura antes do primeiro quadro e mensagens
+  de erro por motivo (permissão negada, sem câmera, câmera em uso).
+
+### Modal de avaliação (painel do PC)
+
+- **O texto era ilegível no tema claro.** O card usava `--card-bg`,
+  `--glass-b`, `--input-bg` e `--muted`, que **nenhum** dos CSS carregados por
+  `painel-pc.html` define — são variáveis do painel-ti e do painel-logs. Todas
+  caíam no valor de fallback, todos escuros; mas `--text` existe ali e vale
+  `#2a2a2a` no tema claro. Resultado: card preto com texto quase preto. Agora
+  usa os tokens do próprio painel (`--gray-card`, `--gray-border`,
+  `--gray-input`, `--text-muted`), que têm valor nos dois temas.
+
+### Sessões: duração fantasma e inatividade por tipo de máquina
+
+- **Sessão fechada sem logout continuava "ao vivo", com o cronômetro subindo.**
+  O `beforeunload` + `sendBeacon` que deveria chamar `rpc_sessao_encerrar` não
+  é garantido — o navegador descarta a aba, mata o processo ou a máquina é
+  desligada no fim da aula, e o beacon nunca sai. O mecanismo de reserva
+  (`rpc_limpar_sessoes_mortas`, que apaga quem não dá ping há 5 min) existia,
+  mas era chamado de **um lugar só**: ao abrir o painel de logs. Com o painel
+  já aberto e mais ninguém online, nada rodava a limpeza, e a coluna DURAÇÃO
+  da aba Acessos contava indefinidamente — ela conta no cliente a partir do
+  horário do login e não tem como saber que a sessão acabou.
+  Medido: uma sessão parada há 7min29 (limiar 5 min) ainda estava na tabela, e
+  o painel exibia 9min46 e subindo.
+  - **Frontend:** o painel de logs passa a varrer as sessões a cada 60s
+    (`_iniciarPollSessoes`), pausando com a aba em segundo plano e revarrendo
+    ao voltar para ela.
+  - **Banco:** `supabase/migrations/20260902120000_sessao_ping_poda_sessoes_mortas.sql`
+    faz o próprio `rpc_sessao_ping` chamar a limpeza. Como o ping roda a cada
+    30s em toda aba aberta, basta uma pessoa online em qualquer painel para a
+    tabela se manter limpa — mesmo padrão que `fn_emitir_sinal_realtime` já usa
+    para podar `realtime_sinal`. **Ainda não aplicada no banco.**
+
+- **O logout por inatividade agora depende da máquina, não do papel.** O
+  `session-guard.js` (aviso + logout automático) já existia e cobria as três
+  telas com 30 min fixos. Os tempos passaram a ser configuráveis
+  (`timeoutMs` / `avisoMs`), e o **painel do PC/professor caiu para 10 min,
+  com aviso aos 8** — aquelas telas rodam nas máquinas do laboratório, que são
+  públicas e trocam de usuário ao longo do dia, então sessão esquecida aberta
+  fica à disposição do próximo que sentar. Painel T.I. e painel de logs
+  mantêm 30 min: a máquina é de uso pessoal e deslogar alguém no meio do turno
+  atrapalha mais do que protege.
+  O countdown do banner passou a derivar de `avisoMs` — era fixo em `2:00`, e
+  com janelas diferentes por painel mostraria um número que não bate com o
+  logout de verdade.
+
+- **Nota:** o aviso "você está aí?" **não resolve aba fechada** — sem JS
+  rodando não há timer para disparar. Os dois problemas são independentes: o
+  guard cobre "aba aberta e parada"; o heartbeat + poda cobre "aba fechada".
+
+### Storage de prints: quem apaga, e um endpoint que estava aberto
+
+- **🔴 `fn-limpar-dados` aceitava chamada de qualquer um.** A Edge Function que
+  o painel T.I. usa na aba Manutenção subiu com `verify_jwt: false` e sem
+  nenhuma verificação no corpo. Ela roda com a `SERVICE_ROLE_KEY`, que ignora a
+  RLS inteira — então um `curl` sem apikey, sem Authorization e sem token
+  respondia `200`, e com `apenas_preview: false` apagaria todos os chamados
+  encerrados, mensagens e imagens do projeto, de qualquer lugar da internet.
+  Confirmado com chamada real (só no modo preview, que não apaga nada).
+  Agora exige `X-Sessao-Token` de sessão **de T.I.** válida, checada contra
+  `sessao_token` — mesma regra de `fn_sessao_do_token()` mais a exigência do
+  papel. Sem token → 401, token forjado → 401, token de PC/professor → 403.
+  Registrada como **L10** em `docs/regras-de-acesso.md`, com a nota de que a
+  auditoria anterior não a tinha encontrado.
+  `verify_jwt` segue `false` de propósito: o projeto não usa Supabase Auth,
+  não existe JWT de usuário.
+
+- **Prints órfãos não tinham como ser apagados.** A limpeza por período só
+  alcança a imagem enquanto a linha em `mensagem` existe; quando o chamado é
+  apagado, o arquivo fica no bucket sem nada apontando para ele e nenhuma
+  rotina do sistema volta a vê-lo. A anon key também não tem `DELETE` no
+  storage, então não havia caminho nenhum por dentro do sistema.
+  Medido: **32 arquivos, 11 MB, 100% órfãos** — e a limpeza "Todos" reportava
+  `imagens_count: 0`.
+  Nova ação `acao: 'orfaos'` na Edge Function e nova seção **"Prints órfãos no
+  storage"** na aba Manutenção, com preview (órfãos / MB / em uso / total)
+  antes de confirmar, no mesmo padrão da limpeza que já existia.
+  - Arquivo enviado há menos de **1 hora nunca é apagado**: o cliente sobe a
+    imagem e só depois insere a linha em `mensagem`, então sem essa carência
+    uma limpeza no momento errado apagaria o print em pleno envio.
+  - O preview conta `referenciados` e `recentes_protegidos` separado. Juntar os
+    dois num "em uso" fazia o painel dizer "1 em uso" num bucket onde nenhuma
+    mensagem tem imagem.
+
+- **As Edge Functions não estavam no repositório.** `supabase/functions/` só
+  tinha `groq-proxy`; `fn-limpar-dados` e `fn-enviar-otp` existiam só na nuvem
+  — foi por isso que a falha acima passou despercebida na auditoria.
+  `fn-limpar-dados` agora está versionada. Registrado como **L11**.
+
+- Corrigido de quebra: o cálculo de MB liberados na limpeza por período usava
+  `storage.list()` sem paginação e só enxergava os 100 primeiros arquivos, então
+  reportava menos espaço do que realmente liberava assim que o bucket passasse
+  de 100 objetos.
+
+- **🔴 `fn-enviar-otp` era uma função morta publicada com service_role.** O 2FA
+  foi removido do projeto em agosto/2026 — a tabela `otp_ti` e as RPCs
+  `rpc_gerar_otp_ti`/`rpc_verificar_otp_ti` não existem mais (confirmado no
+  banco). **A Edge Function não saiu junto:** ficou sete meses no ar, chamável
+  sem autenticação, montando cliente com a `SERVICE_ROLE_KEY`. Não havia dano
+  possível — sem a RPC ela morria com `500` —, mas devolvia o erro cru do
+  PostgREST, vazando nomes internos do schema.
+  Republicada como **stub que responde 410** e não importa nada do Supabase.
+  Registrada como **L12**. Falta deletar a função de vez pelo painel.
+
+- **Heartbeat de sessão passou a podar sessões mortas** (migration
+  `20260902120000`, **aplicada no banco**). `rpc_sessao_ping` agora chama
+  `rpc_limpar_sessoes_mortas`. Verificado: com uma sessão parada há 30 min na
+  tabela, um único ping de outra sessão a removeu.
+
+- **Pendências:**
+  - Os 31 prints órfãos continuam no bucket — o botão está pronto, apagar é
+    decisão de quem opera.
+  - `fn-enviar-otp` precisa ser **deletada** pelo painel do Supabase (o stub só
+    a torna inofensiva).
+  - **Trocar a chave da Groq** — ver abaixo.
+
+### Ordem do login invertida, e a groq-proxy fechada (L7)
+
+- **Qualquer pessoa consumia a cota da Groq do projeto** só abrindo a tela de
+  login e digitando um nome: `validarNome` chamava a IA **antes** de conferir
+  qualquer credencial, e a `groq-proxy` aceitava só a anon key (que é pública).
+  A correção óbvia — exigir token — quebraria o login, porque naquele ponto o
+  token ainda não existe. Limite por IP também não servia: **num laboratório a
+  sala inteira sai pelo mesmo IP público**, então o limite seria compartilhado e
+  a turma travaria no começo da aula.
+  A ordem foi invertida: `_autenticar()` confere a senha primeiro, o nome é
+  validado depois, já com o token emitido. Aí a `groq-proxy` passou a exigir
+  sessão viva em todas as chamadas.
+  Testado no navegador, com usuário real criado e removido em seguida:
+
+  | caso | chamadas à Groq | resultado |
+  |---|---|---|
+  | senha errada | **0** | "Usuário ou senha incorretos", sem sessão |
+  | senha certa + nome real | 1 | entra e vai para o painel |
+  | senha certa + nome falso | 1 | recusa, sem sessão, botão volta a "Entrar" |
+
+  Efeito colateral aceito: nome falso **e** senha errada agora dá "usuário ou
+  senha incorretos". É melhor — o sistema para de comentar o nome de quem nem
+  provou ter conta.
+
+- A validação usa a nova RPC `rpc_sessao_valida` (migration `20260902130000`,
+  **aplicada**), que devolve só o papel do dono do token. A `groq-proxy`
+  deliberadamente **não** recebeu a `SERVICE_ROLE_KEY`: ela recebe texto
+  arbitrário do usuário e repassa a um terceiro, é o último lugar onde se quer
+  a chave mestra.
+
+- **🔴 A chave da Groq estava embutida no código da função publicada.** A v3
+  trazia um `GROQ_KEY_FALLBACK` em texto puro, e ele era a única fonte da
+  chave: descobri ao publicar a versão limpa e ver toda chamada responder
+  `500 GROQ_KEY nao configurada` — **o secret nunca foi configurado**.
+  A chave nunca foi commitada (conferido em todo o histórico do git) e não vai
+  para o navegador, então não houve vazamento público. Registrada como **L13**.
+  **Resolvido no mesmo dia:** o secret `GROQ_KEY` foi configurado e a versão
+  limpa do repositório publicada (v7) — sem fallback, secret como única fonte.
+  Conferido no código publicado: não há mais chave nenhuma, e repositório e
+  nuvem voltaram a bater. Se o secret sumir, a função passa a responder
+  `500 GROQ_KEY nao configurada` em vez de esconder o problema num fallback.
+
+- **Pendência do operador:** se a chave cadastrada como secret for nova,
+  **revogar a antiga** no painel da Groq.
+
+### Termos de uso e política de privacidade
+
+- **"Voltar ao login" mandava para o login mesmo quem já estava logado**, que
+  perdia o caminho de volta. As páginas são linkadas do rodapé dos três
+  painéis, não só do login. Com sessão ativa o link passa a apontar para o
+  painel de quem está logado — "Voltar aos meus chamados" para aluno e
+  professor, "Voltar ao painel" para o T.I. Sem sessão, continua indo para o
+  login.
+
 ## 2026-08-29 — Conformidade: UML, regras de acesso, políticas e reportar problema
 
 Leva de documentação e conformidade prevista em

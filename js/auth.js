@@ -105,7 +105,16 @@ function _rlIniciarBloqueio() {
 }
 
 // ── VALIDAÇÃO DE NOME VIA GROQ ──
-async function validarNome(nome) {
+// Recebe o token de sessão porque a groq-proxy passou a exigir sessão (L7):
+// antes ela era aberta, e QUALQUER pessoa consumia a cota da Groq do projeto
+// só abrindo a tela de login e digitando um nome — sem ter conta.
+//
+// O token é passado explicitamente em vez de vir do interceptor de
+// sessao-header.js porque, no ponto em que esta função roda, a sessão AINDA
+// NÃO foi gravada no sessionStorage (só é gravada depois que o nome passa).
+// O interceptor não encontra token e devolve a requisição intacta, então o
+// header explícito sobrevive.
+async function validarNome(nome, token) {
   console.log('[validarNome] Iniciando validação para:', nome);
   try {
     const url = `${SUPABASE_URL}/functions/v1/groq-proxy`;
@@ -130,7 +139,11 @@ async function validarNome(nome) {
     console.log('[validarNome] URL:', url);
     console.log('[validarNome] Payload:', payload);
 
-    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { ...headers, 'X-Sessao-Token': token || '' },
+      body: JSON.stringify(payload)
+    });
     console.log('[validarNome] HTTP Status:', resp.status);
 
     if (!resp.ok) {
@@ -163,6 +176,36 @@ async function validarNome(nome) {
   }
 }
 
+// ── AUTENTICAÇÃO ──
+// Tenta os três tipos de conta, na ordem, e para no primeiro que casar.
+// Extraída de `entrar` quando a ordem do login foi invertida: agora a senha é
+// conferida ANTES da validação do nome, e o resultado precisa ser devolvido
+// para quem coordena as duas etapas.
+async function _autenticar(usuario, senha) {
+  const resTI = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_ti`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ p_login: usuario, p_senha: senha })
+  });
+  const tiList = await resTI.json();
+  if (Array.isArray(tiList) && tiList.length > 0) return { tipo: 'ti', d: tiList[0] };
+
+  const resPC = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_pc`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ p_tag: usuario.toUpperCase(), p_senha: senha })
+  });
+  const pcList = await resPC.json();
+  if (Array.isArray(pcList) && pcList.length > 0) return { tipo: 'pc', d: pcList[0] };
+
+  const resProf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_professor`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ p_login: usuario, p_senha: senha })
+  });
+  const profList = await resProf.json();
+  if (Array.isArray(profList) && profList.length > 0) return { tipo: 'professor', d: profList[0] };
+
+  return null;
+}
+
 // ── LOGIN PRINCIPAL ──
 window.entrar = async function () {
   const nome    = document.getElementById('nome').value.trim();
@@ -187,31 +230,55 @@ window.entrar = async function () {
   }
 
   btn.classList.add('loading');
-  btn.querySelector('span').textContent = 'Verificando nome…';
-
-  const nomeValido = await validarNome(nome);
-  if (!nomeValido) {
-    btn.classList.remove('loading');
-    btn.querySelector('span').textContent = 'Entrar';
-    mostrarErro('Informe seu nome real para continuar.');
-    document.getElementById('nome').focus();
-    return;
-  }
-
   btn.querySelector('span').textContent = 'Entrando…';
 
   try {
-    // 1. Tenta login como T.I via RPC segura
-    const resTI = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_ti`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_login: usuario, p_senha: senha })
-    });
-    const tiList = await resTI.json();
+    // ── ORDEM: SENHA PRIMEIRO, NOME DEPOIS ──────────────────────────────
+    // Era o contrário: o nome ia para a Groq ANTES de qualquer credencial ser
+    // conferida. Como a groq-proxy também não exigia sessão (L7), qualquer
+    // pessoa gastava a cota da Groq do projeto só abrindo a tela de login e
+    // digitando um nome — sem ter conta, sem acertar senha nenhuma.
+    //
+    // Conferindo a senha primeiro, a chamada à Groq só acontece para quem já
+    // provou ser dono de uma conta, e nesse ponto existe um token de sessão
+    // para mandar junto. Foi isso que permitiu fechar a groq-proxy sem
+    // quebrar o login (limitar por IP não servia: num laboratório todas as
+    // máquinas saem pelo mesmo IP público, e a sala inteira estouraria a cota
+    // no começo da aula).
+    //
+    // Efeito colateral aceito: com nome falso E senha errada, o erro agora é
+    // "usuário ou senha incorretos" em vez de "informe seu nome real". É
+    // melhor assim — o sistema para de comentar o nome de quem nem provou ter
+    // conta.
+    const conta = await _autenticar(usuario, senha);
 
-    if (Array.isArray(tiList) && tiList.length > 0) {
-      _rlResetar();
-      const ti = tiList[0];
+    if (!conta) {
+      await logger.logLoginFalho(usuario, 'usuario ou senha incorretos');
+      _rlRegistrarFalha();
+      mostrarErro('Usuário ou senha incorretos.');
+      return;
+    }
+
+    _rlResetar();
+
+    // Nome só agora, já com o token em mãos.
+    btn.querySelector('span').textContent = 'Verificando nome…';
+    const nomeValido = await validarNome(nome, conta.d.token);
+    if (!nomeValido) {
+      // O token emitido aqui fica órfão em sessao_token até expirar (12h).
+      // Não é problema: quem chegou até aqui provou a senha, e fn_emitir_token
+      // poda os expirados a cada novo login. O que importa é que a sessão NÃO
+      // é gravada no navegador — sem isso, nenhuma tela abre.
+      mostrarErro('Informe seu nome real para continuar.');
+      document.getElementById('nome').focus();
+      return;
+    }
+
+    btn.querySelector('span').textContent = 'Entrando…';
+
+    // ── 1. T.I. ──
+    if (conta.tipo === 'ti') {
+      const ti = conta.d;
       if (ti.is_professor && ti.professor_id) {
         btn.classList.remove('loading');
         _pendingTI = { ti, nome };
@@ -236,17 +303,9 @@ window.entrar = async function () {
       return;
     }
 
-    // 2. Tenta login como PC via RPC segura
-    const resPC = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_pc`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_tag: usuario.toUpperCase(), p_senha: senha })
-    });
-    const pcList = await resPC.json();
-
-    if (Array.isArray(pcList) && pcList.length > 0) {
-      _rlResetar();
-      const pc = pcList[0];
+    // ── 2. PC ──
+    if (conta.tipo === 'pc') {
+      const pc = conta.d;
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'pc',
         id: pc.id,
@@ -263,17 +322,9 @@ window.entrar = async function () {
       return;
     }
 
-    // 3. Tenta login como Professor
-    const resProf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_professor`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_login: usuario, p_senha: senha })
-    });
-    const profList = await resProf.json();
-
-    if (Array.isArray(profList) && profList.length > 0) {
-      _rlResetar();
-      const prof = profList[0];
+    // ── 3. Professor ──
+    if (conta.tipo === 'professor') {
+      const prof = conta.d;
       sessionStorage.setItem('dsos_session', JSON.stringify({
         tipo: 'professor',
         id: prof.id,
@@ -287,11 +338,6 @@ window.entrar = async function () {
       window.location.href = 'painel-pc.html';
       return;
     }
-
-    // Nenhum tipo de usuário encontrado — log de falha
-    await logger.logLoginFalho(usuario, 'usuario ou senha incorretos');
-    _rlRegistrarFalha();
-    mostrarErro('Usuário ou senha incorretos.');
 
   } catch (e) {
     await logger.logLoginFalho(usuario, `erro de conexão: ${e.message}`);

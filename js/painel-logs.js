@@ -38,6 +38,39 @@ async function _carregarSessoesAtivas() {
 function _sessaoEstaAtiva(usuarioId, usuarioTipo) {
   return _sessoesAtivas.has(`${usuarioId}:${usuarioTipo}`);
 }
+
+// Quem apaga uma sessão morta é rpc_limpar_sessoes_mortas (dentro de
+// _carregarSessoesAtivas), e ela só era chamada em dois momentos: ao abrir o
+// painel, e quando OUTRA sessão dava ping (o realtime de sessao_ativa reage a
+// INSERT/UPDATE, e sessão morta não gera nem um nem outro — justamente por
+// estar morta). Ou seja: com o painel aberto e mais ninguém online, uma aba
+// que foi fechada sem logout continuava marcada "ao vivo" e o cronômetro da
+// coluna DURAÇÃO subindo indefinidamente, porque _iniciarTimerDuracao conta
+// no cliente a partir do horário do login e não sabe que a sessão acabou.
+//
+// O beforeunload/sendBeacon que deveria encerrar a sessão na hora não é
+// garantido — o navegador descarta a aba, mata o processo ou perde a conexão
+// e o beacon nunca sai. Por isso a fonte da verdade é o heartbeat: sem ping
+// há mais de 5 min, a sessão morreu. Este poll é o que faz essa verdade
+// chegar à tela sozinha.
+const SESSOES_POLL_MS = 60 * 1000;
+let _pollSessoes = null;
+function _iniciarPollSessoes() {
+  clearInterval(_pollSessoes);
+  _pollSessoes = setInterval(async () => {
+    if (document.hidden) return;   // aba em segundo plano não precisa varrer
+    await _carregarSessoesAtivas();
+    _atualizarCellsSessao();
+  }, SESSOES_POLL_MS);
+
+  // Ao voltar para a aba, não esperar o próximo tick: quem estava com o painel
+  // em segundo plano volta com a tela já certa.
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) return;
+    await _carregarSessoesAtivas();
+    _atualizarCellsSessao();
+  });
+}
 function _atualizarCellsSessao() {
   // BUG-12: o pareamento linha-do-DOM ⇄ sessão usava só usuario_id:usuario_tipo,
   // sem vínculo com a linha específica de acesso_log. Quando a mesma conta
@@ -93,34 +126,51 @@ const TAB_META = {
 // ── filtros disponíveis por aba ──
 const TAB_FILTERS = {
   'auditoria': [
-    { id: 'auditoria-dataStart', param: 'executado_em', op: 'gte', suffix: '' },
-    { id: 'auditoria-dataEnd',   param: 'executado_em', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'auditoria-dataStart', param: 'executado_em', op: 'gte' },
+    { id: 'auditoria-dataEnd',   param: 'executado_em', op: 'lte' },
     { id: 'auditoria-login',     param: 'login',        op: 'ilike' },
   ],
   'audit-log': [
-    { id: 'audit-log-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
-    { id: 'audit-log-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'audit-log-dataStart', param: 'timestamp', op: 'gte' },
+    { id: 'audit-log-dataEnd',   param: 'timestamp', op: 'lte' },
     { id: 'audit-log-tipo',      param: 'tipo_acao',      op: 'eq'    },
     { id: 'audit-log-tabela',    param: 'tabela_afetada', op: 'ilike' },
     { id: 'audit-log-status',    param: 'status',         op: 'eq'    },
   ],
   'atividades': [
-    { id: 'atividades-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
-    { id: 'atividades-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
-    { id: 'atividades-modulo',    param: 'modulo',  op: 'eq'  },
-    { id: 'atividades-impacto',   param: 'impacto', op: 'eq'  },
+    { id: 'atividades-dataStart', param: 'timestamp', op: 'gte' },
+    { id: 'atividades-dataEnd',   param: 'timestamp', op: 'lte' },
+    { id: 'atividades-modulo',    param: 'modulo',  op: 'ieq' },
+    { id: 'atividades-impacto',   param: 'impacto', op: 'ieq' },
   ],
   'acessos': [
-    { id: 'acessos-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
-    { id: 'acessos-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'acessos-dataStart', param: 'timestamp', op: 'gte' },
+    { id: 'acessos-dataEnd',   param: 'timestamp', op: 'lte' },
     { id: 'acessos-status',    param: 'status_login',  op: 'eq'    },
     { id: 'acessos-usuario',   param: 'usuario_login', op: 'ilike' },
   ],
   'criticas': [
-    { id: 'criticas-dataStart', param: 'timestamp', op: 'gte', suffix: '' },
-    { id: 'criticas-dataEnd',   param: 'timestamp', op: 'lte', suffix: 'T23:59:59' },
+    { id: 'criticas-dataStart', param: 'timestamp', op: 'gte' },
+    { id: 'criticas-dataEnd',   param: 'timestamp', op: 'lte' },
     { id: 'criticas-tabela',    param: 'tabela',   op: 'ilike' },
-    { id: 'criticas-aprovado',  param: 'aprovado', op: 'eq'   },
+  ],
+};
+
+// ── selects cujas opções vêm do próprio banco ──
+// Os valores de 'modulo' e 'impacto' são gravados pelo código que registra a
+// atividade (painel-ti/painel-pc), não por um enum do banco — e as opções
+// fixas no HTML ("Tickets/PCs/Usuários", "Baixo/Médio/Alto") nunca bateram com
+// o que está lá dentro: a coluna 'modulo' guarda "Chat", "Usuários",
+// "Computadores", "Professores", "mensagens", "usuarios_ti"…, e 'impacto' não
+// guarda um NÍVEL de impacto e sim o TIPO do evento ("novo_comentario",
+// "alteracao_status", "pc_deletado"…). Filtrar por qualquer opção do HTML
+// devolvia zero linha, e o KPI "Alto impacto" ficava preso em 0.
+// Em vez de fixar outra lista que envelhece do mesmo jeito, as opções passam a
+// ser lidas do próprio banco na primeira vez que a aba abre.
+const TAB_SELECTS_DINAMICOS = {
+  'atividades': [
+    { id: 'atividades-modulo',  coluna: 'modulo'  },
+    { id: 'atividades-impacto', coluna: 'impacto' },
   ],
 };
 
@@ -149,6 +199,8 @@ const STATE = {
   kpiSig:    {},
   // contador por aba para descartar respostas fora de ordem (BUG-10)
   seq:       {},
+  // abas cujos selects dinâmicos já foram preenchidos (uma vez por sessão)
+  selectsProntos: {},
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -160,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!_session || _session.tipo !== 'ti') { window.location.href = 'login.html'; return; }
 
   // Logout automático por inatividade (30min, aviso aos 28min)
+  // Sem timeoutMs: padrão de 30 min (máquina do T.I., de uso pessoal).
   initSessionGuard({ onLogout: sair });
   initReportarProblema();   // botao flutuante de reportar problema
 
@@ -181,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Limpar sessões mortas e carregar sessões ativas
   _carregarSessoesAtivas();
+  _iniciarPollSessoes();
 
   // Ctrl+K abre busca global
   document.addEventListener('keydown', e => {
@@ -338,6 +392,67 @@ function registrarFiltros() {
   });
 }
 
+// Preenche os <select> de TAB_SELECTS_DINAMICOS com os valores distintos que
+// existem de verdade na tabela. Roda uma vez por aba, sem filtro nenhum, para
+// a lista de opções não encolher conforme o usuário filtra. Falha em silêncio:
+// se a consulta não voltar, o select fica só com "Todos" — melhor um filtro a
+// menos do que a aba inteira sem carregar.
+async function popularSelectsDinamicos(aba) {
+  const defs = TAB_SELECTS_DINAMICOS[aba];
+  if (!defs || STATE.selectsProntos[aba]) return;
+  STATE.selectsProntos[aba] = true;
+
+  const meta = TAB_META[aba];
+  const colunas = defs.map(d => d.coluna).join(',');
+
+  try {
+    const res = await fetch(
+      `${CFG.SB_URL}/rest/v1/${meta.table}?select=${colunas}&limit=10000`,
+      { headers: headers() }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const linhas = await res.json();
+    if (!Array.isArray(linhas)) return;
+
+    defs.forEach(({ id, coluna }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      // Agrupa as grafias do mesmo valor ("Tickets" e "tickets" viram uma
+      // opção só) e fica com a mais usada como rótulo — duas entradas
+      // visualmente idênticas na lista não ajudariam ninguém a escolher. O
+      // filtro casa com as duas porque o operador é 'ieq'.
+      const contagem = new Map();
+      linhas.forEach(l => {
+        const v = l[coluna];
+        if (!v) return;
+        const chave = String(v).toLowerCase();
+        const atual = contagem.get(chave) || new Map();
+        atual.set(v, (atual.get(v) || 0) + 1);
+        contagem.set(chave, atual);
+      });
+      const valores = [...contagem.values()]
+        .map(grafias => [...grafias.entries()].sort((a, b) => b[1] - a[1])[0][0])
+        .sort((a, b) => String(a).localeCompare(String(b), 'pt-BR'));
+      const selecionado = el.value;   // preserva o que o usuário já escolheu
+      el.innerHTML = '<option value="">Todos</option>'
+        + valores.map(v => `<option value="${e(v)}">${e(rotuloValor(v))}</option>`).join('');
+      if (valores.includes(selecionado)) el.value = selecionado;
+    });
+  } catch (err) {
+    // STATE.selectsProntos continua true de propósito: se a tabela não
+    // responde, tentar de novo a cada troca de aba só empilharia requisições
+    // que vão falhar igual. Um F5 refaz a tentativa.
+    console.error(`[painel-logs] não foi possível montar os filtros de ${aba}:`, err);
+  }
+}
+
+// 'novo_comentario' → 'Novo comentario'. Os valores são slugs gravados pelo
+// código; mostrá-los crus num <select> de filtro é ilegível para quem usa.
+function rotuloValor(v) {
+  const s = String(v).replace(/_/g, ' ').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function limparFiltros(aba) {
   const filtros = TAB_FILTERS[aba] || [];
   filtros.forEach(f => {
@@ -363,6 +478,23 @@ function fmtDataLocal(d) {
   return `${ano}-${mes}-${dia}`;
 }
 
+// Converte o dia local escolhido num <input type="date"> para o instante em
+// que esse dia COMEÇA (gte) ou TERMINA (lte) no fuso do usuário, em UTC — que
+// é o formato que o PostgREST compara sem ambiguidade com uma coluna
+// timestamptz. 'gte' vira a meia-noite local; 'lte', 23:59:59.999 local.
+// Se o valor não for uma data no formato esperado, devolve o próprio valor —
+// assim um filtro inesperado degrada para o comportamento antigo em vez de
+// virar "Invalid Date" e derrubar a consulta inteira.
+function limiteDoDiaLocal(valor, op) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (!m) return valor;
+  const [, ano, mes, dia] = m;
+  const d = op === 'lte'
+    ? new Date(+ano, +mes - 1, +dia, 23, 59, 59, 999)
+    : new Date(+ano, +mes - 1, +dia, 0, 0, 0, 0);
+  return isNaN(d) ? valor : d.toISOString();
+}
+
 // Converte um timestamp vindo do banco (o PostgREST devolve em UTC) para o
 // dia LOCAL a que ele pertence. Necessário para agrupar por dia: comparar
 // com `t.aberto_em.startsWith('2026-08-23')` agrupa pelo dia UTC, então um
@@ -374,25 +506,34 @@ function diaLocalDe(ts) {
 }
 
 // ── atalhos de data rápida ──
+// Os atalhos preenchem os DOIS campos <input type="date"> da aba, e por isso só
+// conseguem expressar intervalos de dias inteiros. O botão antigo "24h" era uma
+// promessa que a tela não podia cumprir: ele escrevia a data de ontem no campo
+// "De", o que dá uma janela de 24h a 48h dependendo da hora do clique (a nota
+// do BUG-09 dizia que virara "24h móveis", mas fmtDataLocal descarta a hora e o
+// arredondamento continuou lá). Foi substituído por "7 dias"; e "Semana", que
+// voltava 7 dias a partir de hoje e portanto pegava 8 dias, virou o intervalo
+// exato de 7 dias contando o de hoje.
+//
+// dias: quantos dias a janela cobre, INCLUINDO hoje (1 = só hoje).
+const QUICK_RANGES = {
+  'today': 1,
+  '7d':    7,
+  '30d':   30,
+  // nomes antigos, mantidos para não quebrar um onclick que tenha escapado
+  '24h':   7,
+  'week':  7,
+};
+
 function setDateRange(aba, range) {
   const hoje = new Date();
   const fmt = fmtDataLocal;
 
-  let start, end = fmt(hoje);
+  const dias = QUICK_RANGES[range] || 1;
+  const inicio = new Date(hoje);
+  inicio.setDate(inicio.getDate() - (dias - 1));
 
-  if (range === 'today') {
-    start = fmt(hoje);
-  } else if (range === '24h') {
-    // Antes subtraía um dia de calendário e arredondava para a meia-noite
-    // daquele dia (sem componente de hora), então a janela real variava
-    // entre ~24h e ~48h conforme a hora do clique. Agora é exatamente 24h
-    // móveis (BUG-09).
-    const d = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    start = fmt(d);
-  } else if (range === 'week') {
-    const d = new Date(hoje); d.setDate(d.getDate() - 7);
-    start = fmt(d);
-  }
+  const start = fmt(inicio), end = fmt(hoje);
 
   const startEl = document.getElementById(`${aba}-dataStart`);
   const endEl   = document.getElementById(`${aba}-dataEnd`);
@@ -455,13 +596,24 @@ function buildUrl(aba, opts = {}) {
     let val = el.value.trim();
     if (!val) return;
 
-    if (f.param === 'aprovado') {
-      url += `&aprovado=eq.${val === 'true'}`;
+    // Datas: o <input type="date"> devolve o DIA LOCAL ('2026-09-02'), mas as
+    // colunas são timestamptz e o banco roda em UTC — mandar a string crua faz
+    // o Postgres lê-la como 00:00 UTC, que no Brasil (UTC-3) é 21h do dia
+    // ANTERIOR. Na prática toda janela saía deslocada em 3h: "Hoje" trazia as
+    // linhas das 21h de ontem em diante e cortava as de hoje depois das 21h.
+    // (O BUG-08 acertou só qual dia é "hoje" no navegador; a conversão do dia
+    // para instante continuava faltando — este é o outro lado do mesmo bug.)
+    if (f.op === 'gte' || f.op === 'lte') {
+      url += `&${f.param}=${f.op}.${encodeURIComponent(limiteDoDiaLocal(val, f.op))}`;
       return;
     }
-    if (f.op === 'gte') { url += `&${f.param}=gte.${val}${f.suffix || ''}`; return; }
-    if (f.op === 'lte') { url += `&${f.param}=lte.${val}${f.suffix || ''}`; return; }
     if (f.op === 'ilike') { url += `&${f.param}=ilike.%25${encodeURIComponent(val)}%25`; return; }
+    // 'ieq': valor exato, ignorando maiúsculas/minúsculas. Existe porque
+    // 'modulo' e 'impacto' são strings livres gravadas pelo código, e o mesmo
+    // módulo aparece com grafias diferentes ("Tickets" em 62 linhas,
+    // "tickets" em 3). Com 'eq', escolher uma grafia escondia as linhas da
+    // outra. O ilike sem % compara o valor inteiro, não um trecho.
+    if (f.op === 'ieq')   { url += `&${f.param}=ilike.${encodeURIComponent(val)}`; return; }
     if (f.op === 'eq')    { url += `&${f.param}=eq.${encodeURIComponent(val)}`; return; }
   });
 
@@ -528,6 +680,10 @@ async function carregarDados(aba) {
   const seq = STATE.seq[aba] = (STATE.seq[aba] || 0) + 1;
 
   container.innerHTML = '<div class="loading"><div class="spinner"></div> Carregando…</div>';
+
+  // Não é await: as opções do filtro não são pré-requisito para listar as
+  // linhas, e esperar por elas atrasaria a tabela em toda troca de aba.
+  popularSelectsDinamicos(aba);
 
   try {
     const url = buildUrl(aba);
@@ -679,10 +835,16 @@ const RENDER = {
   criticas(data, el) {
     if (!data.length) { el.innerHTML = empty(); return; }
     const term = _getSearchTerm('criticas', 'criticas-tabela');
-    el.innerHTML = data.map(r => {
-      const pendente = !r.aprovado;
-      return `
-      <div class="table-row ${pendente ? 'row-critical' : ''}" style="grid-template-columns:150px 110px 90px 100px 130px 130px 80px"
+    // A coluna "Aprovado" saiu daqui: nenhuma tela do sistema jamais marcou
+    // uma alteração como aprovada (as linhas nascem com aprovado=false e nada
+    // as atualiza), então o badge dizia "⚠ Pendente" em 100% das linhas, o
+    // filtro "Aprovado: Sim" devolvia sempre zero e o KPI "Aprovados" ficava
+    // preso em 0. Esta aba é o registro do que foi alterado — não um fluxo de
+    // aprovação. A coluna 'aprovado' continua no banco, sem uso.
+    // O motivo passou a ocupar a largura que sobrou: é o que ajuda a entender
+    // a alteração, e antes só aparecia abrindo o modal.
+    el.innerHTML = data.map(r => `
+      <div class="table-row row-critical" style="grid-template-columns:150px 110px 90px 100px 130px 130px 1fr"
            onclick='abrirModal("criticas",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_login)}</span>
@@ -690,11 +852,8 @@ const RENDER = {
         <span class="cell-trunc">${e(r.campo_alterado)}</span>
         <span class="cell-trunc cell-antes">${e(r.valor_anterior)}</span>
         <span class="cell-trunc">${e(r.valor_novo)}</span>
-        <span>${pendente
-          ? '<span class="spill sp-pendente">⚠ Pendente</span>'
-          : '<span class="spill sp-aprovado">✓ Aprovado</span>'}</span>
-      </div>`;
-    }).join('');
+        <span class="cell-trunc" title="${e(r.motivo)}">${r.motivo ? e(r.motivo) : '<span style="color:var(--muted2)">—</span>'}</span>
+      </div>`).join('');
   },
 
 };
@@ -765,18 +924,22 @@ const RENDER_KPI = {
     const el = document.getElementById('atividades-kpis');
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
-    const byMod = {}; const byImp = {};
+    const byMod = {}; const byEvt = {};
     data.forEach(d => {
       if (d.modulo)  byMod[d.modulo]  = (byMod[d.modulo]||0)+1;
-      if (d.impacto) byImp[d.impacto] = (byImp[d.impacto]||0)+1;
+      if (d.impacto) byEvt[d.impacto] = (byEvt[d.impacto]||0)+1;
     });
-    const top  = Object.entries(byMod).sort((a,b)=>b[1]-a[1])[0];
-    const alto = byImp['alto'] || 0;
+    const topMod = Object.entries(byMod).sort((a,b)=>b[1]-a[1])[0];
+    // Era `byImp['alto']`, um valor que a coluna 'impacto' nunca recebe (ela
+    // guarda o TIPO do evento, não um nível), então o cartão mostrava 0
+    // permanentemente. Agora mostra o evento mais frequente do período — que é
+    // a informação que o cartão tentava dar.
+    const topEvt = Object.entries(byEvt).sort((a,b)=>b[1]-a[1])[0];
 
     el.innerHTML = `
       ${kpiCard('red',    iconBar(),    data.length, 'Total atividades')}
-      ${top ? kpiCard('green', iconTarget(), top[1], top[0]) : ''}
-      ${kpiCard('yellow', iconWarn(),   alto,        'Alto impacto')}`;
+      ${topMod ? kpiCard('green',  iconTarget(), topMod[1], `Módulo: ${topMod[0]}`, true) : ''}
+      ${topEvt ? kpiCard('yellow', iconWarn(),   topEvt[1], `Evento: ${rotuloValor(topEvt[0])}`, true) : ''}`;
   },
 
   acessos(data) {
@@ -802,12 +965,25 @@ const RENDER_KPI = {
     const el = document.getElementById('criticas-kpis');
     if (!el || !data.length) { if (el) el.innerHTML = ''; return; }
 
-    const pendente = data.filter(d => !d.aprovado).length;
-    const aprovado = data.filter(d =>  d.aprovado).length;
+    // "Pendentes"/"Aprovados" foram embora junto com o fluxo de aprovação que
+    // nunca existiu (ver a nota em RENDER.criticas). No lugar, o que a aba de
+    // fato responde: quantas alterações, em que tabela e por quem.
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const nHoje = data.filter(d => new Date(d.timestamp) >= hoje).length;
+
+    const byTab = {}; const byUsr = {};
+    data.forEach(d => {
+      if (d.tabela)        byTab[d.tabela]        = (byTab[d.tabela]||0)+1;
+      if (d.usuario_login) byUsr[d.usuario_login] = (byUsr[d.usuario_login]||0)+1;
+    });
+    const topTab = Object.entries(byTab).sort((a,b)=>b[1]-a[1])[0];
+    const topUsr = Object.entries(byUsr).sort((a,b)=>b[1]-a[1])[0];
 
     el.innerHTML = `
-      ${kpiCard('red',   iconWarn(),  pendente, 'Pendentes')}
-      ${kpiCard('green', iconCheck(), aprovado, 'Aprovados')}`;
+      ${kpiCard('red',    iconWarn(),   data.length, 'Alterações críticas')}
+      ${kpiCard('yellow', iconBar(),    nHoje,       'Hoje')}
+      ${topTab ? kpiCard('green', iconTarget(), topTab[1], `Top tabela: ${topTab[0]}`, true) : ''}
+      ${topUsr ? kpiCard('green', iconUser(),   topUsr[1], `Mais ativo: ${topUsr[0]}`, true) : ''}`;
   },
 
 };
@@ -841,10 +1017,18 @@ function badgeTipo(tipo) {
   return `<span class="tipo-badge ${cls}">${e(tipo)||'—'}</span>`;
 }
 
+// A coluna 'impacto' de atividades_log guarda o TIPO do evento
+// ('novo_comentario', 'pc_deletado'…), nunca 'alto'/'médio'/'baixo' — o mapa
+// de classes por nível que ficava aqui não casava com nada e todo badge saía
+// sem cor. O nível fica implícito no evento: exclusões em vermelho, mudanças
+// de estado em amarelo, o resto neutro.
 function badgeImpacto(imp) {
-  const mp = { alto:'impacto-alto', médio:'impacto-medio', medio:'impacto-medio', baixo:'impacto-baixo' };
-  const cls = mp[imp?.toLowerCase()] || '';
-  return imp ? `<span class="impacto-badge ${cls}">${e(imp)}</span>` : '<span style="color:var(--muted2)">—</span>';
+  if (!imp) return '<span style="color:var(--muted2)">—</span>';
+  const v = String(imp).toLowerCase();
+  const cls = /deletad|remov|exclu/.test(v) ? 'impacto-alto'
+            : /altera|status|atribui/.test(v) ? 'impacto-medio'
+            : 'impacto-baixo';
+  return `<span class="impacto-badge ${cls}" title="${e(imp)}">${e(rotuloValor(imp))}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -945,8 +1129,8 @@ function abrirModal(aba, data) {
       html += mf('Data/Hora',  fmtData(data.timestamp))
              + mf('Usuário',   data.usuario_nome || data.usuario_login)
              + mf('Módulo',    data.modulo)
+             + mf('Evento',    data.impacto)
              + mf('Ação',      data.acao)
-             + mf('Impacto',   data.impacto)
              + mf('Descrição', data.descricao_amigavel, 'full');
       break;
 
@@ -967,7 +1151,6 @@ function abrirModal(aba, data) {
              + mf('Campo',         data.campo_alterado)
              + mf('Valor anterior', data.valor_anterior)
              + mf('Valor novo',    data.valor_novo)
-             + mf('Status',        data.aprovado ? '✓ Aprovado' : '⚠️ Pendente')
              + (data.motivo ? mf('Motivo', data.motivo, 'full') : '');
       break;
 
@@ -2064,9 +2247,9 @@ window.prepararEImprimir = function(){
   const COLS = {
     auditoria:  [['Data/Hora','executado_em',r=>fmtData(r.executado_em)],['Login','login',r=>r.login||'—'],['Ação','acao',r=>r.acao||'—'],['Detalhes','detalhes',r=>r.detalhes||'—']],
     'audit-log':[['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_login',r=>r.usuario_login||r.usuario_nome||'—'],['Tipo','tipo_acao',r=>r.tipo_acao||'—'],['Tabela','tabela_afetada',r=>r.tabela_afetada||'—'],['Status','status',r=>r.status||'—']],
-    atividades: [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_nome',r=>r.usuario_nome||r.usuario_login||'—'],['Módulo','modulo',r=>r.modulo||'—'],['Ação','acao',r=>r.acao||'—'],['Descrição','descricao_amigavel',r=>r.descricao_amigavel||'—'],['Impacto','impacto',r=>r.impacto||'—']],
+    atividades: [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_nome',r=>r.usuario_nome||r.usuario_login||'—'],['Módulo','modulo',r=>r.modulo||'—'],['Ação','acao',r=>r.acao||'—'],['Descrição','descricao_amigavel',r=>r.descricao_amigavel||'—'],['Evento','impacto',r=>r.impacto||'—']],
     acessos:    [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Tipo','usuario_tipo',r=>({ti:'T.I.',pc:'PC',professor:'Prof.'}[r.usuario_tipo]||r.usuario_tipo||'—')],['Login','usuario_login',r=>r.usuario_login||'—'],['Nome','usuario_nome',r=>r.usuario_nome||'—'],['Status','status_login',r=>r.status_login||'—'],['Duração','duracao_sessao',r=>r.duracao_sessao||'—']],
-    criticas:   [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_login',r=>r.usuario_login||'—'],['Tabela','tabela',r=>r.tabela||'—'],['Campo','campo_alterado',r=>r.campo_alterado||'—'],['Antes','valor_anterior',r=>r.valor_anterior||'—'],['Depois','valor_novo',r=>r.valor_novo||'—']],
+    criticas:   [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_login',r=>r.usuario_login||'—'],['Tabela','tabela',r=>r.tabela||'—'],['Campo','campo_alterado',r=>r.campo_alterado||'—'],['Antes','valor_anterior',r=>r.valor_anterior||'—'],['Depois','valor_novo',r=>r.valor_novo||'—'],['Motivo','motivo',r=>r.motivo||'—']],
     massa:      [['Data/Hora','timestamp',r=>fmtData(r.timestamp)],['Usuário','usuario_login',r=>r.usuario_login||'—'],['Operação','operacao',r=>r.operacao||'—'],['Qtd','quantidade_registros',r=>String(r.quantidade_registros??'—')],['Status','status',r=>r.status||'—']],
   };
 

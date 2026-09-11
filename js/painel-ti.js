@@ -153,6 +153,9 @@ window.addEventListener('DOMContentLoaded',async()=>{
   if(session.tipo!=='ti'){window.location.href='login.html';return}
 
   // Logout automático por inatividade (30min, aviso aos 28min)
+  // Sem timeoutMs: usa o padrão de 30 min do session-guard. Máquina do T.I. é
+  // de uso pessoal — ver a nota em painel-pc.js, que encurta para 10 min por
+  // rodar nas máquinas públicas do laboratório.
   initSessionGuard({onLogout:()=>window.sair()});
   initReportarProblema();   // botao flutuante de reportar problema
 
@@ -1050,6 +1053,11 @@ function resetAbaManutencao(){
   const prev=document.getElementById('limpeza-preview');
   if(prev)prev.innerHTML=`<div class="limpeza-preview-idle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Clique em "Ver impacto" para analisar</span></div>`;
   const btn=document.getElementById('btn-executar-limpeza');if(btn)btn.disabled=true;
+
+  _orfaosPreviewOk=false;
+  const prevO=document.getElementById('orfaos-preview');
+  if(prevO)prevO.innerHTML=`<div class="limpeza-preview-idle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Clique em "Procurar órfãos" para analisar</span></div>`;
+  const btnO=document.getElementById('btn-limpar-orfaos');if(btnO)btnO.disabled=true;
 }
 document.querySelectorAll('.limpeza-prazo-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
@@ -1065,6 +1073,99 @@ async function _parseFnResponse(res){
   if(!res.ok||data.error)throw new Error(data.error||data.message||`HTTP ${res.status}`);
   return data;
 }
+// ── LIMPEZA DE PRINTS ÓRFÃOS ──────────────────────────────────────────────
+// Órfão = arquivo no bucket 'chat-prints' sem nenhuma linha de `mensagem`
+// apontando para ele. Acontece quando o chamado é apagado depois (a limpeza
+// por período acima apaga a mensagem, mas só alcança a imagem enquanto a
+// mensagem existe). Antes disto não havia NENHUM caminho, por dentro do
+// sistema, para apagar esses arquivos — a anon key não tem DELETE no storage,
+// e a limpeza por período reportava 0 imagens mesmo com o bucket cheio.
+//
+// Quem apaga de fato é a Edge Function fn-limpar-dados (acao:'orfaos'), que
+// roda com service_role e exige sessão de T.I. — ver
+// supabase/functions/fn-limpar-dados/index.ts.
+let _orfaosPreviewOk=false;
+
+const _ICO_LUPA=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+const _ICO_LIXO=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`;
+
+function _orfaosBox(html){const el=document.getElementById('orfaos-preview');if(el)el.innerHTML=html;}
+
+async function _chamarLimpezaOrfaos(apenasPreview){
+  const res=await fetch(`${SB}/functions/v1/fn-limpar-dados`,{
+    method:'POST',
+    headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':'application/json'},
+    body:JSON.stringify({acao:'orfaos',apenas_preview:apenasPreview})
+  });
+  return _parseFnResponse(res);
+}
+
+window.verImpactoOrfaos=async function(){
+  const btn=document.getElementById('btn-ver-orfaos');
+  btn.disabled=true;btn.textContent='Analisando…';
+  _orfaosBox('<div class="limpeza-preview-idle"><div class="spin"></div> varrendo o storage…</div>');
+  try{
+    const d=await _chamarLimpezaOrfaos(true);
+    if(!d.orfaos_count){
+      // Distingue "bucket limpo" de "só tem arquivo recente demais para
+      // julgar" — sem isso o T.I. clicaria de novo sem entender o zero.
+      const extra=d.recentes_protegidos
+        ? ` (${d.recentes_protegidos} enviado(s) na última hora, ainda protegido(s))`
+        : '';
+      _orfaosBox(`<div class="limpeza-preview-idle" style="color:var(--green)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Nenhum print órfão${extra}.</span></div>`);
+      _orfaosPreviewOk=false;
+      document.getElementById('btn-limpar-orfaos').disabled=true;
+    }else{
+      _orfaosBox(`<div class="limpeza-preview-stats">
+        <div class="limpeza-stat"><span class="limpeza-stat-n" style="color:var(--red)">${d.orfaos_count}</span><span class="limpeza-stat-l">órfãos</span></div>
+        <div class="limpeza-preview-div"></div>
+        <div class="limpeza-stat"><span class="limpeza-stat-n" style="color:var(--orange)">${d.mb}</span><span class="limpeza-stat-l">MB a liberar</span></div>
+        <div class="limpeza-preview-div"></div>
+        <div class="limpeza-stat"><span class="limpeza-stat-n">${d.referenciados}</span><span class="limpeza-stat-l">em uso</span></div>
+        <div class="limpeza-preview-div"></div>
+        <div class="limpeza-stat"><span class="limpeza-stat-n">${d.total_no_bucket}</span><span class="limpeza-stat-l">total</span></div>
+      </div>`);
+      _orfaosPreviewOk=true;
+      document.getElementById('btn-limpar-orfaos').disabled=false;
+    }
+  }catch(err){
+    _orfaosBox(`<div class="limpeza-preview-idle" style="color:var(--red)">Erro: ${escapeHtml(err.message)}</div>`);
+  }finally{
+    btn.disabled=false;btn.innerHTML=`${_ICO_LUPA} Procurar órfãos`;
+  }
+};
+
+window.executarLimpezaOrfaos=async function(){
+  // Só deixa apagar depois de um preview: o número que o T.I. confirma tem
+  // que ser um número que ele viu.
+  if(!_orfaosPreviewOk)return;
+  if(!await dsosConfirm({msg:'Apagar todos os prints órfãos do storage?\nAção IRREVERSÍVEL.',tipo:'danger',titulo:'Prints órfãos'}))return;
+  const btn=document.getElementById('btn-limpar-orfaos');
+  btn.disabled=true;btn.innerHTML=`${_ICO_LIXO} Apagando…`;
+  try{
+    const d=await _chamarLimpezaOrfaos(false);
+    _logEvent('rpc_log_limpeza_banco',{
+      p_usuario_id:    session.id,
+      p_usuario_tipo:  session.tipo||'ti',
+      p_usuario_login: session.login||'',
+      p_usuario_nome:  session.nome ||'',
+      p_dias:                0,
+      p_tickets_deletados:   0,
+      p_mensagens_deletadas: 0,
+      p_imagens_deletadas:   d.orfaos_deletados||0
+    });
+    _orfaosPreviewOk=false;
+    document.getElementById('btn-limpar-orfaos').disabled=true;
+    _orfaosBox(`<div class="limpeza-preview-idle" style="color:var(--green)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>${d.orfaos_deletados} print(s) apagado(s), ${d.mb} MB liberados.</span></div>`);
+    notif(`Órfãos: ${d.orfaos_deletados} apagados, ${d.mb}MB`);
+  }catch(err){
+    notif('Erro: '+err.message);
+    _orfaosBox(`<div class="limpeza-preview-idle" style="color:var(--red)">Erro: ${escapeHtml(err.message)}</div>`);
+  }finally{
+    btn.innerHTML=`${_ICO_LIXO} Apagar órfãos`;
+  }
+};
+
 window.verImpactoLimpeza=async function(){
   const btn=document.getElementById('btn-ver-impacto');
   btn.disabled=true;btn.textContent='Analisando…';
@@ -1235,7 +1336,10 @@ window.enviarMsgTi=async function(e){
 async function uploadImagem(file){
   const ext=(file.name&&file.name.includes('.'))?file.name.split('.').pop():(file.type.split('/')[1]||'jpg');
   const nome=`${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const res=await fetch(`${SB}/storage/v1/object/chat-prints/${nome}`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':file.type,'x-upsert':'true'},body:file});
+  // Sem 'x-upsert' — ver a nota em painel-pc.js/_uploadImg: o upsert exige
+  // SELECT/UPDATE em storage.objects, que o bucket 'chat-prints' não concede,
+  // e derrubava todo upload com 403 de RLS.
+  const res=await fetch(`${SB}/storage/v1/object/chat-prints/${nome}`,{method:'POST',headers:{'apikey':H.apikey,'Authorization':H.Authorization,'Content-Type':file.type},body:file});
   if(!res.ok)throw new Error('Upload falhou');
   return`${SB}/storage/v1/object/public/chat-prints/${nome}`;
 }

@@ -362,6 +362,46 @@
             </div>
           </div>
         </div>
+
+        <!-- ─── Limpeza de prints órfãos ───────────────────────────────
+             Separada da limpeza acima de propósito: aquela apaga CHAMADOS
+             (e, de brinde, as imagens deles). Esta não toca em chamado
+             nenhum — só recolhe arquivo de imagem que ficou no storage sem
+             nenhuma mensagem apontando para ele. Sem isto, esses arquivos
+             não têm como ser apagados por dentro do sistema. -->
+        <div class="manutencao-section">
+          <div class="manutencao-section-header">
+            <div class="manutencao-section-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div>
+              <div class="manutencao-section-title">Prints órfãos no storage</div>
+              <div class="manutencao-section-desc">Imagens de chat que sobraram no storage sem nenhuma mensagem apontando para elas — normalmente porque o chamado foi apagado depois. Não afeta chamados nem mensagens.</div>
+            </div>
+          </div>
+          <div class="manutencao-controls">
+            <div id="orfaos-preview" class="limpeza-preview-box" style="margin-bottom:12px">
+              <div class="limpeza-preview-idle">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Clique em "Procurar órfãos" para analisar</span>
+              </div>
+            </div>
+            <div class="limpeza-aviso" style="margin-bottom:14px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
+              Ação <strong>irreversível</strong>. Prints enviados na última hora nunca são apagados, para não pegar imagem em pleno envio.
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-mini-confirmar" style="background:var(--input-bg);color:var(--text);border:1px solid var(--glass-b)" onclick="verImpactoOrfaos()" id="btn-ver-orfaos">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Procurar órfãos
+              </button>
+              <button class="btn-mini-confirmar" style="background:var(--red)" onclick="executarLimpezaOrfaos()" id="btn-limpar-orfaos" disabled>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Apagar órfãos
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

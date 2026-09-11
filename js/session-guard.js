@@ -4,8 +4,19 @@
 //      initSessionGuard({ onLogout: () => { ... sair() ... } });
 // ───────────────────────────────────────────────────────────────────────────
 
-const TIMEOUT_MS  = 30 * 60 * 1000;   // 30 min → logout
-const WARNING_MS  = 28 * 60 * 1000;   // 28 min → aviso
+// Padrão: 30 min para logout, aviso 2 min antes. Vale para as telas usadas em
+// máquina de uso pessoal (painel T.I. e painel de logs), onde deslogar alguém
+// no meio do turno atrapalha mais do que protege.
+//
+// O painel do PC/professor passa valores menores: aquelas telas rodam nas
+// máquinas do laboratório, que são públicas e trocam de usuário ao longo do
+// dia — lá o risco é o aluno levantar e ir embora deixando a sessão aberta
+// para o próximo que sentar. Ver a chamada em painel-pc.js.
+const TIMEOUT_PADRAO_MS = 30 * 60 * 1000;
+const AVISO_PADRAO_MS   =  2 * 60 * 1000;   // quanto tempo o aviso fica na tela
+
+let _timeoutMs    = TIMEOUT_PADRAO_MS;
+let _avisoMs      = AVISO_PADRAO_MS;
 const STORAGE_KEY = 'dsos_last_activity';
 
 let _timerLogout  = null;
@@ -27,7 +38,7 @@ function _injectBanner() {
                  L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/>
       </svg>
-      <span>Sessão expira em <strong id="sw-countdown">2:00</strong> por inatividade.</span>
+      <span>Sessão expira em <strong id="sw-countdown">${_fmtMMSS(_avisoMs / 1000)}</strong> por inatividade.</span>
       <button id="sw-keep" onclick="window._dsosSG?.extend()">Continuar conectado</button>
     </div>`;
   document.body.appendChild(el);
@@ -84,17 +95,23 @@ function _injectBanner() {
 }
 
 // ── Atualiza o countdown no banner ─────────────────────────────────────────
+function _fmtMMSS(segundos) {
+  const m = Math.floor(segundos / 60);
+  const s = String(Math.round(segundos % 60)).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
 function _startCountdown() {
-  let remaining = 120; // 2 min em segundos
+  // Era fixo em 120s. Com a janela de aviso configurável, um painel com aviso
+  // de 2 min e outro com aviso de 1 min mostrariam a mesma contagem — e ela
+  // não bateria com o logout de verdade.
+  let remaining = Math.round(_avisoMs / 1000);
   const el = document.getElementById('sw-countdown');
+  if (el) el.textContent = _fmtMMSS(remaining);
   clearInterval(_timerCount);
   _timerCount = setInterval(() => {
     remaining--;
-    if (el) {
-      const m = Math.floor(remaining / 60);
-      const s = String(remaining % 60).padStart(2, '0');
-      el.textContent = `${m}:${s}`;
-    }
+    if (el) el.textContent = _fmtMMSS(Math.max(0, remaining));
     if (remaining <= 0) clearInterval(_timerCount);
   }, 1000);
 }
@@ -124,11 +141,11 @@ function _reset() {
 
   sessionStorage.setItem(STORAGE_KEY, Date.now());
 
-  _timerWarning = setTimeout(_showWarning,  WARNING_MS);
+  _timerWarning = setTimeout(_showWarning, Math.max(0, _timeoutMs - _avisoMs));
   _timerLogout  = setTimeout(() => {
     _hideWarning();
     if (typeof _onLogout === 'function') _onLogout();
-  }, TIMEOUT_MS);
+  }, _timeoutMs);
 }
 
 // ── Eventos de atividade ────────────────────────────────────────────────────
@@ -150,10 +167,17 @@ function _detachListeners() {
 
 /**
  * Inicia o guard de sessão.
- * @param {{ onLogout: function }} options
+ * @param {{ onLogout: function, timeoutMs?: number, avisoMs?: number }} options
+ *   timeoutMs — inatividade até o logout (padrão 30 min)
+ *   avisoMs   — quanto tempo antes do logout o aviso aparece (padrão 2 min)
  */
-export function initSessionGuard({ onLogout }) {
+export function initSessionGuard({ onLogout, timeoutMs, avisoMs }) {
   _onLogout = onLogout;
+  if (Number.isFinite(timeoutMs) && timeoutMs > 0) _timeoutMs = timeoutMs;
+  // O aviso nunca pode ser maior que o próprio timeout: se fosse, o banner
+  // apareceria em tempo negativo (ou seja, imediatamente) e ficaria na tela a
+  // sessão inteira.
+  if (Number.isFinite(avisoMs) && avisoMs > 0) _avisoMs = Math.min(avisoMs, _timeoutMs);
   _injectBanner();
   _attachListeners();
   _reset(); // começa o timer imediatamente

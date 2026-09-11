@@ -114,7 +114,13 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    # camera=(self): o chat do painel do PC/professor tira foto do problema com
+    # getUserMedia (botao "Tirar foto com camera", painel-pc.js/abrirCamera).
+    # Com camera=() o navegador nega a chamada ANTES de perguntar ao usuario, e
+    # a captura falhava so em producao — em localhost nao ha Permissions-Policy,
+    # entao o bug nao aparecia no desenvolvimento.
+    # microfone e geolocalizacao seguem bloqueados: o sistema nao usa nenhum.
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
 
 [[headers]]
   for = "/js/*"

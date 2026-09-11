@@ -445,6 +445,37 @@
       localStorage.setItem('dsos_tema_login', html.dataset.theme);
       pintarIcone();
     };
+
+    // ── "Voltar" leva de volta de onde a pessoa veio ──────────────────────
+    // Estas páginas são linkadas tanto do login quanto do rodapé dos três
+    // painéis. O link era sempre "Voltar ao login": quem abria os termos já
+    // logado era jogado na tela de login e perdia o que estava fazendo (a
+    // sessão continua válida, mas o caminho de volta some). Com sessão ativa,
+    // o link passa a apontar para o painel de quem está logado.
+    document.addEventListener('DOMContentLoaded', function () { ajustarVoltar(); });
+
+    function ajustarVoltar() {
+      var sessao = null;
+      try { sessao = JSON.parse(sessionStorage.getItem('dsos_session') || 'null'); }
+      catch (e) { sessao = null; }          // sessão corrompida = tratar como deslogado
+      if (!sessao || !sessao.tipo) return;  // sem sessão, o destino continua sendo o login
+
+      var destino = sessao.tipo === 'ti' ? 'painel-ti.html' : 'painel-pc.html';
+      // "Meus Chamados" é a aba inicial do painel-pc, então o painel já abre
+      // exatamente onde o usuário espera cair.
+      var rotulo  = sessao.tipo === 'ti' ? 'Voltar ao painel' : 'Voltar aos meus chamados';
+
+      var links = document.querySelectorAll('a[href="login.html"]');
+      for (var i = 0; i < links.length; i++) {
+        links[i].setAttribute('href', destino);
+        // O link do cabeçalho tem um <svg> de seta antes do texto; trocar o
+        // textContent inteiro apagaria o ícone. Por isso só o nó de texto.
+        for (var j = 0; j < links[i].childNodes.length; j++) {
+          var no = links[i].childNodes[j];
+          if (no.nodeType === 3 && no.nodeValue.trim()) { no.nodeValue = ' ' + rotulo + ' '; break; }
+        }
+      }
+    }
   })();
 </script>
 
