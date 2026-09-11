@@ -88,12 +88,27 @@ skill check que já foi refeito na `main`; `JoaoAngelo-1509-patch-1`, um
 `images/ReadMe` obsoleto). A tag `backup-pre-auditoria-20260823` foi enviada
 ao GitHub e substitui a branch de backup.
 
-### Ainda aberto
+### Log de mensagem e de chamado do painel do PC
 
-- `rpc_log_enviar_mensagem` e `rpc_log_abrir_chamado` são chamadas pelo
-  `painel-pc.js` com nomes de parâmetro que não existem no banco. Toda
-  chamada volta 404 e o erro é engolido, então mensagens e aberturas de
-  chamado não entram no log de atividades.
+- **`rpc_log_enviar_mensagem` e `rpc_log_abrir_chamado` nunca gravavam
+  nada a partir do painel do PC.** O `painel-pc.js` chamava as duas com nomes
+  de parâmetro que não existem no banco (`p_tipo_usuario`, `p_tipo_conteudo`,
+  `p_tem_texto`, `p_tipo_chamado`, `p_é_emergencia`…). O PostgREST procura a
+  função pelos nomes e respondia 404: em 08/09, às 10:57:35,
+  `rpc_log_enviar_mensagem` → 404. O `_logEvent` do painel fazia o fetch sem
+  olhar a resposta, então ninguém via.
+- Não bastava acertar os nomes. Cada uma dessas RPCs tem duas versões no
+  banco, e a segunda tem `p_ip_address` com valor padrão. Sem esse parâmetro,
+  o PostgREST não sabe qual das duas chamar. O `_logEvent` do painel do PC
+  agora passa pelo `logger.logEvento` (`js/logging.js`), igual ao do painel
+  T.I., que injeta o `p_ip_address` e mostra no console qualquer resposta de
+  erro. As chamadas do painel T.I. deram 200 no mesmo dia, o que confirma o
+  caminho.
+- As três chamadas (mensagem com imagem, mensagem de texto e abertura de
+  chamado) passaram a usar a assinatura do banco. O professor é registrado
+  como `p_usuario_tipo = 'professor'` com o próprio id, em vez do
+  `p_professor_id` que não existe. A emergência registrada é a mesma gravada
+  no chamado (marcada pela pessoa ou detectada pela IA).
 
 ## 2026-09-02 — Correção dos filtros do painel de logs, do chat do PC e da avaliação
 

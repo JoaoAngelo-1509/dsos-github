@@ -6,6 +6,7 @@ import { rtStatusHandler } from './realtime-manager.js';
 import { initSessionGuard } from './session-guard.js';
 import { initReportarProblema } from './reportar-problema.js';
 import { manterSessaoViva, sessaoViva, expirarSessao, encerrarSessao } from './sessao-vida.js';
+import { logger } from './logging.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
 instalarHeaderSessao();
@@ -18,17 +19,15 @@ let session=null, tipo=null, emergAtivo=false, normalAtivo=false, tickets=[], ch
 // ─────────────────────────────────────────────────────────────────────────
 // LOGGING: Função auxiliar para registrar eventos (fail-safe)
 // ─────────────────────────────────────────────────────────────────────────
+// Passa pelo logger central, igual ao painel-ti. Antes este painel fazia o
+// fetch direto, e isso escondia dois defeitos:
+//   * as RPCs de log têm duas versões no banco, uma delas com `p_ip_address`
+//     DEFAULT NULL. Sem mandar esse parâmetro o PostgREST não sabe qual das
+//     duas chamar. O logger sempre injeta o `p_ip_address`;
+//   * a resposta nunca era conferida, e um 404 sumia calado. O logger mostra
+//     o erro no console.
 async function _logEvent(rpcName, params = {}) {
-  try {
-    await fetch(`${SB_URL}/rest/v1/rpc/${rpcName}`, {
-      method: 'POST',
-      headers: H,
-      body: JSON.stringify(params)
-    });
-  } catch (e) {
-    // Falhas de logging não afetam operação do usuário
-    console.warn(`[DSos Logging] Erro ao registrar ${rpcName}:`, e.message);
-  }
+  return logger.logEvento(rpcName, params);
 }
 
 // ── DETECÇÃO DE CHAMADO DUPLICADO ────────────────────────────────────────────
@@ -673,12 +672,12 @@ window.enviarMsg = async function(e) {
       
       // ━━ LOGGING (imagem) ━━
       _logEvent('rpc_log_enviar_mensagem', {
-        p_ticket_id: chatTicketId,
-        p_tipo_usuario: session.tipo,
-        p_usuario_id: session.tipo === 'pc' ? session.id : null,
-        p_professor_id: session.tipo === 'professor' ? session.id : null,
-        p_tipo_conteudo: 'imagem',
-        p_tem_texto: false
+        p_usuario_id:    session.id,
+        p_usuario_tipo:  session.tipo,
+        p_usuario_login: session.login || session.tag || '',
+        p_usuario_nome:  session.nome || '',
+        p_ticket_id:     chatTicketId,
+        p_tem_imagem:    true
       });
     }
     imgsPendentes=[];document.getElementById('img-preview-list').innerHTML='';document.getElementById('img-preview-row').classList.remove('visible');
@@ -687,13 +686,12 @@ window.enviarMsg = async function(e) {
       
       // ━━ LOGGING (texto) ━━
       _logEvent('rpc_log_enviar_mensagem', {
-        p_ticket_id: chatTicketId,
-        p_tipo_usuario: session.tipo,
-        p_usuario_id: session.tipo === 'pc' ? session.id : null,
-        p_professor_id: session.tipo === 'professor' ? session.id : null,
-        p_tipo_conteudo: 'texto',
-        p_tem_texto: true,
-        p_tamanho_texto: txt.length
+        p_usuario_id:    session.id,
+        p_usuario_tipo:  session.tipo,
+        p_usuario_login: session.login || session.tag || '',
+        p_usuario_nome:  session.nome || '',
+        p_ticket_id:     chatTicketId,
+        p_tem_imagem:    false
       });
     }
     await carregarMsgs(chatTicketId);
@@ -875,13 +873,14 @@ window.abrirChamado = async function() {
     
     // ━━ LOGGING (chamado detalhado) ━━
     _logEvent('rpc_log_abrir_chamado', {
-      p_ticket_id: id,
-      p_tipo_usuario: session.tipo,
-      p_usuario_id: session.tipo === 'pc' ? session.id : null,
-      p_professor_id: session.tipo === 'professor' ? session.id : null,
-      p_pc_problema_id: pcProblemaId,
-      p_tipo_chamado: tipo,
-      p_é_emergencia: ehEmergencia
+      p_usuario_id:    session.id,
+      p_usuario_tipo:  session.tipo,
+      p_usuario_login: session.login || session.tag || '',
+      p_usuario_nome:  session.nome || '',
+      p_ticket_id:     id,
+      p_tipo_problema: tipo,
+      p_laboratorio:   session.laboratorio || null,
+      p_is_emergencia: ehEmergencia || ehEmergenciaIA
     });
 
     document.getElementById('suc-id').textContent=`Chamado #${id||'—'}`;
