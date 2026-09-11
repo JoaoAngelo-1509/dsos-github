@@ -318,8 +318,8 @@ window.fecharConfigPc=function(){
 
 window.addEventListener('DOMContentLoaded', async () => {
   const temaSalvo = localStorage.getItem('dsos_tema_login');
+  document.documentElement.dataset.theme = temaSalvo === 'dark' ? 'dark' : 'light';
   if (temaSalvo === 'dark') {
-    document.documentElement.dataset.theme = 'dark';
     document.getElementById('ico-tema').innerHTML = _icoSol();
   }
 
