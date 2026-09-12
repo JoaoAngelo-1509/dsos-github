@@ -176,7 +176,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     if(Array.isArray(lista))lista.forEach(u=>{tiMap[u.id]=u});
   }catch(e){console.error(e)}
 
-  const _nomeExibir=_cfg.apelido?.trim()||session.nome||session.login;
+  const _nomeExibir=session.nome||session.login;
   document.getElementById('nome-ti').textContent=_nomeExibir;
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
 
@@ -837,7 +837,6 @@ document.getElementById('mini-item-input')?.addEventListener('keydown',e=>{if(e.
 
 /* MODAL TICKET */
 function abrirModal(t,comResolucao){
-  _renderRespostasRapidas();
   modalTicketId=t.id;
   document.getElementById('m-title').textContent=`#${t.id} — ${t.pc_info?.tag||'PC #'+(t.pc_problema||'—')} / ${tipoLabel(t.tipo)}`;
   const dt=t.aberto_em?new Date(t.aberto_em):null;
@@ -2232,8 +2231,6 @@ const _cfg={
   confirmarResolver:false, agruparLabInicio:false,
   ordem:'asc',
   accent:'#6366f1', fontSize:'normal',
-  apelido:'',
-  reply1:'', reply2:'', reply3:'',
 };
 
 function _aplicarAccentCss(cor){
@@ -2261,11 +2258,6 @@ function _aplicarOcultarKpis(on){
   const el=document.querySelector('.kpis');
   if(el)el.style.display=on?'none':'';
 }
-function _aplicarApelido(){
-  const nome=_cfg.apelido?.trim()||session?.nome||'';
-  const el=document.getElementById('topbar-nome');
-  if(el&&nome)el.textContent=nome;
-}
 function _atualizarSwatches(){
   document.querySelectorAll('.cfg-swatch').forEach(b=>{
     b.classList.toggle('ativa',b.dataset.color===_cfg.accent);
@@ -2276,18 +2268,10 @@ function _atualizarFontSeg(){
     b.classList.toggle('ativa',b.dataset.val===_cfg.fontSize);
   });
 }
-function _renderRespostasRapidas(){
-  const wrap=document.getElementById('quick-replies-wrap');
-  if(!wrap)return;
-  const replies=[_cfg.reply1,_cfg.reply2,_cfg.reply3].filter(Boolean);
-  wrap.innerHTML=replies.length
-    ?replies.map(r=>`<button class="quick-reply-btn" onclick="usarRespostaRapida(${JSON.stringify(r)})">${escapeHtml(r)}</button>`).join('')
-    :'';
-  wrap.style.display=replies.length?'flex':'none';
-}
-
 (function _carregarConfig(){
   try{const s=localStorage.getItem('dsos_cfg_ti');if(s)Object.assign(_cfg,JSON.parse(s));}catch(_){}
+  // apelido e respostas rápidas foram removidos; limpa o que ficou salvo de versões antigas
+  delete _cfg.apelido;delete _cfg.reply1;delete _cfg.reply2;delete _cfg.reply3;
 
   // Aplicar efeitos visuais imediatamente
   _aplicarAccentCss(_cfg.accent);
@@ -2311,11 +2295,6 @@ function _renderRespostasRapidas(){
   const ordem=document.getElementById('cfg-ordem');
   if(ordem)ordem.value=_cfg.ordem;
 
-  const ap=document.getElementById('cfg-apelido');if(ap)ap.value=_cfg.apelido||'';
-  const r1=document.getElementById('cfg-reply1');if(r1)r1.value=_cfg.reply1||'';
-  const r2=document.getElementById('cfg-reply2');if(r2)r2.value=_cfg.reply2||'';
-  const r3=document.getElementById('cfg-reply3');if(r3)r3.value=_cfg.reply3||'';
-
   _atualizarSwatches();
   _atualizarFontSeg();
 })();
@@ -2330,19 +2309,13 @@ window.salvarConfig=function(){
   _cfg.confirmarResolver=!!document.getElementById('cfg-confirmar-resolver')?.checked;
   _cfg.agruparLabInicio=!!document.getElementById('cfg-agrupar-lab')?.checked;
   _cfg.ordem=document.getElementById('cfg-ordem')?.value||'asc';
-  _cfg.apelido=document.getElementById('cfg-apelido')?.value?.trim()||'';
-  _cfg.reply1=document.getElementById('cfg-reply1')?.value?.trim()||'';
-  _cfg.reply2=document.getElementById('cfg-reply2')?.value?.trim()||'';
-  _cfg.reply3=document.getElementById('cfg-reply3')?.value?.trim()||'';
 
   localStorage.setItem('dsos_cfg_ti',JSON.stringify(_cfg));
 
   // Aplicar efeitos em tempo real
   _aplicarNoAnim(_cfg.noAnim);
   _aplicarOcultarKpis(_cfg.ocultarKpis);
-  _aplicarApelido();
   _atualizarKbDicas();
-  _renderRespostasRapidas();
 
   if(_cfg.browserNotif&&'Notification' in window&&Notification.permission==='default'){
     Notification.requestPermission().then(p=>{if(p!=='granted'){_cfg.browserNotif=false;const cb=document.getElementById('cfg-browser-notif');if(cb)cb.checked=false;localStorage.setItem('dsos_cfg_ti',JSON.stringify(_cfg));}});
@@ -2360,10 +2333,6 @@ window.aplicarFontSize=function(size){
   _aplicarFontSizeCss(size);
   _atualizarFontSeg();
   localStorage.setItem('dsos_cfg_ti',JSON.stringify(_cfg));
-};
-window.usarRespostaRapida=function(txt){
-  const inp=document.getElementById('chat-input-ti');
-  if(inp){inp.value=txt;inp.focus();}
 };
 
 window.abrirConfig=function(){
