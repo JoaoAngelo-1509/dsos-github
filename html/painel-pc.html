@@ -40,7 +40,7 @@
     <button class="btn-tema" onclick="abrirConfigPc()" title="Configurações" style="padding:4px 7px" aria-label="Configurações">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-    <button class="btn-sair" onclick="sair()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
+    <button class="btn-sair" onclick="sair()" title="Sair" aria-label="Sair"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
   </div>
 </div>
 
@@ -48,21 +48,23 @@
 <div class="workspace">
   <div class="panel">
 
-    <!-- TABS -->
-    <div class="tabs" role="tablist">
-      <button class="tab active" id="tab-chamados" onclick="trocarAba('chamados')" role="tab" aria-selected="true" aria-controls="view-chamados">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Meus Chamados
-        <span class="tab-badge zero" id="tab-badge">0</span>
+    <!-- ABAS — "Abrir chamado" vem primeiro e já aberta: é o que quase todo
+         mundo veio fazer nesta tela. "Meus chamados" fica a um clique, com o
+         contador de chamados ativos. -->
+    <div class="tabs" role="tablist" aria-label="Seções do painel">
+      <button class="tab active" id="tab-abrir" onclick="trocarAba('abrir')" role="tab" aria-selected="true" aria-controls="view-abrir">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Abrir chamado
       </button>
-      <button class="tab" id="tab-abrir" onclick="trocarAba('abrir')" role="tab" aria-selected="false" aria-controls="view-abrir">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Abrir Chamado
+      <button class="tab" id="tab-chamados" onclick="trocarAba('chamados')" role="tab" aria-selected="false" aria-controls="view-chamados">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Meus chamados
+        <span class="tab-badge zero" id="tab-badge">0</span>
       </button>
     </div>
 
     <!-- VIEW: ABRIR CHAMADO -->
-    <div class="view" id="view-abrir" role="tabpanel" aria-labelledby="tab-abrir">
+    <div class="view active" id="view-abrir" role="tabpanel" aria-labelledby="tab-abrir">
 
       <!-- Banner de aviso de status do PC -->
       <div class="pc-status-banner" id="pc-status-banner">
@@ -70,122 +72,142 @@
         <span id="pc-status-msg"></span>
       </div>
 
-      <div id="modo-detalhado" style="display:flex;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+      <div id="modo-detalhado" class="modo-detalhado">
         <div class="form-wrap">
         <div class="form-inner">
 
-          <!-- TIPO -->
-          <div class="field">
-            <label class="field-label" for="descricao">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-              Tipo de problema
+          <div class="abrir-intro">
+            <h1 class="abrir-titulo">O que está acontecendo?</h1>
+            <p class="abrir-sub">Siga os passos e envie. O T.I. é avisado na hora.</p>
+          </div>
+
+          <!-- PASSO (só professor): qual PC está com problema.
+               O JS esconde .divisor/#emerg/#emerg-normal quando quem entrou é
+               um PC; o CSS esconde o bloco inteiro enquanto nenhum dos dois
+               cartões está ".on" (o professor ganha o "Normal" ligado assim
+               que carrega), para o PC não ver este passo piscar na abertura.
+               Os números dos passos saem de um counter CSS, então somem e
+               reaparecem sozinhos junto com este bloco. -->
+          <div class="step prof-bloco">
+            <div class="divisor step-head">
+              <span class="step-num" aria-hidden="true"></span>
+              <span class="step-txt">
+                <span class="step-title" id="divisor-txt">opcional</span>
+                <span class="step-hint">Diga qual PC do laboratório está com problema.</span>
+              </span>
             </div>
-            <div class="sel-wrap" id="sel-wrap">
-              <div class="sel-trigger" id="sel-trigger" onclick="toggleSel()" tabindex="0">
-                <svg id="ico-hw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
-                <svg id="ico-sw" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
 
-                <svg id="ico-re" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>
-                <svg id="ico-ou" class="sel-t-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg>
-                <span class="sel-placeholder">Selecione o tipo de problema...</span>
-                <span class="sel-val" id="sel-val"></span>
+            <!-- CHAMADO NORMAL (professor) -->
+            <div class="emerg emerg-ok" id="emerg-normal">
+              <button class="emerg-btn" type="button" onclick="toggleNormal()">
+                <div class="emerg-bolt">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                </div>
+                <div class="emerg-text">
+                  <span class="emerg-title">Chamado normal</span>
+                  <span class="emerg-hint">Um PC do laboratório está com problema</span>
+                </div>
+                <span class="emerg-pill" id="npill">ATIVAR</span>
+              </button>
+              <div class="emerg-body">
+                <label class="emerg-body-label" for="normal-pc">Tag do PC com problema</label>
+                <input class="emerg-input" id="normal-pc" type="text"
+                  placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
+                  oninput="this.value=this.value.toUpperCase()" />
+                <div class="emerg-warn">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r=".8" fill="currentColor"/>
+                  </svg>
+                  Sem urgência. O PC informado fica registrado como origem do chamado.
+                </div>
               </div>
-              <svg class="sel-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-              <div class="sel-drop">
-                <div class="sel-opt" data-v="hardware" data-i="hw" onclick="pickTipo(this)">
-                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg></div>
-                  <div class="sel-opt-info"><div class="sel-opt-name">Hardware</div><div class="sel-opt-desc">Placa-mãe, memória, HD, fonte…</div></div>
-                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
-                </div>
-                <div class="sel-opt" data-v="software" data-i="sw" onclick="pickTipo(this)">
-                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-                  <div class="sel-opt-info"><div class="sel-opt-name">Software</div><div class="sel-opt-desc">Sistema, programas, travamentos…</div></div>
-                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
-                </div>
+            </div>
 
-                <div class="sel-opt" data-v="rede" data-i="re" onclick="pickTipo(this)">
-                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></div>
-                  <div class="sel-opt-info"><div class="sel-opt-name">Rede</div><div class="sel-opt-desc">Sem internet, sem rede local…</div></div>
-                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <!-- EMERGÊNCIA -->
+            <div class="emerg" id="emerg">
+              <button class="emerg-btn" type="button" onclick="toggleEmerg()">
+                <div class="emerg-bolt">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
                 </div>
-                <div class="sel-opt" data-v="outro" data-i="ou" onclick="pickTipo(this)">
-                  <div class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg></div>
-                  <div class="sel-opt-info"><div class="sel-opt-name">Outro</div><div class="sel-opt-desc">Qualquer outro tipo de problema</div></div>
-                  <div class="sel-check"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div class="emerg-text">
+                  <span class="emerg-title">Chamado de emergência</span>
+                  <span class="emerg-hint">Estou abrindo por outro PC porque o com problema não acessa o sistema</span>
+                </div>
+                <span class="emerg-pill" id="epill">ATIVAR</span>
+              </button>
+              <div class="emerg-body">
+                <label class="emerg-body-label" for="emerg-pc">Tag do PC com problema</label>
+                <input class="emerg-input" id="emerg-pc" type="text"
+                  placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
+                  oninput="this.value=this.value.toUpperCase()" />
+                <div class="emerg-warn">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="currentColor"/>
+                  </svg>
+                  Requer professor ou responsável presente como testemunha. O PC de origem fica registrado.
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- DESCRIÇÃO -->
-          <div class="field">
-            <div class="field-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Descrição do problema
+          <!-- PASSO: descrição. Vem antes do tipo porque, no PC, a IA lê a
+               descrição e já marca o tipo sozinha. -->
+          <div class="step">
+            <label class="step-head" for="descricao">
+              <span class="step-num" aria-hidden="true"></span>
+              <span class="step-txt">
+                <span class="step-title">Descreva o problema</span>
+                <span class="step-hint">O que aconteceu, quando começou e o que você já tentou.</span>
+              </span>
             </label>
             <textarea class="desc-area" id="descricao" maxlength="500"
-              placeholder="Descreva o problema: o que aconteceu, quando começou, o que você tentou…"
+              placeholder="Ex: o PC liga, mas a tela fica preta desde o começo da aula. Já reiniciei e continua igual."
               oninput="document.getElementById('dc').textContent=this.value.length"></textarea>
-            <div class="desc-count"><span id="dc">0</span>/500</div>
-            <div class="ai-badge hidden" id="ai-prioridade-badge"></div>
-          </div>
-
-          <div class="divisor"><span id="divisor-txt">opcional</span></div>
-
-          <!-- CHAMADO NORMAL (professor) -->
-          <div class="emerg emerg-ok" id="emerg-normal">
-            <button class="emerg-btn" type="button" onclick="toggleNormal()">
-              <div class="emerg-bolt">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-              </div>
-              <div class="emerg-text">
-                <span class="emerg-title">Chamado Normal</span>
-                <span class="emerg-hint">Abrir chamado comum para um PC do laboratório</span>
-              </div>
-              <span class="emerg-pill" id="npill">ATIVAR</span>
-            </button>
-            <div class="emerg-body">
-              <div class="emerg-body-label">Tag do PC com problema</div>
-              <input class="emerg-input" id="normal-pc" type="text"
-                placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
-                oninput="this.value=this.value.toUpperCase()" />
-              <div class="emerg-warn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="var(--green-dark)"/>
-                </svg>
-                Sem urgência. O PC informado ficará registrado como origem do chamado.
-              </div>
+            <div class="desc-rodape">
+              <div class="ai-badge hidden" id="ai-prioridade-badge"></div>
+              <div class="desc-count"><span id="dc">0</span>/500</div>
             </div>
           </div>
 
-          <!-- EMERGÊNCIA -->
-          <div class="emerg" id="emerg">
-            <button class="emerg-btn" type="button" onclick="toggleEmerg()">
-              <div class="emerg-bolt">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                </svg>
-              </div>
-              <div class="emerg-text">
-                <span class="emerg-title">Chamado de Emergência</span>
-                <span class="emerg-hint">Estou abrindo por outro PC que não acessa o sistema</span>
-              </div>
-              <span class="emerg-pill" id="epill">ATIVAR</span>
-            </button>
-            <div class="emerg-body">
-              <div class="emerg-body-label">Tag do PC com problema</div>
-              <input class="emerg-input" id="emerg-pc" type="text"
-                placeholder="Ex: LAB3-A14" autocomplete="off" spellcheck="false"
-                oninput="this.value=this.value.toUpperCase()" />
-              <div class="emerg-warn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9b1c1c" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".8" fill="#9b1c1c"/>
-                </svg>
-                Requer professor ou responsável presente como testemunha. O PC de origem ficará registrado.
+          <!-- PASSO: tipo. As opções ficam todas à vista (um clique em vez de
+               abrir uma lista). O #sel-trigger continua no DOM, escondido,
+               porque o painel-pc.js escreve nele (#sel-val, classe .valued). -->
+          <div class="step">
+            <div class="step-head" id="tipo-titulo">
+              <span class="step-num" aria-hidden="true"></span>
+              <span class="step-txt">
+                <span class="step-title">Escolha a categoria</span>
+                <span class="step-hint">Toque na opção que mais combina com o problema.</span>
+              </span>
+            </div>
+            <div class="sel-wrap" id="sel-wrap">
+              <div class="sel-trigger" id="sel-trigger" hidden><span class="sel-val" id="sel-val"></span></div>
+              <div class="sel-drop" role="group" aria-labelledby="tipo-titulo">
+                <button type="button" class="sel-opt" data-v="hardware" data-i="hw" onclick="pickTipo(this)">
+                  <span class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+                  <span class="sel-opt-info"><span class="sel-opt-name">Hardware</span><span class="sel-opt-desc">Não liga, tela, teclado, mouse…</span></span>
+                  <span class="sel-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                </button>
+                <button type="button" class="sel-opt" data-v="software" data-i="sw" onclick="pickTipo(this)">
+                  <span class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+                  <span class="sel-opt-info"><span class="sel-opt-name">Software</span><span class="sel-opt-desc">Programa não abre, travou, erro…</span></span>
+                  <span class="sel-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                </button>
+                <button type="button" class="sel-opt" data-v="rede" data-i="re" onclick="pickTipo(this)">
+                  <span class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg></span>
+                  <span class="sel-opt-info"><span class="sel-opt-name">Rede</span><span class="sel-opt-desc">Sem internet ou sem rede</span></span>
+                  <span class="sel-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                </button>
+                <button type="button" class="sel-opt" data-v="outro" data-i="ou" onclick="pickTipo(this)">
+                  <span class="sel-opt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".8" fill="currentColor"/></svg></span>
+                  <span class="sel-opt-info"><span class="sel-opt-name">Outro</span><span class="sel-opt-desc">Impressora, projetor e afins</span></span>
+                  <span class="sel-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                </button>
               </div>
             </div>
           </div>
@@ -193,59 +215,72 @@
         </div>
       </div>
 
-      <!-- RODAPÉ -->
+      <!-- RODAPÉ: o botão de envio fica sempre à vista, fora da área que rola -->
       <div class="form-footer">
         <div class="foot-meta">
-          <img class="foot-logo" src="../images/Logo.png" alt="CPS" />
-          <div class="foot-sep"></div>
-          <div class="foot-info">
-            Lab <strong id="footer-lab">—</strong><br/>
-            Lado <strong id="footer-lado">—</strong>
-          </div>
+          <span class="foot-label">Local do chamado</span>
+          <span class="foot-info">Lab <strong id="footer-lab">—</strong> · Lado <strong id="footer-lado">—</strong></span>
         </div>
         <button class="btn-submit" id="btn-submit" onclick="abrirChamado()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
-          <span class="btn-txt">Abrir Chamado</span>
+          <span class="btn-txt">Enviar chamado</span>
         </button>
       </div>
       </div><!-- /modo-detalhado -->
     </div>
 
     <!-- VIEW: MEUS CHAMADOS -->
-    <div class="view active" id="view-chamados" role="tabpanel" aria-labelledby="tab-chamados">
+    <div class="view" id="view-chamados" role="tabpanel" aria-labelledby="tab-chamados">
       <div class="chamados-searchbar">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="chamados-search" placeholder="Buscar chamado..." autocomplete="off" oninput="buscaChamados(this.value)" />
+        <input type="text" id="chamados-search" placeholder="Buscar por descrição, tipo ou nº" aria-label="Buscar chamado" autocomplete="off" oninput="buscaChamados(this.value)" />
+        <button class="btn-novo-lista" type="button" onclick="trocarAba('abrir')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo chamado
+        </button>
       </div>
       <div class="ticket-list" id="ticket-list">
         <div class="loading-row"><div class="spin"></div> carregando...</div>
       </div>
+      <!-- A legenda de cores saiu: cada cartão agora escreve o status por
+           extenso. No lugar, a dica do que dá para fazer na lista. -->
       <div class="list-footer">
-        <div class="leg"><div class="leg-bar" style="background:var(--red)"></div>Aberto</div>
-        <div class="leg"><div class="leg-bar" style="background:var(--yellow)"></div>Em andamento</div>
-        <div class="leg"><div class="leg-bar" style="background:var(--green-dark)"></div>Resolvido</div>
-        <div class="leg"><div class="leg-bar" style="background:#555"></div>Encerrado</div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r=".8" fill="currentColor"/></svg>
+        <span>Toque em um chamado para ver os detalhes. Nos que estão em aberto, você conversa com o T.I. pelo chat.</span>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- OVERLAY SUCESSO -->
-<div class="overlay" id="overlay">
+<!-- OVERLAY SUCESSO
+     O botão principal chama resetForm(), que limpa o formulário e leva para
+     "Meus chamados" — por isso ele se chama "Acompanhar meu chamado" (antes
+     dizia "Abrir novo chamado", mas levava para a lista). Quem quer mesmo
+     abrir outro usa o link de baixo, que faz o mesmo reset e volta para o
+     formulário. -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="suc-title">
   <div class="suc-card">
     <div class="suc-top">
       <div class="suc-circle">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
-      <div class="suc-title">Chamado aberto!</div>
-      <div class="suc-sub">O T.I foi notificado e irá atender em breve. Aguarde no local.</div>
+      <div class="suc-title" id="suc-title">Chamado enviado!</div>
+      <div class="suc-id" id="suc-id">#—</div>
     </div>
     <div class="suc-body">
-      <div class="suc-id" id="suc-id">#—</div>
-      <button class="btn-novo-suc" onclick="resetForm()">Abrir novo chamado</button>
+      <ol class="suc-passos">
+        <li><strong>O T.I. já foi avisado.</strong> Não precisa abrir outro chamado para o mesmo problema.</li>
+        <li><strong>Fique por perto.</strong> Um técnico pode vir até o PC.</li>
+        <li><strong>Acompanhe por "Meus chamados".</strong> Lá você vê o andamento e conversa com o T.I. pelo chat.</li>
+      </ol>
+      <button class="btn-novo-suc" onclick="resetForm()">
+        Acompanhar meu chamado
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="btn-outro-suc" onclick="resetForm();trocarAba('abrir')">Abrir outro chamado</button>
     </div>
   </div>
 </div>
@@ -261,7 +296,7 @@
           <span id="m-meta-lab">—</span>
         </div>
       </div>
-      <button class="modal-close" onclick="fecharChat()">✕</button>
+      <button class="modal-close" onclick="fecharChat()" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-status-row">
       <span class="modal-status-label">Status:</span>
@@ -354,7 +389,7 @@
   <div class="modal modal-config-pc" style="max-width:320px;min-height:unset;padding:0">
     <div class="modal-head" style="padding:12px 16px">
       <h3 style="font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--text);flex:1">CONFIGURAÇÕES</h3>
-      <button class="modal-close" onclick="fecharConfigPc()">✕</button>
+      <button class="modal-close" onclick="fecharConfigPc()" aria-label="Fechar">✕</button>
     </div>
     <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
       <div style="font-size:.55rem;font-weight:700;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase">Aparência</div>
@@ -369,18 +404,22 @@
   </div>
 </div>
 
-<!-- CARD CENTRAL DE SUGESTÃO IA -->
+<!-- CARD CENTRAL DE SUGESTÃO IA
+     "Resolveu!" limpa a descrição disparando o próprio evento `input` do
+     campo — assim o contador e o selo de prioridade da IA se zeram pelos
+     handlers que já existem, sem código novo. Antes o botão levava para
+     "Meus chamados" e deixava o formulário preenchido. -->
 <div class="ai-sugestao-backdrop hidden" id="ai-sugestao-card" onclick="if(event.target===this)_fecharSugestao()">
-  <div class="ai-sugestao-overlay">
+  <div class="ai-sugestao-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-sug-title">
     <div class="ai-sug-head">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      <span class="ai-sug-title">Tente antes de abrir o chamado</span>
-      <button class="ai-sug-close" onclick="_fecharSugestao()">✕</button>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.74V16h8v-1.26A7 7 0 0 0 12 2z"/></svg>
+      <span class="ai-sug-title" id="ai-sug-title">Antes de enviar, tente isto</span>
+      <button class="ai-sug-close" onclick="_fecharSugestao()" aria-label="Fechar">✕</button>
     </div>
     <div class="ai-sug-body" id="ai-sugestao-txt"></div>
     <div class="ai-sug-footer">
-      <button class="ai-sug-btn secondary" onclick="_fecharSugestao()">Não resolveu</button>
-      <button class="ai-sug-btn primary" onclick="_fecharSugestao();trocarAba('chamados')">Resolveu!</button>
+      <button class="ai-sug-btn secondary" onclick="_fecharSugestao()">Não resolveu, continuar chamado</button>
+      <button class="ai-sug-btn primary" onclick="_fecharSugestao();const d=document.getElementById('descricao');d.value='';d.dispatchEvent(new Event('input'))">Resolveu!</button>
     </div>
   </div>
 </div>
