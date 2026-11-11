@@ -196,6 +196,10 @@ async function _autenticar(usuario, senha) {
   });
   const tiList = await resTI.json();
   if (Array.isArray(tiList) && tiList.length > 0) return { tipo: 'ti', d: tiList[0] };
+  // rpc_login_* recusam (RAISE) após 5 falhas em 15 min para aquele login.
+  // Segue tentando os outros tipos; só avisa do bloqueio se nenhum casar.
+  const bloqueio = (r) => !Array.isArray(r) && /muitas tentativas/i.test(r?.message || '');
+  let bloqueado = bloqueio(tiList);
 
   const resPC = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_pc`, {
     method: 'POST', headers,
@@ -203,6 +207,7 @@ async function _autenticar(usuario, senha) {
   });
   const pcList = await resPC.json();
   if (Array.isArray(pcList) && pcList.length > 0) return { tipo: 'pc', d: pcList[0] };
+  bloqueado = bloqueado || bloqueio(pcList);
 
   const resProf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_login_professor`, {
     method: 'POST', headers,
@@ -210,8 +215,9 @@ async function _autenticar(usuario, senha) {
   });
   const profList = await resProf.json();
   if (Array.isArray(profList) && profList.length > 0) return { tipo: 'professor', d: profList[0] };
+  bloqueado = bloqueado || bloqueio(profList);
 
-  return null;
+  return bloqueado ? { bloqueado: true } : null;
 }
 
 // ── LOGIN PRINCIPAL ──
@@ -259,6 +265,12 @@ window.entrar = async function () {
     // melhor assim — o sistema para de comentar o nome de quem nem provou ter
     // conta.
     const conta = await _autenticar(usuario, senha);
+
+    if (conta?.bloqueado) {
+      await logger.logLoginFalho(usuario, 'bloqueado: muitas tentativas');
+      mostrarErro('Muitas tentativas. Aguarde 15 minutos e tente novamente.');
+      return;
+    }
 
     if (!conta) {
       await logger.logLoginFalho(usuario, 'usuario ou senha incorretos');
