@@ -9,6 +9,7 @@ import { dsosConfirm } from './dsos-ui.js';
 import { rtStatusHandler } from './realtime-manager.js';
 import { sair, escapeHtml } from './ui.js';
 import { initSessionGuard } from './session-guard.js';
+import { manterSessaoViva } from './sessao-vida.js';
 import { initReportarProblema } from './reportar-problema.js';
 // SEC-05b: instala o envio do X-Sessao-Token antes de qualquer chamada
 import { instalarHeaderSessao } from './sessao-header.js';
@@ -803,7 +804,7 @@ const RENDER = {
       const statusBadge = badgeStatus(r.status_login, { sucesso:'ok', falha:'erro', logout:'warn' });
       const tipoLabel = { ti:'T.I.', pc:'PC', professor:'Prof.' }[r.usuario_tipo] || (r.usuario_tipo || '—');
       const tipoTag = r.usuario_tipo
-        ? `<span class="spill" style="font-size:.5rem;padding:1px 5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)">${tipoLabel}</span>`
+        ? `<span class="spill" style="font-size:.5rem;padding:1px 5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)">${e(tipoLabel)}</span>`
         : '';
       const loginTag = r.usuario_tipo === 'pc'
         ? `<span class="cell-mono" style="color:var(--green)">${hl(r.usuario_login, term)}</span>`
@@ -825,7 +826,7 @@ const RENDER = {
             : `<span class="cell-mono">—</span>`;
       return `
       <div class="table-row ${falha ? 'row-error' : logout ? 'row-warn' : ''}" style="grid-template-columns:150px 110px 110px 80px 1fr 100px"
-           data-uid="${r.usuario_id || ''}" data-utipo="${r.usuario_tipo || ''}" data-login-ts="${r.timestamp || ''}"
+           data-uid="${r.usuario_id || ''}" data-utipo="${e(r.usuario_tipo || '')}" data-login-ts="${r.timestamp || ''}"
            onclick='abrirModal("acessos",${esc(r)})'>
         <span class="cell-date">${fmtData(r.timestamp)}</span>
         <span class="cell-user">${e(r.usuario_nome || '—')} ${tipoTag}</span>
@@ -1522,15 +1523,19 @@ function _semFiltros(aba) {
 async function _recarregarSilencioso(aba) {
   const container = document.getElementById(`rows-${aba}`);
   if (!container) return;
+  const seq = STATE.seq[aba] = (STATE.seq[aba] || 0) + 1;
   try {
     const [data, total] = await fetchAPI(buildUrl(aba));
+    if (seq !== STATE.seq[aba]) return;
     STATE.dados[aba]   = data;
     STATE.totais[aba]  = total;
     RENDER[aba]?.(data, container);
-    RENDER_KPI[aba]?.(data);
     renderPaginacao(aba, total);
     atualizarLastUpdate(aba);
     atualizarContador(aba, total);
+    const dadosKpi = await _dadosParaKpi(aba, data, total);
+    if (seq !== STATE.seq[aba]) return;
+    RENDER_KPI[aba]?.(dadosKpi);
     const primeira = container.querySelector('.table-row');
     if (primeira) {
       primeira.style.transition = 'background .1s';
@@ -1785,8 +1790,8 @@ async function carregarDashboard() {
   let tickets = [], acessos = [], tiUsers = [];
   try {
     const [rT, rA, rTI] = await Promise.all([
-      fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${periodoDe}T00:00:00&aberto_em=lte.${periodoAte}T23:59:59&select=aberto_em,laboratorio,tipo,status,resolvido_em,tecnico_responsavel&limit=2000`, { headers: h }),
-      fetch(`${CFG.SB_URL}/rest/v1/acesso_log?timestamp=gte.${ago7}T00:00:00&select=timestamp,status_login&limit=2000`, { headers: h }),
+      fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${encodeURIComponent(limiteDoDiaLocal(periodoDe,'gte'))}&aberto_em=lte.${encodeURIComponent(limiteDoDiaLocal(periodoAte,'lte'))}&select=aberto_em,laboratorio,tipo,status,resolvido_em,tecnico_responsavel&limit=2000`, { headers: h }),
+      fetch(`${CFG.SB_URL}/rest/v1/acesso_log?timestamp=gte.${encodeURIComponent(limiteDoDiaLocal(ago7,'gte'))}&select=timestamp,status_login&limit=2000`, { headers: h }),
       fetch(`${CFG.SB_URL}/rest/v1/v_usuario_ti_pub?select=id,nome,login`, { headers: h }),
     ]);
     tickets  = await rT.json().then(d => Array.isArray(d) ? d : []);
@@ -1830,7 +1835,7 @@ async function carregarDashboard() {
   tickets.filter(t => t.tecnico_responsavel && (t.status === 'resolvido' || t.status === 'descartado'))
     .forEach(t => { rankMap[t.tecnico_responsavel] = (rankMap[t.tecnico_responsavel] || 0) + 1; });
   const topTecs = Object.entries(rankMap).sort((a, b) => b[1] - a[1]).slice(0, 3)
-    .map(([id, n]) => `${tiNomeMap[id] || '#'+id} (${n})`).join(' · ') || '—';
+    .map(([id, n]) => `${e(tiNomeMap[id] || '#'+id)} (${n})`).join(' · ') || '—';
 
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   const textColor = isDark ? '#9ca3af' : '#6b7280';
@@ -1895,7 +1900,7 @@ async function carregarDashboard() {
     labRankEl.innerHTML=labSort.length
       ?labSort.map(([nome,n],i)=>`<div class="lab-rank-row">
           <span class="lab-rank-pos">${i+1}</span>
-          <span class="lab-rank-nome" title="${nome}">${nome}</span>
+          <span class="lab-rank-nome" title="${e(nome)}">${e(nome)}</span>
           <div class="lab-rank-bar-wrap"><div class="lab-rank-bar" style="width:${Math.round(n/maxLab*100)}%"></div></div>
           <span class="lab-rank-n">${n}</span>
         </div>`).join('')
@@ -2353,9 +2358,8 @@ window.gerarRelatorioIA = async function() {
     const ate = fmtDataLocal(new Date());
     const de = fmtDataLocal(new Date(Date.now()-7*86400000));
     const H7 = { apikey: CFG.SB_KEY, Authorization: `Bearer ${CFG.SB_KEY}` };
-    const [r1, r2] = await Promise.all([
-      fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${de}T00:00:00&aberto_em=lte.${ate}T23:59:59&select=tipo,status,prioridade,laboratorio,aberto_em,resolvido_em`, { headers: H7 }),
-      fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${de}T00:00:00&select=status`, { headers: H7 }),
+    const [r1] = await Promise.all([
+      fetch(`${CFG.SB_URL}/rest/v1/ticket?aberto_em=gte.${encodeURIComponent(limiteDoDiaLocal(de,'gte'))}&aberto_em=lte.${encodeURIComponent(limiteDoDiaLocal(ate,'lte'))}&select=tipo,status,prioridade,laboratorio,aberto_em,resolvido_em`, { headers: H7 }),
     ]);
     const dados = await r1.json();
     if (!Array.isArray(dados) || !dados.length) {

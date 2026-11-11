@@ -548,6 +548,26 @@ async function carregarChamados() {
     if(Array.isArray(nl))nl.forEach(x=>{window._naoLidasPC[x.ticket_id]=parseInt(x.nao_lidas_pc)||0});
   }catch(e){window._naoLidasPC={};}
   renderChamados();
+  _pedirAvaliacaoPendente();
+}
+
+// Só pede avaliação quando um chamado do usuário já foi encerrado e ainda não
+// tem nota — nunca logo após abrir um chamado. Cada chamado é oferecido uma
+// única vez por sessão do navegador (sessionStorage) para não reaparecer a
+// cada poll de 30s depois de dispensado.
+function _pedirAvaliacaoPendente(){
+  try{
+    const modal=document.getElementById('avaliacao-modal');
+    if(!modal||modal.style.display==='flex')return;
+    if(document.getElementById('overlay')?.classList.contains('open'))return;
+    let vistos=[];
+    try{vistos=JSON.parse(sessionStorage.getItem('dsos_aval_pedidas')||'[]');}catch(_){}
+    const t=tickets.find(x=>(x.status==='resolvido'||x.status==='descartado')&&(x.avaliacao==null)&&!vistos.includes(x.id));
+    if(!t)return;
+    vistos.push(t.id);
+    try{sessionStorage.setItem('dsos_aval_pedidas',JSON.stringify(vistos));}catch(_){}
+    _abrirAvaliacaoSistema(t.id);
+  }catch(e){console.error('[avaliacao]',e)}
 }
 
 // ── LISTA "MEUS CHAMADOS" ────────────────────────────────────────────────
@@ -692,11 +712,12 @@ async function carregarMsgs(ticketId) {
       const de=deTI?'ti':'pc';
       const hora=m.enviado_em?new Date(m.enviado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
       const nomeRem=deTI?(m.nome_remetente||'T.I.'):(m.nome_remetente||session.nome||'Você');
-      const imgHtml=m.imagem_url?`<img class="msg-img" src="${_esc(m.imagem_url)}" alt="print" onclick="abrirLightbox('${_esc(m.imagem_url)}')" />`:'';
+      const imgHtml=m.imagem_url?`<img class="msg-img" src="${_esc(m.imagem_url)}" alt="print" data-url="${_esc(m.imagem_url)}" />`:'';
       const textoHtml=m.conteudo?`<div class="msg-bubble">${_esc(m.conteudo)}</div>`:'';
       const tickHtml=(!deTI)?`<span class="msg-tick${m.lido_ti?' lido':''}">${m.lido_ti?tick2:tick1}</span>`:'';
       return`<div class="msg ${de}">${imgHtml}${textoHtml}<div class="msg-meta">${_esc(nomeRem)} · ${hora} ${tickHtml}</div></div>`;
     }).join('');
+    chat.querySelectorAll('.msg-img').forEach(img=>img.addEventListener('click',()=>window.abrirLightbox(img.dataset.url)));
     chat.scrollTop=chat.scrollHeight;
   }catch(e){console.error(e)}
 }
@@ -763,44 +784,54 @@ window.fecharChat = function() {
 document.getElementById('modal-chat').addEventListener('click',e=>{if(e.target===document.getElementById('modal-chat'))window.fecharChat()});
 
 let imgsPendentes=[];
+let _enviandoMsg=false;
 window.enviarMsg = async function(e) {
   if(e.key!=='Enter')return;
+  if(_enviandoMsg)return;   // Enter repetido enquanto o envio anterior ainda corre
   const inp=document.getElementById('chat-input'),txt=inp.value.trim();
   if(!txt&&!imgsPendentes.length)return;if(!chatTicketId)return;
+  _enviandoMsg=true;
+  const ticketId=chatTicketId;
   inp.value='';
   const nomeRemetente=session.nome||session.tag||'PC';
+  const logMsg=(temImagem)=>_logEvent('rpc_log_enviar_mensagem', {
+    p_usuario_id:    session.id,
+    p_usuario_tipo:  session.tipo,
+    p_usuario_login: session.login || session.tag || '',
+    p_usuario_nome:  session.nome || '',
+    p_ticket_id:     ticketId,
+    p_tem_imagem:    temImagem
+  });
+  const postar=async(conteudo,imagem_url)=>{
+    const r=await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:ticketId,remetente:'PC',conteudo,imagem_url,nome_remetente:nomeRemetente})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+  };
   try{
+    const falhas=[];
     for(const file of imgsPendentes){
-      let imagem_url=null;
-      try{imagem_url=await _uploadImg(file);}catch(err){toast('Erro ao enviar imagem: '+err.message,'err');continue}
-      await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:chatTicketId,remetente:'PC',conteudo:null,imagem_url,enviado_em:new Date().toISOString(),nome_remetente:nomeRemetente})});
-      
-      // ━━ LOGGING (imagem) ━━
-      _logEvent('rpc_log_enviar_mensagem', {
-        p_usuario_id:    session.id,
-        p_usuario_tipo:  session.tipo,
-        p_usuario_login: session.login || session.tag || '',
-        p_usuario_nome:  session.nome || '',
-        p_ticket_id:     chatTicketId,
-        p_tem_imagem:    true
-      });
+      try{
+        const imagem_url=await _uploadImg(file);
+        await postar(null,imagem_url);
+        logMsg(true);
+      }catch(err){toast('Erro ao enviar imagem: '+err.message,'err');falhas.push(file);}
     }
-    imgsPendentes=[];document.getElementById('img-preview-list').innerHTML='';document.getElementById('img-preview-row').classList.remove('visible');
+    imgsPendentes=falhas;
+    if(!falhas.length){document.getElementById('img-preview-list').innerHTML='';document.getElementById('img-preview-row').classList.remove('visible');}
     if(txt){
-      await fetch(`${SB_URL}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({ticket_id:chatTicketId,remetente:'PC',conteudo:txt,imagem_url:null,enviado_em:new Date().toISOString(),nome_remetente:nomeRemetente})});
-      
-      // ━━ LOGGING (texto) ━━
-      _logEvent('rpc_log_enviar_mensagem', {
-        p_usuario_id:    session.id,
-        p_usuario_tipo:  session.tipo,
-        p_usuario_login: session.login || session.tag || '',
-        p_usuario_nome:  session.nome || '',
-        p_ticket_id:     chatTicketId,
-        p_tem_imagem:    false
-      });
+      try{
+        await postar(txt,null);
+        logMsg(false);
+      }catch(err){
+        // devolve o texto ao campo para a pessoa não ter que redigitar
+        if(!inp.value)inp.value=txt;
+        toast('Erro ao enviar mensagem.','err');
+      }
     }
-    await carregarMsgs(chatTicketId);
-  }catch(e){toast('Erro ao enviar mensagem.','err')}
+    await carregarMsgs(ticketId);
+  }catch(err){
+    if(!inp.value)inp.value=txt;
+    toast('Erro ao enviar mensagem.','err');
+  }finally{_enviandoMsg=false;}
 };
 
 async function _uploadImg(file){
@@ -979,7 +1010,6 @@ async function _abrirChamado() {
       tipo,descricao:desc,
       laboratorio:session.laboratorio,lado:session.lado,
       status:'aberto',prioridade: ehEmergenciaIA ? 'alto' : prioridadeIA,
-      aberto_em:new Date().toISOString(),
       nome_solicitante:session.nome,
       chamado_emergencia: ehEmergencia || ehEmergenciaIA
     })});
@@ -1033,7 +1063,6 @@ window.resetForm = function() {
   tipo=null;
   _atualizarTravaEnvio();   // campo vazio: volta a pedir a descrição
   trocarAba('chamados');
-  setTimeout(()=>_abrirAvaliacaoSistema(window._ultimoTicketAberto),800);
 };
 
 /* FEATURE 6 — Estimativa de tempo de atendimento */
@@ -1144,8 +1173,8 @@ function _abrirAvaliacaoSistema(ticketId){
   const titulo=document.querySelector('.avaliacao-titulo');
   const sub=document.querySelector('.avaliacao-sub');
   const icon=document.querySelector('.avaliacao-icon');
-  if(titulo)titulo.textContent='Chamado aberto com sucesso!';
-  if(sub)sub.textContent='Como foi usar o sistema para abrir o chamado?';
+  if(titulo)titulo.textContent=ticketId?`Chamado #${ticketId} encerrado`:'Chamado encerrado';
+  if(sub)sub.textContent='Como foi o atendimento e o uso do sistema?';
   if(icon)icon.textContent='✅';
   document.getElementById('avaliacao-modal').style.display='flex';
 }

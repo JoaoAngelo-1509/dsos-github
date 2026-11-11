@@ -68,22 +68,26 @@ export function dsosConfirm(opts = {}) {
       <div class="dsos-popup" role="dialog" aria-modal="true">
         <div class="dsos-popup-head">
           <div class="dsos-popup-icon ${tipo}">${ICONS[tipo] || ICONS.info}</div>
-          <div class="dsos-popup-title">${title}</div>
+          <div class="dsos-popup-title"></div>
         </div>
-        <div class="dsos-popup-msg">${msg}</div>
+        <div class="dsos-popup-msg"></div>
         <div class="dsos-popup-btns">
-          <button class="dsos-btn-cancel" id="_dsos_cancel">${cancelLabel}</button>
-          <button class="dsos-btn-ok ${tipo}" id="_dsos_ok">${okLabel}</button>
+          <button class="dsos-btn-cancel" id="_dsos_cancel"></button>
+          <button class="dsos-btn-ok ${tipo}" id="_dsos_ok"></button>
         </div>
       </div>`;
 
+    overlay.querySelector('.dsos-popup-title').textContent = title;
+    overlay.querySelector('.dsos-popup-msg').textContent = msg;
+    overlay.querySelector('#_dsos_ok').textContent = okLabel;
+    overlay.querySelector('#_dsos_cancel').textContent = cancelLabel;
     const close = (val) => { overlay.remove(); resolve(val); };
     overlay.querySelector('#_dsos_ok').addEventListener('click', () => close(true));
     overlay.querySelector('#_dsos_cancel').addEventListener('click', () => close(false));
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
-    overlay.addEventListener('keydown', e => { if (e.key === 'Escape') close(false); if (e.key === 'Enter') close(true); });
+    overlay.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); close(false); } });
     document.body.appendChild(overlay);
-    overlay.querySelector('#_dsos_ok').focus();
+    overlay.querySelector('#_dsos_cancel').focus();
   });
 }
 
@@ -104,14 +108,17 @@ export function dsosAlert(opts = {}) {
       <div class="dsos-popup" role="dialog" aria-modal="true">
         <div class="dsos-popup-head">
           <div class="dsos-popup-icon ${tipo}">${ICONS[tipo] || ICONS.info}</div>
-          <div class="dsos-popup-title">${title}</div>
+          <div class="dsos-popup-title"></div>
         </div>
-        <div class="dsos-popup-msg">${msg}</div>
+        <div class="dsos-popup-msg"></div>
         <div class="dsos-popup-btns">
-          <button class="dsos-btn-ok ${tipo}" id="_dsos_ok">${okLabel}</button>
+          <button class="dsos-btn-ok ${tipo}" id="_dsos_ok"></button>
         </div>
       </div>`;
 
+    overlay.querySelector('.dsos-popup-title').textContent = title;
+    overlay.querySelector('.dsos-popup-msg').textContent = msg;
+    overlay.querySelector('#_dsos_ok').textContent = okLabel;
     const close = () => { overlay.remove(); resolve(); };
     overlay.querySelector('#_dsos_ok').addEventListener('click', close);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
