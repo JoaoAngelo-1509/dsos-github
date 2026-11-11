@@ -12,7 +12,7 @@
   --glass-b:rgba(255,255,255,.07);--glass-b2:rgba(255,255,255,.04);
   --row-bg:rgba(255,255,255,.025);--row-hover:rgba(255,255,255,.06);--row-b:rgba(255,255,255,.06);
   --input-bg:rgba(255,255,255,.05);--modal-bg:rgba(12,5,5,.96);--modal-b:rgba(192,23,26,.2);
-  --text:#e8e8e8;--text2:#aaa;--muted:#777;--muted2:#666;
+  --text:#e8e8e8;--text2:#aaa;--muted:#777;--muted2:#9a9a9a;
   --kpi-red:#ff5555;--kpi-green:#06b6d4;--kpi-yellow:#f5d000;
   --kpi-red-sh:rgba(255,50,50,.4);--kpi-green-sh:rgba(6,182,212,.35);--kpi-yellow-sh:rgba(245,208,0,.35);
   --header-bg:rgba(0,0,0,.22);
@@ -24,7 +24,7 @@
   --glass-b:rgba(0,0,0,.10);--glass-b2:rgba(0,0,0,.06);
   --row-bg:rgba(0,0,0,.02);--row-hover:rgba(0,0,0,.05);--row-b:rgba(0,0,0,.07);
   --input-bg:rgba(0,0,0,.04);--modal-bg:rgba(240,236,236,.98);--modal-b:rgba(192,23,26,.25);
-  --text:#1e1e1e;--text2:#444;--muted:#777;--muted2:#888;
+  --text:#1e1e1e;--text2:#444;--muted:#777;--muted2:#5f5f5f;
   --kpi-red:#c0171a;--kpi-green:#0891b2;--kpi-yellow:#92670a;
   --kpi-red-sh:rgba(192,23,26,.18);--kpi-green-sh:rgba(8,145,178,.18);--kpi-yellow-sh:rgba(146,103,10,.18);
   --header-bg:rgba(0,0,0,.06);

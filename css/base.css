@@ -319,3 +319,23 @@ body { font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robot
 @media print {
   .legal-fixed { display: none !important; }
 }
+
+/* ── Cor de destaque textual acessível (ex.: selo "v2.0") ── */
+:root { --accent-text: #22d3ee; }
+[data-theme="light"] { --accent-text: #0e7490; }
+
+/* ── Alvos de toque mínimos em telas de ponteiro grosso ── */
+@media (pointer: coarse) {
+  .btn-icon, .btn-tema, .tab, .modal-close, .modal-pc-close, .bell-panel-close,
+  .lightbox-close, [id^="btn-olho"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Foco visível em campos que zeram o outline (outline:none nas folhas) ── */
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: 2px solid var(--red, #c0171a) !important;
+  outline-offset: 2px !important;
+}

@@ -21,7 +21,7 @@
 <div class="topbar">
   <img class="topbar-logo" src="../images/Logo.png" alt="CPS"/>
   <div class="topbar-sep"></div>
-  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:cyan;font-size:.72rem;font-weight:700">v2.0</span></span></div>
+  <div><span class="topbar-title" id="egg-trigger" style="cursor:default;user-select:none">DSos</span><span class="topbar-sub">— Painel T.I. <span style="color:var(--accent-text,#0e7490);font-size:.72rem;font-weight:700">v2.0</span></span></div>
   <div class="topbar-right">
     <div class="topbar-info">
       <span id="info-data">—</span>
@@ -43,7 +43,7 @@
       <div class="bell-panel" id="bell-panel">
         <div class="bell-panel-header">
           <span>Mensagens não lidas</span>
-          <button class="bell-panel-close" onclick="fecharBellPanel()">✕</button>
+          <button class="bell-panel-close" aria-label="Fechar" onclick="fecharBellPanel()">✕</button>
         </div>
         <div id="bell-panel-list"></div>
       </div>
@@ -446,7 +446,7 @@
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mpc-title">Cadastrar Computador</span>
-      <button class="modal-close" onclick="fecharModalPC()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharModalPC()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -472,7 +472,7 @@
         <label class="mpc-label" id="mpc-senha-label" for="mpc-senha">Senha de acesso</label>
         <div style="position:relative">
           <input class="mpc-input" id="mpc-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
-          <button type="button" onclick="toggleSenhaMPC()" id="btn-olho-mpc"
+          <button type="button" onclick="toggleSenhaMPC()" id="btn-olho-mpc" aria-label="Mostrar senha"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
             <svg id="ico-olho-mpc" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -506,7 +506,7 @@
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mti-title">Cadastrar Usuário T.I.</span>
-      <button class="modal-close" onclick="fecharModalTI()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharModalTI()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -536,7 +536,7 @@
         <label class="mpc-label" for="mti-senha">Senha</label>
         <div style="position:relative">
           <input class="mpc-input" id="mti-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
-          <button type="button" onclick="toggleSenhaTI()" id="btn-olho-ti"
+          <button type="button" onclick="toggleSenhaTI()" id="btn-olho-ti" aria-label="Mostrar senha"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
             <svg id="ico-olho-ti" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -580,7 +580,7 @@
   <div class="modal-pc">
     <div class="modal-pc-head">
       <span class="modal-pc-title" id="mprof-title">Cadastrar Professor</span>
-      <button class="modal-close" onclick="fecharModalProf()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharModalProf()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -601,7 +601,7 @@
         <label class="mpc-label" for="mprof-senha">Senha</label>
         <div style="position:relative">
           <input class="mpc-input" id="mprof-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:38px" />
-          <button type="button" onclick="toggleSenhaProf()" id="btn-olho-prof"
+          <button type="button" onclick="toggleSenhaProf()" id="btn-olho-prof" aria-label="Mostrar senha"
             style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:var(--muted);display:flex;align-items:center">
             <svg id="ico-olho-prof" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -648,7 +648,7 @@
           <span id="m-origem-label">—</span><span id="m-solicitante"></span>
         </div>
       </div>
-      <button class="modal-close" onclick="fecharModal()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -750,7 +750,7 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Configurações
       </div>
-      <button class="modal-pc-close" onclick="fecharConfig()">
+      <button class="modal-pc-close" aria-label="Fechar" onclick="fecharConfig()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -878,7 +878,7 @@
       <div class="modal-pc-title" style="gap:8px;display:flex;align-items:center">
         <span style="font-size:1rem">🎲</span> Ordem Paranormal RPG
       </div>
-      <button class="modal-pc-close" onclick="fecharModalOP()">
+      <button class="modal-pc-close" aria-label="Fechar" onclick="fecharModalOP()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -892,7 +892,7 @@
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="fecharLightbox()">
-  <button class="lightbox-close" onclick="fecharLightbox()">✕</button>
+  <button class="lightbox-close" aria-label="Fechar" onclick="fecharLightbox()">✕</button>
   <img id="lightbox-img" src="" alt="imagem ampliada" onclick="event.stopPropagation()" />
 </div>
 
@@ -965,7 +965,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       <span>Enviar para fila de descarte</span>
       <span class="mini-modal-pc" id="mini-pc-tag"></span>
-      <button class="modal-close" onclick="fecharMiniModalDescarte()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharMiniModalDescarte()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -997,7 +997,7 @@
         <div class="modal-desc-title">Registrar Descarte Físico</div>
         <div class="modal-desc-subtitle">Confirme como o equipamento foi ou será descartado para rastreabilidade PNRS</div>
       </div>
-      <button class="modal-close" onclick="fecharModalDescarte()">
+      <button class="modal-close" aria-label="Fechar" onclick="fecharModalDescarte()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>

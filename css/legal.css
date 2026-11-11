@@ -312,3 +312,11 @@ button:focus-visible {
   .doc-secao a { color: #000; }
   .pendente { color: #000; }
 }
+
+/* Tema claro: fundo opaco atrás do cabeçalho (texto sobre o BG vermelho) */
+[data-theme="light"] .doc-header {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+}

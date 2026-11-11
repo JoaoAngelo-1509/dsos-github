@@ -395,7 +395,10 @@ const CATEGORIAS = [
       const txt = d?.choices?.[0]?.message?.content;
       return txt != null ? ok('IA respondeu pela proxy', String(txt).slice(0, 80)) : falha('sem choices na resposta', JSON.stringify(d).slice(0, 200));
     }},
-    { id: 'w-ciclo', nome: 'Ciclo completo PC (cadastro→login→chamado→chat→leitura→exclusão)', escrita: true, run: async () => {
+    { id: 'w-ciclo', nome: 'Ciclo completo PC (cadastro→login→chamado→chat→leitura→exclusão)', escrita: true, requerSessao: true, run: async ({ sessao }) => {
+      // Cadastro/exclusão de PC exigem sessão de T.I. (migration 20261111120000).
+      if (sessao?.tipo !== 'ti') return aviso('Requer sessão de T.I.', 'rpc_cadastrar_pc/rpc_deletar_pc só aceitam token de T.I.');
+      const tokenTi = sessao.token;
       // Exercita o fluxo de ponta a ponta com dados descartáveis e se limpa:
       // rpc_deletar_pc cascateia e leva chamados + mensagens junto.
       const sufixo = hex(3).toUpperCase();
@@ -407,7 +410,7 @@ const CATEGORIAS = [
       let token = null;
       try {
         // 1. cadastrar PC
-        let r = await rpc('rpc_cadastrar_pc', { p_tag: tag, p_laboratorio: lab, p_lado: 'A', p_senha: senha });
+        let r = await rpc('rpc_cadastrar_pc', { p_tag: tag, p_laboratorio: lab, p_lado: 'A', p_senha: senha }, { token: tokenTi });
         let c = await corpo(r);
         const pc = Array.isArray(c) ? c[0] : c;
         if (!r.ok || !pc?.id) return falha('falhou no cadastro do PC', JSON.stringify(c).slice(0, 200));
@@ -451,7 +454,7 @@ const CATEGORIAS = [
       } finally {
         // Limpeza: rpc_deletar_pc leva chamados e mensagens no cascade.
         if (pcId != null) {
-          try { await rpc('rpc_deletar_pc', { p_id: pcId }); passos.push('limpeza: PC e chamados removidos'); }
+          try { await rpc('rpc_deletar_pc', { p_id: pcId }, { token: tokenTi }); passos.push('limpeza: PC e chamados removidos'); }
           catch (e) { passos.push('LIMPEZA FALHOU: apague ' + tag + ' à mão (' + e.message + ')'); }
         }
         // O token emitido no login fica órfão em sessao_token (rpc_deletar_pc
