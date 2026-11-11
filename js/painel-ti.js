@@ -100,12 +100,12 @@ const SVG={
 // SVG local devolvia). O objeto SVG continua aqui porque carrega vários
 // outros ícones da tela (trash, zap, reopen, clock…) que não são de tipo.
 function tipoLabel(t) { return{hardware:'Hardware',software:'Software',periferico:'Periférico',rede:'Rede',outro:'Outro'}[t]||t||'—' }
-function statusCor(s) { return{em_andamento:'rr-yellow',resolvido:'rr-green',descartado:'rr-black',falso_alarme:'rr-red'}[s]||'rr-yellow' }
+function statusCor(s) { return{em_andamento:'rr-yellow',aguardando_peca:'rr-yellow',resolvido:'rr-green',descartado:'rr-black',falso_alarme:'rr-red'}[s]||'rr-yellow' }
 // DUP-01: usa a variante 'caps' de ui.js em vez de um mapa próprio
 function statusLabel(s){ return uiStatusLabel(s,'caps') }
 function statusPill(s){
-  const cls={aberto:'sp-aberto',em_andamento:'sp-andamento',resolvido:'sp-resolvido',descartado:'sp-descartado',falso_alarme:'sp-falso'};
-  const lbl={aberto:'ABERTO',em_andamento:'EM PROG.',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO'};
+  const cls={aberto:'sp-aberto',em_andamento:'sp-andamento',aguardando_peca:'sp-andamento',resolvido:'sp-resolvido',descartado:'sp-descartado',falso_alarme:'sp-falso'};
+  const lbl={aberto:'ABERTO',em_andamento:'EM PROG.',aguardando_peca:'AGUARD. PEÇA',resolvido:'RESOLVIDO',descartado:'DESCARTADO',falso_alarme:'FALSO'};
   return`<span class="spill ${cls[s]||''}">${lbl[s]||s}</span>`;
 }
 function statusPcPill(s){
@@ -236,7 +236,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
         const j=await r.json();
         if(Array.isArray(j)&&j[0]){emerg=!!j[0].chamado_emergencia;desc=j[0].descricao||'';}
       }catch(_){}
-      if(emerg){notif('⚡ CHAMADO DE EMERGÊNCIA!');(_cfg.sons!==false)&&window._dsosSom?.emergencia?.();}
+      if(emerg){notif('⚡ CHAMADO DE EMERGÊNCIA!');(_cfg.sons!==false)&&(window._dsosSom?.emergencia||window._dsosSom?.novoChamado)?.call(window._dsosSom);}
       else{notif('Novo chamado recebido!');(_cfg.sons!==false)&&window._dsosSom?.novoChamado?.();}
       _browserNotif(emerg?'⚡ EMERGÊNCIA DSos':'🔔 Novo Chamado',desc.slice(0,80)||'Chamado aberto no sistema');
     })
@@ -367,27 +367,34 @@ function _scheduleTicketsKPIRefresh(){
 async function _runTicketsKPIRefresh(){
   if(_tkRefreshInFlight){_tkRefreshQueued=true;return}
   _tkRefreshInFlight=true;
-  try{await Promise.all([carregarTickets(),carregarKPIs(true)]);}
+  // preserva o termo de busca ativo (senão o refresh/poll limpava o filtro)
+  const _q=(document.getElementById('unresp-search')?.value||document.getElementById('resp-search')?.value||'').trim();
+  try{await Promise.all([carregarTickets(_q),carregarKPIs(true)]);}
   finally{
     _tkRefreshInFlight=false;
     if(_tkRefreshQueued){_tkRefreshQueued=false;_runTicketsKPIRefresh();}
   }
 }
 
+/* status em que o chamado ainda está "aberto" (inclui aguardando peça) */
+const _statusAberto=s=>s==='aberto'||s==='em_andamento'||s==='aguardando_peca';
+
 /* KPIs */
 async function carregarKPIs(pulse=false){
   try{
-    const hoje=new Date().toISOString().split('T')[0];
-    const ontem=new Date(Date.now()-86400000).toISOString().split('T')[0];
+    // início do dia LOCAL (em ISO/UTC) — toISOString().split('T')[0] usava o dia UTC
+    const _d0=new Date();_d0.setHours(0,0,0,0);
+    const _d1=new Date(_d0);_d1.setDate(_d1.getDate()-1);
+    const hoje=_d0.toISOString(),ontem=_d1.toISOString();
     const [rHoje,rOntem,rResHoje,rResOntem,rPend]=await Promise.all([
-      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${hoje}T00:00:00&select=id`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${ontem}T00:00:00&aberto_em=lt.${hoje}T00:00:00&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${encodeURIComponent(hoje)}&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?aberto_em=gte.${encodeURIComponent(ontem)}&aberto_em=lt.${encodeURIComponent(hoje)}&select=id`,{headers:H}),
       // "Resolvidos hoje" = resolvido/descartado HOJE, independente de quando foi aberto
       // (filtrar por aberto_em fazia o KPI nunca subir: um chamado aberto ontem e
       // resolvido hoje não entrava na contagem, então ficava travado em 0 na prática).
-      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${hoje}T00:00:00&status=in.(resolvido,descartado)&select=id`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${ontem}T00:00:00&resolvido_em=lt.${hoje}T00:00:00&status=in.(resolvido,descartado)&select=id`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${encodeURIComponent(hoje)}&status=in.(resolvido,descartado)&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?resolvido_em=gte.${encodeURIComponent(ontem)}&resolvido_em=lt.${encodeURIComponent(hoje)}&status=in.(resolvido,descartado)&select=id`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento,aguardando_peca)&select=id`,{headers:H}),
     ]);
     const arr=d=>Array.isArray(d)?d:[];
     const abertosHoje=arr(await rHoje.json()).length;
@@ -432,7 +439,9 @@ function _setTrend(elId,hoje,ontem,upIsGood){
 // obsoletas — mesmo padrão que o arquivo já usava para os eventos de realtime.
 let _seqCarregarTickets=0;
 
-async function carregarTickets(q=''){
+async function carregarTickets(q){
+  // sem argumento (refresh/poll/ações), reaproveita o termo digitado nos campos de busca
+  if(q===undefined)q=(document.getElementById('unresp-search')?.value||document.getElementById('resp-search')?.value||'').trim();
   const seq=++_seqCarregarTickets;
   try{
     // BUG-04: quando havia termo de busca, esta função disparava mais DUAS
@@ -474,8 +483,8 @@ async function carregarTickets(q=''){
     }
 
     const [r1,r2,r3]=await Promise.all([
-      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento)${qF}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
-      fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento)${qF}&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?status=in.(aberto,em_andamento,aguardando_peca)${qF}&order=aberto_em.asc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
+      fetch(`${SB}/rest/v1/ticket?status=in.(resolvido,descartado,falso_alarme,em_andamento,aguardando_peca)${qF}&order=aberto_em.desc&limit=200&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
       fetch(`${SB}/rest/v1/ticket?resolucao=eq.descarte&order=resolvido_em.desc&select=*,pc_info:pc!ticket_pc_problema_fkey(tag,status_pc)`,{headers:H}),
     ]);
     const rawR1=await r1.json().then(d=>Array.isArray(d)?d:[]);
@@ -606,7 +615,7 @@ window._setFiltro=function(dim,val){
 let _agruparLab=false;
 function renderUnresp(){
   const list=document.getElementById('unresp-list');
-  const todosAbertos=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento');
+  const todosAbertos=tickets.filter(t=>_statusAberto(t.status));
   document.getElementById('badge-unresp').textContent=todosAbertos.length;
   let abertos=todosAbertos;
   if(_filtroChip.tipo)abertos=abertos.filter(t=>t.tipo===_filtroChip.tipo);
@@ -705,8 +714,6 @@ function renderDescarte(){
     const item=t.item_descartado||'(item não especificado)';
     const d=t.resolvido_em?new Date(t.resolvido_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
     const feito=pcStatus==='descartado'||!!t.descricao_resolucao;
-    const itemEsc=item.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    const descEsc=(t.descricao||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     div.className=`desc-row${feito?' done':''}`;
     div.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:center;color:var(--orange)">${SVG.trash}</div>
@@ -716,10 +723,13 @@ function renderDescarte(){
       <div style="text-align:right">${feito
         ?`<span class="done-label">${SVG.check} Concluído</span>`
         :`<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-           <button class="btn-desc-ok" onclick="abrirModalDescarte(${t.pc_problema},${t.id},'${itemEsc}','${descEsc}',event)">${SVG.trash} Feito</button>
-           <button class="btn-desc-cancel-fila" onclick="cancelarItemDescarte(${t.id},${t.pc_problema},event)">Cancelar</button>
+           <button class="btn-desc-ok" data-act="feito">${SVG.trash} Feito</button>
+           <button class="btn-desc-cancel-fila" data-act="cancelar">Cancelar</button>
          </div>`
       }</div>`;
+    // dados via closure (sem interpolar texto do usuário em onclick inline)
+    div.querySelector('[data-act="feito"]')?.addEventListener('click',e=>window.abrirModalDescarte(t.pc_problema,t.id,item,t.descricao||'',e));
+    div.querySelector('[data-act="cancelar"]')?.addEventListener('click',e=>window.cancelarItemDescarte(t.id,t.pc_problema,e));
     list.appendChild(div);
   });
 }
@@ -865,7 +875,7 @@ function abrirModal(t,comResolucao){
   document.getElementById('m-nota-salva').style.display='none';
   document.getElementById('modal').classList.add('open');
   removerImgTi();
-  const ativo=t.status==='aberto'||t.status==='em_andamento';
+  const ativo=_statusAberto(t.status);
   const btnSug=document.getElementById('btn-sugerir-resp');
   if(btnSug)btnSug.disabled=!ativo;
   iniciarChat(t.id,ativo);
@@ -881,7 +891,7 @@ async function marcarLidoTi(ticketId){
 }
 window.fecharModal=function(){
   document.getElementById('modal').classList.remove('open');
-  modalTicketId=null;
+  modalTicketId=null;_chatTicketAtual=null;
   if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
   _pararPollChatTi();   // SEC-05b: não deixa o poll do chat rodando com o modal fechado
 };
@@ -903,8 +913,10 @@ window.salvarNotaInterna=async function(){
 /* PRIORIDADE */
 window.salvarPrioridade=async function(){
   if(!modalTicketId)return;
-  await _patchTicket(modalTicketId,{prioridade:document.getElementById('m-prio').value});
-  notif('Prioridade atualizada');await carregarTickets();
+  try{
+    await _patchTicket(modalTicketId,{prioridade:document.getElementById('m-prio').value});
+    notif('Prioridade atualizada');await carregarTickets();
+  }catch(err){console.error('[salvarPrioridade]',err);notif(err.message||'Erro ao salvar prioridade.')}
 };
 
 /* RESOLUÇÃO */
@@ -1214,14 +1226,24 @@ window.executarLimpeza=async function(){
   }
 };
 
+/* Garante r.ok; senão lança Error com a mensagem devolvida pelo PostgREST. */
+async function _okOuErro(r,fallback){
+  if(r.ok)return r;
+  let msg=fallback||'Erro';
+  try{const j=await r.json();if(j?.message)msg=j.message;}catch(_){}
+  throw new Error(msg);
+}
+
 /* NOTIF */
 function notif(msg){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
 
 /* CHAT TI */
 let imgPendenteTi=null;
+let _chatTicketAtual=null;   // ticket cujo chat está aberto; usado p/ abortar corridas entre awaits
 async function iniciarChat(ticketId,ativo){
+  _chatTicketAtual=ticketId;
   const chatInput=document.getElementById('chat-input-ti'),btnSend=document.getElementById('btn-send-ti');
-  const btnImg=document.getElementById('btn-img-ti'),fileInput=document.getElementById('file-input-ti');
+  const btnImg=document.querySelector('.btn-img-ti'),fileInput=document.getElementById('file-input-ti');
   const statusLbl=document.getElementById('chat-status-label');
   if(!chatInput||!btnSend)return;
   chatInput.disabled=!ativo;btnSend.disabled=!ativo;
@@ -1229,16 +1251,18 @@ async function iniciarChat(ticketId,ativo){
   chatInput.placeholder=ativo?'Mensagem para o PC…':'Chamado encerrado — chat desabilitado.';
   if(statusLbl)statusLbl.textContent=ativo?'Em aberto':'Encerrado';
   await carregarMsgsTi(ticketId);
+  if(_chatTicketAtual!==ticketId)return;   // trocou de chamado/fechou durante o await
   // ── REALTIME — canal de chat do modal, escopado a este ticket ──
   // Substitui o canal anterior (se o TI trocou de chamado sem fechar o modal)
   // e é desinscrito em fecharModal(). Escuta `realtime_sinal` filtrado por
   // ref_id=eq.{ticketId} (o SEC-05b tirou `mensagem` do alcance do Realtime —
   // ver bloco do canal principal e docs/REALTIME.md). Qualquer sinal de
   // mensagem deste chamado dispara o re-fetch REST; se for INSERT, marca lido.
-  if(realtimeChannel){sbClient.removeChannel(realtimeChannel);realtimeChannel=null;}
+  if(realtimeChannel){const _old=realtimeChannel;realtimeChannel=null;try{await sbClient.removeChannel(_old);}catch(_){}}
+  if(_chatTicketAtual!==ticketId)return;   // trocou de chamado durante o removeChannel
   realtimeChannel=sbClient.channel(`chat-ti-${ticketId}`)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'realtime_sinal',filter:`ref_id=eq.${ticketId}`},({new:s})=>{
-      if(s?.canal!=='mensagem')return;
+      if(s?.canal!=='mensagem'||_chatTicketAtual!==ticketId)return;
       carregarMsgsTi(ticketId);
       if(s?.evento==='INSERT')marcarLidoTi(ticketId);
     })
@@ -1268,6 +1292,7 @@ async function carregarMsgsTi(ticketId){
   try{
     const r=await fetch(`${SB}/rest/v1/mensagem?ticket_id=eq.${ticketId}&order=enviado_em.asc&select=*`,{headers:H});
     const msgs=await r.json();
+    if(_chatTicketAtual!==ticketId)return;   // resposta de outro chamado: descarta
     const chat=document.getElementById('chat-msgs-ti');if(!chat)return;
     if(!Array.isArray(msgs)||!msgs.length){chat.innerHTML=`<div class="chat-empty-ti">Nenhuma mensagem ainda.</div>`;return}
     const atBottom=chat.scrollHeight-chat.scrollTop<=chat.clientHeight+40;
@@ -1277,11 +1302,12 @@ async function carregarMsgsTi(ticketId){
       const lado=deTi?'ti':'pc';
       const hora=m.enviado_em?new Date(m.enviado_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
       const nomeRem=deTi?(m.nome_remetente||nomeTenico):(m.nome_remetente||'PC');
-      const imgHtml=m.imagem_url?`<img class="msg-img-ti" src="${escapeHtml(m.imagem_url)}" alt="print" onclick="abrirLightbox('${escapeHtml(m.imagem_url)}')" />`:'';
+      const imgHtml=m.imagem_url?`<img class="msg-img-ti" src="${escapeHtml(m.imagem_url)}" alt="print" />`:'';
       const textoHtml=m.conteudo?`<div class="msg-bubble-ti">${escapeHtml(m.conteudo)}</div>`:'';
       const tickHtml=deTi?`<span class="msg-tick${m.lido_pc?' lido':''}">${m.lido_pc?SVG.tick2:SVG.tick1}</span>`:'';
       return`<div class="msg ${lado}">${imgHtml}${textoHtml}<div class="msg-meta-ti">${escapeHtml(nomeRem)} · ${hora} ${tickHtml}</div></div>`;
     }).join('');
+    chat.querySelectorAll('img.msg-img-ti').forEach(img=>img.addEventListener('click',()=>window.abrirLightbox(img.src)));
     if(atBottom)chat.scrollTop=chat.scrollHeight;
   }catch(e){console.error('chat',e)}
 }
@@ -1309,11 +1335,10 @@ window.enviarMsgTi=async function(e){
     removerImgTi();
   }
   try{
-    await fetch(`${SB}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({
+    await _okOuErro(await fetch(`${SB}/rest/v1/mensagem`,{method:'POST',headers:H,body:JSON.stringify({
       ticket_id:modalTicketId,remetente:'TI',conteudo:txt||null,imagem_url,
-      enviado_em:new Date().toISOString(),
       nome_remetente:session.nome||session.login||'T.I.'
-    })});
+    })}),'Erro ao enviar mensagem.');
     
     // ━━ LOGGING (mensagem T.I.) ━━
     if(txt || imagem_url) {
@@ -1328,7 +1353,12 @@ window.enviarMsgTi=async function(e){
     }
 
     await carregarMsgsTi(modalTicketId);
-  }catch(err){notif('Erro ao enviar mensagem.')}
+  }catch(err){
+    console.error('[enviarMsgTi]',err);
+    if(!inp.value)inp.value=txt;   // devolve o texto digitado para reenviar
+    inp.focus();
+    notif(err.message||'Erro ao enviar mensagem.');
+  }
 };
 async function uploadImagem(file){
   const ext=(file.name&&file.name.includes('.'))?file.name.split('.').pop():(file.type.split('/')[1]||'jpg');
@@ -1391,21 +1421,25 @@ function renderPCs(){
   const txt={ativo:'Ativo',em_manutencao:'Manutenção',descartado:'Descartado'};
   grid.innerHTML=lista.map(pc=>{
     const cls=pc.status_pc==='em_manutencao'?' manutencao':pc.status_pc==='descartado'?' descartado':'';
-    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" onclick="deletarPC(${pc.id},'${(pc.tag||'').replace(/'/g,"\\'")}',event)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
+    return`<div class="pc-card${cls}"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px"><div class="pc-tag-big" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${escapeHtml(pc.tag||'—')}</div><button class="btn-ti-del-pc" title="Remover PC permanentemente (exclui todos os chamados vinculados)" data-del-pc="${pc.id}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div><div class="pc-meta" style="cursor:pointer" onclick="abrirModalPC(${pc.id})"><span>${escapeHtml(pc.laboratorio||'—')}</span><span>Lado ${escapeHtml(pc.lado||'—')}</span></div><div class="pc-card-footer" style="cursor:pointer" onclick="abrirModalPC(${pc.id})">${ico[pc.status_pc]||''} <span style="font-size:.6rem;color:var(--muted)">${txt[pc.status_pc]||pc.status_pc}</span></div></div>`;
   }).join('');
+  grid.querySelectorAll('[data-del-pc]').forEach(b=>b.addEventListener('click',e=>{
+    const pc=todosOsPCs.find(p=>String(p.id)===b.dataset.delPc);
+    window.deletarPC(Number(b.dataset.delPc),pc?.tag||'',e);
+  }));
 }
 window.deletarPC=async function(id,tag,e){
   e.stopPropagation();
   if(!await dsosConfirm({msg:`Remover PC "${tag}"?\nTodos os chamados vinculados serão excluídos.`,tipo:'danger',titulo:'Remover PC'}))return;
   try{
-    await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});
+    await _okOuErro(await fetch(`${SB}/rest/v1/rpc/rpc_deletar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})}),'Erro ao remover PC.');
     // LOG-01: exclusão de PC é permanente e cascateia (remove os chamados
     // vinculados), mas não gerava nenhum registro de auditoria — logDeletarPC
     // e a RPC rpc_log_deletar_pc já existiam, só nunca eram chamadas.
     logger.logDeletarPC(session?.id,session?.tipo||'ti',session?.login||'',session?.nome||'',id,tag);
     notif(`PC ${tag} removido.`);
     await carregarPCs();
-  }catch(err){console.error('[deletarPC]',err);notif('Erro ao remover.')}
+  }catch(err){console.error('[deletarPC]',err);notif(err.message||'Erro ao remover.')}
 };
 window.abrirModalPC=function(id){
   const numericId=id!=null?Number(id):null;pcEditandoId=numericId;const editando=numericId!=null;
@@ -1447,7 +1481,7 @@ window.salvarPC=async function(){
     catch(e){notif('Erro: '+e.message)}
   }else{
     try{
-      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})});
+      await _okOuErro(await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_pc`,{method:'POST',headers:H,body:JSON.stringify({p_id:pcEditandoId,p_status_pc:status,p_nova_senha:senha||null})}),'Erro ao atualizar PC.');
       await _patchPC(pcEditandoId,{laboratorio:lab,lado:lado});
       
       // ━━ LOGGING (alterar status PC) ━━
@@ -1465,7 +1499,7 @@ window.salvarPC=async function(){
 
       notif('PC atualizado!');window.fecharModalPC();await carregarPCs();
     }
-    catch(e){notif('Erro ao atualizar.')}
+    catch(e){notif(e.message||'Erro ao atualizar.')}
   }
 };
 
@@ -1473,13 +1507,19 @@ window.salvarPC=async function(){
 let todosOsTIs=[],tiEditandoId=null;
 async function carregarTIs(){
   try{
-    const r=await fetch(`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`,{headers:H});
+    // preserva o termo digitado no campo de busca (o poll de 30s apagava o filtro)
+    const _q=(document.getElementById('ti-search')?.value||'').trim();
+    let _u=`${SB}/rest/v1/v_usuario_ti_pub?order=nome.asc&select=*`;
+    if(_q)_u+=`&or=(nome.ilike.*${encodeURIComponent(_q)}*,login.ilike.*${encodeURIComponent(_q)}*)`;
+    const r=await fetch(_u,{headers:H});
     todosOsTIs=await r.json();if(!Array.isArray(todosOsTIs))todosOsTIs=[];
     // mantém tiMap (usado por tecNome() nas linhas de chamado) sincronizado
     // com a mesma resposta, para que técnicos novos/removidos apareçam sem F5
     todosOsTIs.forEach(u=>{tiMap[u.id]=u});
-    document.getElementById('badge-ti').textContent=todosOsTIs.length;
-    document.getElementById('ti-count').textContent=todosOsTIs.length;
+    if(!_q){
+      document.getElementById('badge-ti').textContent=todosOsTIs.length;
+      document.getElementById('ti-count').textContent=todosOsTIs.length;
+    }
   }catch(e){todosOsTIs=[];}
   renderTIs();
 }
@@ -1494,8 +1534,12 @@ function renderTIs(){
     const initials=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');
     const profBadge=u.is_professor?`<span style="font-size:.48rem;font-weight:700;letter-spacing:.05em;color:var(--kpi-green);background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);border-radius:3px;padding:1px 5px;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">${SVG.professor} PROF</span>`:'';
     const presencaBadge=`<span class="ti-presenca-badge" style="background:${presencaColor}" title="${presencaLabel}"></span>`;
-    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar" style="position:relative">${initials}${presencaBadge}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}${isMe?'<span class="ti-you-tag">você</span>':''}${profBadge}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')} <span style="color:${presencaColor};font-size:.6rem">${presencaLabel}</span></div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" title="Remover usuário T.I. permanentemente" ${isMe?'disabled':''} onclick="deletarTI(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
+    return`<div class="ti-user-row${isMe?' me-row':''}"><div class="ti-avatar" style="position:relative">${initials}${presencaBadge}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}${isMe?'<span class="ti-you-tag">você</span>':''}${profBadge}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')} <span style="color:${presencaColor};font-size:.6rem">${presencaLabel}</span></div></div><button class="btn-ti-edit" onclick="abrirModalTI(${u.id})">Editar</button><button class="btn-ti-del-u" title="Remover usuário T.I. permanentemente" ${isMe?'disabled':''} data-del-ti="${u.id}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;
   }).join('');
+  list.querySelectorAll('[data-del-ti]').forEach(b=>b.addEventListener('click',()=>{
+    const u=todosOsTIs.find(x=>String(x.id)===b.dataset.delTi);
+    window.deletarTI(Number(b.dataset.delTi),u?(u.nome||u.login):'');
+  }));
 }
 window.abrirModalTI=function(id){
   tiEditandoId=id;const ed=id!==null;
@@ -1568,33 +1612,44 @@ window.salvarTI=async function(){
   }else{
     try{
       // FEAT-01: p_email também já era aceito pela RPC e nunca era enviado
-      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null,p_email:email})});
+      await _okOuErro(await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:tiEditandoId,p_nome:nome,p_nova_senha:senha||null,p_email:email})}),'Erro ao atualizar.');
       notif('Atualizado!');window.fecharModalTI();await carregarTIs();
-    }catch(e){notif('Erro ao atualizar.')}
+    }catch(e){notif(e.message||'Erro ao atualizar.')}
   }
 };
 window.deletarTI=async function(id,nome){
   if(!await dsosConfirm({msg:`Remover "${nome}"?`,tipo:'danger',titulo:'Remover T.I.'}))return;
   try{
-    await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})});
+    await _okOuErro(await fetch(`${SB}/rest/v1/rpc/rpc_deletar_ti`,{method:'POST',headers:H,body:JSON.stringify({p_id:id})}),'Erro ao remover.');
     // LOG-01: idem deletarPC — logDeletarUsuarioTI existia e nunca era chamado
     const alvo=todosOsTIs.find(u=>String(u.id)===String(id));
     logger.logDeletarUsuarioTI(session?.id,session?.tipo||'ti',session?.login||'',session?.nome||'',id,alvo?.login||nome);
     notif(`${nome} removido.`);
     await carregarTIs();
-  }catch(err){console.error('[deletarTI]',err);notif('Erro.')}
+  }catch(err){console.error('[deletarTI]',err);notif(err.message||'Erro ao remover.')}
 };
 
 /* PROFESSORES */
 let todosOsProfs=[],profEditandoId=null;
 async function carregarProfs(){
-  try{const r=await fetch(`${SB}/rest/v1/professor?order=nome.asc&select=id,nome,login,disciplina`,{headers:H});todosOsProfs=await r.json();if(!Array.isArray(todosOsProfs))todosOsProfs=[];document.getElementById('badge-prof').textContent=todosOsProfs.length;document.getElementById('prof-count').textContent=todosOsProfs.length;}catch(e){todosOsProfs=[];}
+  try{
+    // preserva o termo digitado no campo de busca (o poll de 30s apagava o filtro)
+    const _q=(document.getElementById('prof-search')?.value||'').trim();
+    let _u=`${SB}/rest/v1/professor?order=nome.asc&select=id,nome,login,disciplina`;
+    if(_q)_u+=`&or=(nome.ilike.*${encodeURIComponent(_q)}*,login.ilike.*${encodeURIComponent(_q)}*,disciplina.ilike.*${encodeURIComponent(_q)}*)`;
+    const r=await fetch(_u,{headers:H});todosOsProfs=await r.json();if(!Array.isArray(todosOsProfs))todosOsProfs=[];
+    if(!_q){document.getElementById('badge-prof').textContent=todosOsProfs.length;document.getElementById('prof-count').textContent=todosOsProfs.length;}
+  }catch(e){todosOsProfs=[];}
   renderProfs();
 }
 function renderProfs(){
   const list=document.getElementById('prof-user-list');
   if(!todosOsProfs.length){list.innerHTML=`<div class="empty"><div class="eicon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg></div><p>Nenhum professor cadastrado.</p></div>`;return}
-  list.innerHTML=todosOsProfs.map(u=>{const i=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');return`<div class="ti-user-row"><div class="ti-avatar" style="background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.3);color:var(--kpi-green)">${i}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')}${u.disciplina?' · '+escapeHtml(u.disciplina):''}</div></div><button class="btn-ti-edit" onclick="abrirModalProf(${u.id})">Editar</button><button class="btn-ti-del-u" onclick="deletarProf(${u.id},'${(u.nome||u.login).replace(/'/g,"\\'")}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;}).join('');
+  list.innerHTML=todosOsProfs.map(u=>{const i=(u.nome||u.login||'?').split(' ').map(w=>w[0]).slice(0,2).join('');return`<div class="ti-user-row"><div class="ti-avatar" style="background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.3);color:var(--kpi-green)">${i}</div><div class="ti-user-info"><div class="ti-user-nome">${escapeHtml(u.nome||'—')}</div><div class="ti-user-login">@${escapeHtml(u.login||'—')}${u.disciplina?' · '+escapeHtml(u.disciplina):''}</div></div><button class="btn-ti-edit" onclick="abrirModalProf(${u.id})">Editar</button><button class="btn-ti-del-u" data-del-prof="${u.id}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button></div>`;}).join('');
+  list.querySelectorAll('[data-del-prof]').forEach(b=>b.addEventListener('click',()=>{
+    const u=todosOsProfs.find(x=>String(x.id)===b.dataset.delProf);
+    window.deletarProf(Number(b.dataset.delProf),u?(u.nome||u.login):'');
+  }));
 }
 window.abrirModalProf=function(id){profEditandoId=id;const ed=id!==null;document.getElementById('mprof-title').textContent=ed?'Editar Professor':'Cadastrar Professor';document.getElementById('mprof-senha-hint').style.display=ed?'block':'none';document.getElementById('mprof-login').disabled=ed;document.getElementById('mprof-senha').placeholder=ed?'(deixe vazio para não alterar)':'Mínimo 4 caracteres';const tiRow=document.getElementById('mprof-ti-row');if(tiRow)tiRow.style.display=ed?'none':'flex';const cb=document.getElementById('mprof-is-ti');if(cb){cb.checked=false;cb.disabled=ed;}if(ed){const u=todosOsProfs.find(x=>x.id===id);if(!u)return;document.getElementById('mprof-nome').value=u.nome||'';document.getElementById('mprof-login').value=u.login||'';document.getElementById('mprof-disciplina').value=u.disciplina||'';document.getElementById('mprof-senha').value='';}else{['mprof-nome','mprof-login','mprof-disciplina','mprof-senha'].forEach(i=>document.getElementById(i).value='');document.getElementById('mprof-login').disabled=false;}document.getElementById('modal-professor').classList.add('open');setTimeout(()=>document.getElementById('mprof-nome').focus(),120);};
 window.fecharModalProf=function(){document.getElementById('modal-professor').classList.remove('open');profEditandoId=null;};
@@ -1624,9 +1679,9 @@ window.salvarProf=async function(){
     catch(e){console.error('[salvarProf]',e);notif('Erro: '+(e.message?.includes('duplicate')?'login já existe.':e.message||'Erro desconhecido'))}
   }else{
     try{
-      await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})});
+      await _okOuErro(await fetch(`${SB}/rest/v1/rpc/rpc_atualizar_professor`,{method:'POST',headers:H,body:JSON.stringify({p_id:profEditandoId,p_nome:nome,p_disciplina:disciplina||null,p_nova_senha:senha||null})}),'Erro ao atualizar.');
       notif('Prof. atualizado!');window.fecharModalProf();await carregarProfs();
-    }catch(e){notif('Erro ao atualizar.')}
+    }catch(e){notif(e.message||'Erro ao atualizar.')}
   }
 };
 window.deletarProf=async function(id,nome){
@@ -2017,7 +2072,8 @@ window.trocarParaProfessor = function() {
     tipo: 'professor',
     id: session.professor_id,
     login: session.login,
-    nome: session.nome
+    nome: session.nome,
+    token: session.token
   }));
   window.location.href = 'painel-pc.html';
 };
@@ -2152,7 +2208,7 @@ async function _carregarHistoricoPC(pcId){
     const r=await fetch(`${SB}/rest/v1/ticket?pc_problema=eq.${pcId}&order=aberto_em.desc&limit=5&select=id,tipo,status,aberto_em`,{headers:H});
     const data=await r.json();
     if(!Array.isArray(data)||!data.length){el.innerHTML='';return;}
-    const cors={aberto:'var(--yellow)',em_andamento:'var(--orange)',resolvido:'var(--green)',descartado:'var(--muted)',falso_alarme:'var(--red)'};
+    const cors={aberto:'var(--yellow)',em_andamento:'var(--orange)',aguardando_peca:'var(--orange)',resolvido:'var(--green)',descartado:'var(--muted)',falso_alarme:'var(--red)'};
     el.innerHTML='<div style="font-size:.55rem;font-weight:700;letter-spacing:.08em;color:var(--muted);padding:8px 0 4px">ÚLTIMOS CHAMADOS</div>'+
       data.map(t=>{const d=t.aberto_em?new Date(t.aberto_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';return`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--glass-b);font-size:.58rem"><span style="color:${cors[t.status]||'var(--muted)'}">●</span><span style="color:var(--muted)">#${t.id}</span><span style="flex:1">${tipoLabel(t.tipo)}</span><span style="color:var(--muted)">${d}</span></div>`;}).join('');
   }catch(e){el.innerHTML='';}
@@ -3980,7 +4036,7 @@ function _atualizarKbDicas(){
   const t=selectedId?tickets.find(x=>x.id===selectedId):null;
   const chips=[_kbChip('↑↓','Navegar')];
   if(t?.status==='aberto') chips.push(_kbChip('P','Andamento'),_kbChip('R','Resolver'));
-  else if(t?.status==='em_andamento') chips.push(_kbChip('R','Resolver'));
+  else if(t?.status==='em_andamento'||t?.status==='aguardando_peca') chips.push(_kbChip('R','Resolver'));
   if(t) chips.push(_kbChip('Enter','Detalhar'));
   el.innerHTML=chips.join('<span style="color:var(--glass-b);margin:0 2px">·</span>');
 }
@@ -3988,7 +4044,7 @@ function _atualizarKbDicas(){
 /* ATALHOS DE TECLADO */
 (function(){
   function _abertosVisiveis(){
-    let list=tickets.filter(t=>t.status==='aberto'||t.status==='em_andamento');
+    let list=tickets.filter(t=>_statusAberto(t.status));
     if(_filtroChip.tipo)list=list.filter(t=>t.tipo===_filtroChip.tipo);
     if(_filtroChip.lab)list=list.filter(t=>t.laboratorio===_filtroChip.lab);
     return list;
@@ -4005,7 +4061,7 @@ function _atualizarKbDicas(){
   document.addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable)return;
     if(e.ctrlKey||e.metaKey||e.altKey)return;
-    // .sc-overlay é o minigame Skill Check, que aparece em 30% das resoluções
+    // .sc-overlay é o minigame Skill Check, que só abre pelo atalho manual (Shift+G→K)
     // e fica esperando a barra de espaço. Sem ele nesta lista, teclas como
     // R/P/setas continuavam agindo no chamado POR BAIXO do overlay — dava pra
     // marcar RESOLVIDO no ticket errado durante o minigame (BUG-06).
@@ -4111,7 +4167,7 @@ function _konamiMode(){
 
   let needleAngle=0,zoneStart=0;
   let running=false,pressed=false,raf=null,lastTs=0;
-  let done=0,onSuccessCb=null,dbdMode=false;
+  let done=0,onSuccessCb=null;
   let _needleWrap=null; // referência cacheada — evita getElementById todo frame
 
   /* Audio — arquivos reais da pasta sounds/ */
@@ -4238,26 +4294,18 @@ function _konamiMode(){
     if(e.key==='Escape')closeSkillCheck();
   }
 
-  /* Shift+G -> K: toggle modo DBD */
+  /* Shift+G -> K: abre o skill check manualmente (easter egg). Nunca é aberto
+     ao resolver chamado: a resolução não é mais interceptada. */
   let _sgp=false;
   document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable)return;
     if(e.key==='G'&&e.shiftKey){_sgp=true;setTimeout(()=>{_sgp=false;},1500);}
     else if(e.key==='k'&&_sgp){
-      _sgp=false;dbdMode=!dbdMode;
-      notif(dbdMode?'💀 Modo DBD ativado — skill check em toda resolução!':'💀 Modo DBD desativado.');
+      _sgp=false;
+      const ov=document.getElementById('sc-overlay');
+      if(ov?.classList.contains('open'))closeSkillCheck();
+      else openSkillCheck(()=>notif('💀 Skill check passou!'));
     }
   });
-
-  /* Intercepta confirmarResolucao */
-  const _orig=window.confirmarResolucao;
-  window.confirmarResolucao=async function(){
-    const tipo=document.getElementById('res-tipo')?.value;
-    const intercept=tipo==='consertado'&&(dbdMode||Math.random()<0.30);
-    if(!intercept)return _orig.apply(this,arguments);
-    openSkillCheck(()=>{
-      notif('💀 Skill check passou! Resolvendo chamado...');
-      setTimeout(()=>_orig.apply(window,[]),300);
-    });
-  };
 
 })();
