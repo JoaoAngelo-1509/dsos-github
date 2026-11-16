@@ -118,7 +118,7 @@ Fases 1–5 concluídas e enviadas em `claude/epic-fermat-y899iz`. Nada foi apli
 
 **Pendências para decisão/execução humana:**
 1. Conferir se `rpc_log_login_falho` grava em `atividades_log` (se sim, logins falhos deixam de ser registrados após a migration).
-2. Atualizar `tests/leitura.test.js` e `tests/realtime-sinal.test.js` para enviar token de T.I. nas RPCs administrativas.
+2. ~~Atualizar os testes~~ feito: usam TEST_TI_LOGIN/TEST_TI_SENHA para o token de T.I. (ver tests/README.md).
 3. Confirmar os prazos de retenção (180/365 dias).
 4. Bloqueio de login conta falhas por login nos 3 tipos; confirmar se é aceitável em laboratório.
 5. `resolvido_em` continua vindo do cliente (precisa de default/trigger no banco).

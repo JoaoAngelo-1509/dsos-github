@@ -62,8 +62,27 @@ const rest = (caminho, opts = {}) =>
 
 const comToken = (token) => (token == null ? {} : { 'X-Sessao-Token': token });
 
-const rpc = (nome, corpo, token) =>
-  rest(`rpc/${nome}`, { method: 'POST', body: JSON.stringify(corpo), headers: comToken(token) });
+// Desde a migration 20261111120000, cadastro/exclusão de contas e PCs exigem
+// sessão de T.I. Os testes usam uma conta T.I. real via TEST_TI_LOGIN/TEST_TI_SENHA
+// e injetam o token dela nessas RPCs quando o teste não passa token próprio.
+const RPCS_ADMIN = new Set(['rpc_cadastrar_ti', 'rpc_cadastrar_pc', 'rpc_cadastrar_professor',
+  'rpc_deletar_ti', 'rpc_deletar_pc', 'rpc_deletar_professor']);
+let _tokenAdmin = null;
+async function tokenAdmin() {
+  if (_tokenAdmin) return _tokenAdmin;
+  const login = process.env.TEST_TI_LOGIN, senha = process.env.TEST_TI_SENHA;
+  if (!login || !senha) throw new Error('defina TEST_TI_LOGIN e TEST_TI_SENHA (conta T.I. para setup/limpeza)');
+  const r = await rest('rpc/rpc_login_ti', { method: 'POST', body: JSON.stringify({ p_login: login, p_senha: senha }) });
+  const c = await r.json().catch(() => null);
+  _tokenAdmin = Array.isArray(c) && c[0]?.token;
+  if (!_tokenAdmin) throw new Error(`login da conta T.I. de teste falhou: ${r.status}`);
+  return _tokenAdmin;
+}
+
+const rpc = async (nome, corpo, token) => {
+  if (token == null && RPCS_ADMIN.has(nome)) token = await tokenAdmin();
+  return rest(`rpc/${nome}`, { method: 'POST', body: JSON.stringify(corpo), headers: comToken(token) });
+};
 
 const corpoDe = async (r) => {
   const txt = await r.text();

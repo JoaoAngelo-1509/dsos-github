@@ -9,13 +9,13 @@ Usa o test runner nativo do Node (18+) — **sem dependências**, porque o
 projeto é estático e não tem `package.json` de runtime.
 
 ```bash
-SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon key> node --test 'tests/*.test.js'
+SUPABASE_URL=https://<ref>.supabase.co SUPABASE_ANON_KEY=<anon key> TEST_TI_LOGIN=<login T.I.> TEST_TI_SENHA=<senha> node --test 'tests/*.test.js'
 ```
 
 No Windows (PowerShell):
 
 ```bash
-$env:SUPABASE_URL="https://<ref>.supabase.co"; $env:SUPABASE_ANON_KEY="<anon key>"; node --test tests/seguranca.test.js tests/leitura.test.js tests/realtime-sinal.test.js
+$env:SUPABASE_URL="https://<ref>.supabase.co"; $env:SUPABASE_ANON_KEY="<anon key>"; $env:TEST_TI_LOGIN="<login T.I.>"; $env:TEST_TI_SENHA="<senha>"; node --test tests/seguranca.test.js tests/leitura.test.js tests/realtime-sinal.test.js
 ```
 
 Ou passe um único arquivo (`node --test tests/seguranca.test.js`) para rodar só
