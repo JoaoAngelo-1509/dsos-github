@@ -15,12 +15,12 @@ Branch: `claude/epic-fermat-y899iz` · Base: `23ee0bf`.
 
 | # | Agente | Modelo | Effort | Quando | Status |
 |---|---|---|---|---|---|
-| 1 | Migration de segurança | Opus | high | Primeiro, sozinho | pendente |
-| 2 | `js/painel-ti.js` | Sonnet | high | Após 1, paralelo com 3 e 4 | pendente |
-| 3 | `js/painel-pc.js` + `js/painel-logs.js` + `js/dsos-ui.js` | Sonnet | medium | Paralelo | pendente |
-| 4 | HTML/CSS (UX) | Sonnet | low | Paralelo | pendente |
-| 5 | Revisão final de regressões | Opus | medium | Por último | pendente |
-| — | Pequenas (sem agente) | — | — | Junto com 2–4 | pendente |
+| 1 | Migration de segurança | Opus | high | Primeiro, sozinho | feito (`e2bece2`) |
+| 2 | `js/painel-ti.js` | Sonnet | high | Após 1, paralelo com 3 e 4 | feito (`b99b082`) |
+| 3 | `js/painel-pc.js` + `js/painel-logs.js` + `js/dsos-ui.js` | Sonnet | medium | Paralelo | feito (`a4522f9`) |
+| 4 | HTML/CSS (UX) | Sonnet | low | Paralelo | feito (`1b37c3f`) |
+| 5 | Revisão final de regressões | Opus | medium | Por último | feito (`f544d94`) |
+| — | Pequenas (sem agente) | — | — | Junto com 2–4 | feito (`1b37c3f`), exceto itens manuais abaixo |
 
 ---
 
@@ -110,4 +110,18 @@ Itens de banco ficam como migration no repo; nada é aplicado em produção sem 
 
 ## Resultado
 
-(preenchido ao final)
+Fases 1–5 concluídas e enviadas em `claude/epic-fermat-y899iz`. Nada foi aplicado em produção.
+
+**Migrations prontas, não aplicadas** (validadas com BEGIN…ROLLBACK):
+- `20261111120000_sec_fecha_rpcs_anon.sql`: RPCs administrativas exigem sessão de T.I.; `rpc_get_*` e limpeza revogadas do anon; limite de 5 falhas de login em 15 min; INSERTs exigem sessão.
+- `20261111130000_retencao_logs_e_manutencao.sql`: purga diária de logs (180/365 dias), autovacuum, publicação realtime enxuta.
+
+**Pendências para decisão/execução humana:**
+1. Conferir se `rpc_log_login_falho` grava em `atividades_log` (se sim, logins falhos deixam de ser registrados após a migration).
+2. Atualizar `tests/leitura.test.js` e `tests/realtime-sinal.test.js` para enviar token de T.I. nas RPCs administrativas.
+3. Confirmar os prazos de retenção (180/365 dias).
+4. Bloqueio de login conta falhas por login nos 3 tipos; confirmar se é aceitável em laboratório.
+5. `resolvido_em` continua vindo do cliente (precisa de default/trigger no banco).
+6. Remover a Edge Function `fn-enviar-otp` (painel do Supabase), exportar e apagar o schema `backup_20260823`, rodar `ALTER DATABASE postgres REFRESH COLLATION VERSION`.
+7. Storage `chat-prints` segue aceitando upload sem sessão (a Storage API não repassa o header de sessão).
+8. Etapas da seção anterior: Deploy Preview → aplicar migrations → merge → trocar senhas de T.I.
